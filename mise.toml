@@ -1,2 +1,9 @@
 [tools]
 go = "1.25"
+
+[env]
+DEBUG = true
+
+[tasks.run-tui]
+description = "Run the TUI"
+run = "go run cmd/tui/main.go"
