@@ -49,7 +49,7 @@ Table employee {
   deleted_at timestampz
 
   checks {
-    `unique(org_id, number)` [name: 'unique_employee_number_chk']
+    `unique(org_id, serial_num)` [name: 'unique_employee_number_chk']
   }
 
   indexes {
@@ -87,8 +87,8 @@ Enum currency_enum {
 Table payroll_period {
   id uuid [pk]
   org_id uuid [ref: > organization.id, not null]
-  year int [not null, check: `2020 <= year < 2050`]
-  month int [not null, check: `1 <= month <= 12`]
+  year int [not null, check: `year BETWEEN 2020 AND 2050`]
+  month int [not null, check: `month BETWEEN 1 AND 12`]
   status payroll_status_enum [not null]
   finalized_at timestampz
 
@@ -97,8 +97,8 @@ Table payroll_period {
   deleted_at timestampz
 
   checks {
-  `unique(org_id, year, month)` [name: 'unique_payroll_period_chk']
-  `(status = 'DRAFT' and finalized_at is null) or (status = 'FINALIZED' and finalized_at is not null)` [name: 'status_coherence_chk']
+    `unique(org_id, year, month)` [name: 'unique_payroll_period_chk']
+    `(status = 'DRAFT' AND finalized_at IS NULL) OR (status = 'FINALIZED' AND finalized_at IS NOT NULL)` [name: 'status_coherence_chk']
   }
 
   indexes {
@@ -117,27 +117,27 @@ Table payroll_result {
   employee_id uuid [ref: > employee.id, not null]
   compensation_package_id uuid [ref: > employee_compensation_package.id, not null]
   currency currency_enum [not null, default: currency_enum.MAD]
-  base_salary_cents int [not null]
-  seniority_bonus_cents int [not null, default: 0]
-  gross_salary_cents int [not null]
-  total_extra_bonus_cents int [not null, default: 0]
-  gross_salary_grand_total_cents int [not null]
-  total_exemptions_cents int [not null, default: 0]
-  taxable_gross_salary_cents int [not null]
-  social_allowance_employee_contrib_cents int [not null]
-  social_allowance_employer_contrib_cents int [not null]
-  job_loss_compensation_employee_contrib_cents int [not null]
-  job_loss_compensation_employer_contrib_cents int [not null]
-  training_tax_cents int [not null]
-  family_benefits_cents int [not null]
-  total_cnss_employee_contrib_cents int [not null]
-  total_cnss_employer_contrib_cents int [not null]
-  amo_employee_contrib_cents int [not null]
-  amo_employer_contrib_cents int [not null]
-  taxable_net_salary_cents int [not null]
-  income_tax_cents int [not null]
-  rounding_amount_cents int [not null]
-  net_to_pay_cents int [not null]
+  base_salary_cents int [not null, check: `base_salary_cents >= 0`]
+  seniority_bonus_cents int [not null, default: 0, check: `seniority_bonus_cents >= 0`]
+  gross_salary_cents int [not null, check: `gross_salary_cents >= 0`]
+  total_extra_bonus_cents int [not null, default: 0, check: `total_extra_bonus_cents >= 0`]
+  gross_salary_grand_total_cents int [not null, check: `gross_salary_grand_total_cents >= 0`]
+  total_exemptions_cents int [not null, default: 0, check: `total_exemptions_cents >= 0`]
+  taxable_gross_salary_cents int [not null, check: `taxable_gross_salary_cents >= 0`]
+  social_allowance_employee_contrib_cents int [not null, check: `social_allowance_employee_contrib_cents >= 0`]
+  social_allowance_employer_contrib_cents int [not null, check: `social_allowance_employer_contrib_cents >= 0`]
+  job_loss_compensation_employee_contrib_cents int [not null, check: `job_loss_compensation_employee_contrib_cents >= 0`]
+  job_loss_compensation_employer_contrib_cents int [not null, check: `job_loss_compensation_employer_contrib_cents >= 0`]
+  training_tax_cents int [not null, check: `training_tax_cents >= 0`]
+  family_benefits_cents int [not null, check: `family_benefits_cents >= 0`]
+  total_cnss_employee_contrib_cents int [not null, check: `total_cnss_employee_contrib_cents >= 0`]
+  total_cnss_employer_contrib_cents int [not null, check: `total_cnss_employer_contrib_cents >= 0`]
+  amo_employee_contrib_cents int [not null, check: `amo_employee_contrib_cents >= 0`]
+  amo_employer_contrib_cents int [not null, check: `amo_employer_contrib_cents >= 0`]
+  taxable_net_salary_cents int [not null, check: `taxable_net_salary_cents >= 0`]
+  income_tax_cents int [not null, check: `income_tax_cents >= 0`]
+  rounding_amount_cents int [not null, check: `rounding_amount_cents >= 0`]
+  net_to_pay_cents int [not null, check: `net_to_pay_cents >= 0`]
 
   created_at timestampz [not null, default: `NOW()`]
   updated_at timestampz [not null, default: `NOW()`]
@@ -159,7 +159,7 @@ Table audit_log {
   action action_enum [not null]
   before json
   after json [not null]
-  timestamp timestampz [not null]
+  timestamp timestampz [not null, default: `NOW()`]
 
   indexes {
     (table_name, record_id) [name: 'idx_audit_log_table_name_record_id']
