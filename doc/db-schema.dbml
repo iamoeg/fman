@@ -1,0 +1,174 @@
+Project bootdev_capstone {
+  database_type: 'SQLite, PostgreSQL'
+}
+
+Table organization {
+  id uuid [pk]
+  name text [not null]
+  address text
+  activity text
+  legal_form_id org_legal_form_enum
+  ice_num text [unique]
+  if_num text [unique]
+  rc_num text [unique]
+  cnss_num text [unique]
+  bank_rib text [unique]
+
+  created_at timestampz [not null, default: `NOW()`]
+  updated_at timestampz [not null, default: `NOW()`]
+  deleted_at timestampz
+}
+
+Enum org_legal_form_enum {
+  SARL
+}
+
+Table employee {
+  id uuid [pk]
+  org_id uuid [ref: > organization.id, not null]
+  serial_num int [not null]
+  full_name text [not null]
+  display_name text
+  address text
+  email_address text
+  phone_number text
+  birth_date timestampz [not null]
+  gender person_gender_enum [not null]
+  marital_status marital_status_enum [not null]
+  num_dependents int [not null, default: 0, check: `num_dependents >= 0`]
+  num_kids int [not null, default: 0, check: `num_kids >= 0`]
+  cin_num text [not null, unique]
+  cnss_num text [unique]
+  hire_date timestampz [not null]
+  position text [not null]
+  compensation_package_id uuid [ref: > employee_compensation_package.id, not null]
+  bank_rib text
+
+  created_at timestampz [not null, default: `NOW()`]
+  updated_at timestampz [not null, default: `NOW()`]
+  deleted_at timestampz
+
+  checks {
+    `unique(org_id, number)` [name: 'unique_employee_number_chk']
+  }
+
+  indexes {
+    org_id [name: 'idx_employee_org_id']
+  }
+}
+
+Enum person_gender_enum {
+  MALE
+  FEMALE
+}
+
+Enum marital_status_enum {
+  SINGLE
+  MARRIED
+  SEPARATED
+  DIVORCED
+  WIDOWED
+}
+
+Table employee_compensation_package {
+  id uuid [pk]
+  base_salary_cents int [not null]
+  currency currency_enum [not null, default: currency_enum.MAD]
+
+  created_at timestampz [not null, default: `NOW()`]
+  updated_at timestampz [not null, default: `NOW()`]
+  deleted_at timestampz
+}
+
+Enum currency_enum {
+  MAD
+}
+
+Table payroll_period {
+  id uuid [pk]
+  org_id uuid [ref: > organization.id, not null]
+  year int [not null, check: `2020 <= year < 2050`]
+  month int [not null, check: `1 <= month <= 12`]
+  status payroll_status_enum [not null]
+  finalized_at timestampz
+
+  created_at timestampz [not null, default: `NOW()`]
+  updated_at timestampz [not null, default: `NOW()`]
+  deleted_at timestampz
+
+  checks {
+  `unique(org_id, year, month)` [name: 'unique_payroll_period_chk']
+  `(status = 'DRAFT' and finalized_at is null) or (status = 'FINALIZED' and finalized_at is not null)` [name: 'status_coherence_chk']
+  }
+
+  indexes {
+    org_id [name: 'idx_payroll_period_org_id']
+  }
+}
+
+Enum payroll_status_enum {
+  DRAFT
+  FINALIZED
+}
+
+Table payroll_result {
+  id uuid [pk]
+  payroll_period_id uuid [ref: > payroll_period.id, not null]
+  employee_id uuid [ref: > employee.id, not null]
+  compensation_package_id uuid [ref: > employee_compensation_package.id, not null]
+  currency currency_enum [not null, default: currency_enum.MAD]
+  base_salary_cents int [not null]
+  seniority_bonus_cents int [not null, default: 0]
+  gross_salary_cents int [not null]
+  total_extra_bonus_cents int [not null, default: 0]
+  gross_salary_grand_total_cents int [not null]
+  total_exemptions_cents int [not null, default: 0]
+  taxable_gross_salary_cents int [not null]
+  social_allowance_employee_contrib_cents int [not null]
+  social_allowance_employer_contrib_cents int [not null]
+  job_loss_compensation_employee_contrib_cents int [not null]
+  job_loss_compensation_employer_contrib_cents int [not null]
+  training_tax_cents int [not null]
+  family_benefits_cents int [not null]
+  total_cnss_employee_contrib_cents int [not null]
+  total_cnss_employer_contrib_cents int [not null]
+  amo_employee_contrib_cents int [not null]
+  amo_employer_contrib_cents int [not null]
+  taxable_net_salary_cents int [not null]
+  income_tax_cents int [not null]
+  rounding_amount_cents int [not null]
+  net_to_pay_cents int [not null]
+
+  created_at timestampz [not null, default: `NOW()`]
+  updated_at timestampz [not null, default: `NOW()`]
+  deleted_at timestampz
+
+  checks {
+    `unique(payroll_period_id, employee_id)` [name: 'unique_employee_payroll_chk']
+  }
+
+  indexes {
+    payroll_period_id [name: 'idx_payroll_result_period_id']
+  }
+}
+
+Table audit_log {
+  id uuid [pk]
+  table_name text [not null]
+  record_id uuid [not null]
+  action action_enum [not null]
+  before json
+  after json [not null]
+  timestamp timestampz [not null]
+
+  indexes {
+    (table_name, record_id) [name: 'idx_audit_log_table_name_record_id']
+  }
+}
+
+Enum action_enum {
+  CREATE
+  UPDATE
+  SOFT_DELETE
+  DELETE
+}
