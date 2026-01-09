@@ -7,3 +7,48 @@ DEBUG = true
 [tasks.run-tui]
 description = "Run the TUI"
 run = "go run cmd/tui/main.go"
+
+[tasks.goose-create]
+description = "Create a new SQL migration file"
+dir = "db/migrations/"
+usage = '''
+arg "<name>" help="Migration file name"
+arg "<type>" help="Migration file type" default="sql" { choices "sql" "go" }
+'''
+run = "goose -s create ${usage_name} ${usage_type?}"
+
+[tasks.goose-up]
+description = "Perform UP SQL migrations"
+usage = '''
+flag "--dir <migrations_dir>" {
+    help "Directory with SQL migration files"
+    default "db/migrations/"
+}
+arg "<driver>" help="SQL driver" {
+    choices "sqlite" "postgres"
+    default "sqlite"
+}
+arg "<path>" help="Database path or connection string" {
+    default "data.db"
+}
+'''
+run = "goose -dir ${usage_dir?} ${usage_driver?} ${usage_path?} up"
+alias = "gup"
+
+[tasks.goose-down]
+description = "Perform DOWN SQL migrations"
+usage = '''
+flag "--dir <migrations_dir>" {
+    help "Directory with SQL migration files"
+    default "db/migrations/"
+}
+arg "<driver>" help="SQL driver" {
+    choices "sqlite" "postgres"
+    default "sqlite"
+}
+arg "<path>" help="Database path or connection string" {
+    default "data.db"
+}
+'''
+run = "goose -dir ${usage_dir?} ${usage_driver?} ${usage_path?} down"
+alias = "gdo"

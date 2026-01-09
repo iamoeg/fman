@@ -33,3 +33,6 @@ go.work.sum
 
 # Debug files
 debug.log
+
+# Dev database
+data.db
