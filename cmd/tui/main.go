@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	// Set up logging to `debug.log` file
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
