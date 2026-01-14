@@ -1,3 +1,5 @@
+// Package money provides types for working with monetary values.
+// Currently only Moroccan Dirham (MAD) is supported.
 package money
 
 import (
