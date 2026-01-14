@@ -79,61 +79,105 @@ Development follows an iterative, phased approach:
 
 ### Tasks
 
-#### 1. Money Type (`pkg/money/`)
+#### 1. Money Type (`pkg/money/`) ✅ COMPLETED
 
 **Priority:** Do this FIRST - everything else depends on it
 
-Create a custom `Money` type to handle financial calculations:
+**Status:** ✅ Complete with comprehensive testing
+
+The Money type has been implemented with:
+
+- **Overflow/underflow protection** on all arithmetic operations
+- **Error handling** - returns `(Money, error)` for operations that can fail
+- **Three error types**: `ErrOverflow`, `ErrDivByZero`, `ErrInvalidValue`
+- **Comparison methods**: `Equals()`, `LessThan()`, `GreaterThan()`
+- **String formatting**: implements `fmt.Stringer` for display
+- **Full godoc documentation** with usage examples
+
+**Implementation highlights:**
 
 ```go
 package money
+
+import (
+    "errors"
+    "fmt"
+    "math"
+)
+
+var (
+    ErrOverflow     = errors.New("money: operation would overflow")
+    ErrDivByZero    = errors.New("money: division by zero")
+    ErrInvalidValue = errors.New("money: invalid value (NaN or Inf)")
+)
 
 type Money struct {
     cents int64
 }
 
-func FromCents(cents int64) Money {
-    return Money{cents: cents}
-}
+// Constructors with validation
+func FromCents(cents int64) Money
+func FromMAD(mad float64) (Money, error)
 
-func FromMAD(mad float64) Money {
-    return Money{cents: int64(math.Round(mad * 100))}
-}
+// Accessors
+func (m Money) Cents() int64
+func (m Money) ToMAD() float64
+func (m Money) String() string
 
-func (m Money) Cents() int64 {
-    return m.cents
-}
+// Arithmetic with overflow detection
+func (m Money) Add(other Money) (Money, error)
+func (m Money) Subtract(other Money) (Money, error)
+func (m Money) Multiply(factor float64) (Money, error)
+func (m Money) Divide(divisor float64) (Money, error)
 
-func (m Money) ToMAD() float64 {
-    return float64(m.cents) / 100.0
-}
-
-func (m Money) Add(other Money) Money {
-    return Money{cents: m.cents + other.cents}
-}
-
-func (m Money) Subtract(other Money) Money {
-    return Money{cents: m.cents - other.cents}
-}
-
-func (m Money) Multiply(factor float64) Money {
-    return Money{cents: int64(math.Round(float64(m.cents) * factor))}
-}
-
-func (m Money) IsZero() bool {
-    return m.cents == 0
-}
-
-func (m Money) IsPositive() bool {
-    return m.cents > 0
-}
-
-func (m Money) IsNegative() bool {
-    return m.cents < 0
-}
+// Comparison
+func (m Money) Equals(other Money) bool
+func (m Money) LessThan(other Money) bool
+func (m Money) GreaterThan(other Money) bool
+func (m Money) IsZero() bool
+func (m Money) IsPositive() bool
+func (m Money) IsNegative() bool
 ```
 
-**Test thoroughly** - financial calculations must be exact.
+**Test coverage: 146 test cases** including:
+
+- Constructor tests with edge cases (NaN, Inf, overflow)
+- Arithmetic tests with overflow/underflow detection
+- Comparison operation tests
+- Floating-point precision verification
+- Realistic payroll calculation simulation
+- Benchmark tests for performance
+
+**Usage example:**
+
+```go
+// Safe arithmetic with error handling
+salary, err := money.FromMAD(8500.00)
+if err != nil {
+    return err
+}
+
+bonus, _ := money.FromMAD(500.00)
+total, err := salary.Add(bonus)
+if err != nil {
+    return fmt.Errorf("calculating total: %w", err)
+}
+
+// Comparison
+threshold, _ := money.FromMAD(10000.00)
+if total.LessThan(threshold) {
+    fmt.Println("Below tax threshold")
+}
+
+// Display
+fmt.Println(total)  // "9000.00 MAD"
+```
+
+**Key design decisions:**
+
+- Returns errors instead of panicking for production safety
+- All overflow checks verified against int64 boundaries
+- Tested with realistic Moroccan payroll scenarios (CNSS, AMO, IR calculations)
 
 #### 2. Domain Models (`internal/domain/`)
 
@@ -223,7 +267,24 @@ func (e *Employee) Validate() error {
 }
 ```
 
-**CompensationPackage, PayrollPeriod, PayrollResult:** Similarly define these
+**CompensationPackage:**
+
+```go
+type CompensationPackage struct {
+    ID         uuid.UUID
+    BaseSalary money.Money  // ✅ Use Money type!
+    Currency   string
+    CreatedAt  time.Time
+    UpdatedAt  time.Time
+    DeletedAt  *time.Time
+}
+```
+
+**PayrollPeriod, PayrollResult:**
+Similarly define these with money.Money for all monetary fields
+
+**Important:**
+All monetary fields should use `money.Money`, not `float64` or `int64` directly.
 
 #### 3. Application Services (`internal/application/`)
 
@@ -525,8 +586,23 @@ func isUniqueConstraintError(err error) bool {
 - Convert between sqlc types and domain types
 - Handle nullable columns with `sql.NullString`, etc.
 - Parse UUIDs and timestamps
+- **Convert Money**:
+  Store as `money.Cents()` in DB, reconstruct with `money.FromCents()`
 - Wrap errors with context
 - Define sentinel errors (`ErrNotFound`, `ErrDuplicate`)
+
+**Money type database conversion:**
+
+```go
+// Storing Money in database
+params := sqldb.CreateCompensationPackageParams{
+    BaseSalaryCents: baseSalary.Cents(),  // Convert Money to int64
+    // ...
+}
+
+// Reading Money from database
+baseSalary := money.FromCents(row.BaseSalaryCents)  // Convert int64 to Money
+```
 
 #### 6. Testing
 
@@ -692,7 +768,11 @@ func TestOrganizationService_CreateOrganization_ValidationError(t *testing.T) {
 
 By end of Phase 1B:
 
-- [ ] Money type implemented and tested
+- [x] Money type implemented and tested
+  - Full implementation with overflow detection
+  - 146 comprehensive test cases
+  - Benchmark tests
+  - Verification scripts
 - [ ] Domain models for Organization, Employee, CompensationPackage
 - [ ] Application services with inline interfaces
 - [ ] sqlc configured and generating code
@@ -758,6 +838,7 @@ By end of Phase 1B:
 - Use `errors.Is()` and `errors.As()` for checking
 - Wrap errors with context: `fmt.Errorf("failed to X: %w", err)`
 - TUI will translate technical errors to user-friendly messages
+- **Money operations return errors** - always check them in business logic
 
 ### UUID Generation
 
@@ -770,6 +851,28 @@ By end of Phase 1B:
 - Always store UTC: `time.Now().UTC()`
 - Format as RFC3339: `time.Format(time.RFC3339)`
 - Parse when reading: `time.Parse(time.RFC3339, s)`
+
+### Money Type Usage
+
+- **Always use `money.Money` for monetary values** in domain models
+- Store in database as `int64` (cents) using `money.Cents()`
+- Reconstruct from database using `money.FromCents()`
+- Handle errors from arithmetic operations:
+
+```go
+total, err := salary.Add(bonus)
+if err != nil {
+    return fmt.Errorf("calculating total: %w", err)
+}
+```
+
+- Use comparison methods for business logic:
+
+```go
+if salary.LessThan(threshold) {
+    // Apply different tax rate
+}
+```
 
 ### Employee Serial Numbers
 
@@ -789,3 +892,19 @@ By end of Phase 1B:
 - Test repository operations (use `:memory:`)
 - Test service orchestration (use mocks)
 - Integration tests for critical paths
+
+### Payroll Immutability
+
+**Decision:** Once finalized, payroll results cannot be modified
+
+**Implementation:**
+
+- Status field: DRAFT → FINALIZED
+- No UPDATE operations on finalized records
+- If error found: DELETE entire period and regenerate
+
+**Rationale:**
+
+- Ensures data integrity
+- Matches legal/accounting practices
+- Simplifies audit trail

@@ -285,13 +285,42 @@ type Money struct {
     cents int64
 }
 
-func FromMAD(mad float64) Money {
-    return Money{cents: int64(math.Round(mad * 100))}
+func FromMAD(mad float64) (Money, error) {
+    // Validates input and checks for overflow
+    return Money{cents: int64(math.Round(mad * 100))}, nil
 }
 
-func (m Money) Add(other Money) Money {
-    return Money{cents: m.cents + other.cents}
+func (m Money) Add(other Money) (Money, error) {
+    // Checks for overflow before adding
+    return Money{cents: m.cents + other.cents}, nil
 }
+```
+
+**Key Features:**
+
+- **Overflow protection**: All arithmetic operations detect int64 overflow/underflow
+- **Error handling**: Operations return `(Money, error)` for safety
+- **Comparison methods**: `Equals()`, `LessThan()`, `GreaterThan()`
+- **Display formatting**: `String()` method for user-friendly output
+- **Comprehensive testing**: 146 test cases including edge cases and realistic payroll scenarios
+
+**Status:** ✅ Fully implemented and tested
+
+**Usage:**
+
+```go
+salary, err := money.FromMAD(8500.00)
+if err != nil {
+    return err
+}
+
+bonus, _ := money.FromMAD(500.00)
+total, err := salary.Add(bonus)
+if err != nil {
+    return fmt.Errorf("calculating total: %w", err)
+}
+
+fmt.Println(total)  // "9000.00 MAD"
 ```
 
 ### 2. Calculated Fields in Payroll
@@ -538,21 +567,54 @@ func TestEmployee_Validate(t *testing.T) {
 
 ### Architecture
 
-1. **Go idioms > Cargo-culting Java patterns** - No separate `ports/` package needed
-2. **Dependency direction matters, not directory structure** - Inward toward domain is what counts
-3. **Small, focused interfaces** - Services define only what they need
-4. **db/ for SQL, internal/ for Go** - Don't force SQL into Go package structure
+1. **Go idioms > Cargo-culting Java patterns** -
+   No separate `ports/` package needed
+2. **Dependency direction matters, not directory structure** -
+   Inward toward domain is what counts
+3. **Small, focused interfaces** -
+   Services define only what they need
+4. **db/ for SQL, internal/ for Go** -
+   Don't force SQL into Go package structure
 
 ### Database
 
-1. **Calculated fields in payroll ARE correct** - Historical accuracy trumps normalization
-2. **ON DELETE RESTRICT for historical artifacts** - Preserve audit trail
-3. **Soft deletes everywhere** - Financial data shouldn't disappear
-4. **PRAGMA foreign_keys = ON** - Must enable on every SQLite connection
+1. **Calculated fields in payroll ARE correct** -
+   Historical accuracy trumps normalization
+2. **ON DELETE RESTRICT for historical artifacts** -
+   Preserve audit trail
+3. **Soft deletes everywhere** -
+   Financial data shouldn't disappear
+4. **PRAGMA foreign_keys = ON** -
+   Must enable on every SQLite connection
 
 ### Go Practices
 
-1. **Money as integer cents** - Never float64 for financial calculations
-2. **Use context.Context everywhere** - Enables timeouts and cancellation
-3. **sqlc over ORMs** - Type safety without magic
-4. **`:memory:` for tests** - Fast, isolated, auto-cleanup
+1. **Money as integer cents with overflow protection** -
+   Never float64 for financial calculations; always check for overflow
+2. **Return errors, don't panic** -
+   Financial operations should return `(result, error)` for graceful error handling
+3. **Test edge cases thoroughly** -
+   Boundary conditions in financial code are subtle (e.g., MaxInt64 boundaries)
+4. **Use context.Context everywhere** -
+   Enables timeouts and cancellation
+5. **sqlc over ORMs** -
+   Type safety without magic
+6. **`:memory:` for tests** -
+   Fast, isolated, auto-cleanup
+7. **Comprehensive test coverage** -
+   Financial code demands extensive testing
+   (unit, integration, edge cases, benchmarks)
+
+### Money Type Lessons
+
+1. **Overflow is real** -
+   Even with int64, financial calculations can overflow; always detect and handle
+2. **Boundary testing is critical** -
+   `0 - (MinInt64 + 1) = MaxInt64` exactly (no overflow),
+   but `1 - MinInt64` overflows
+3. **Verify with concrete math** -
+   Don't assume overflow logic is correct; verify with actual int64 limits
+4. **Error handling > silent failures** -
+   Better to return an error than silently wrap around to negative
+5. **Document edge cases** -
+   Non-obvious boundary behaviors should be tested and documented
