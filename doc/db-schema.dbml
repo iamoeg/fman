@@ -120,7 +120,7 @@ Table payroll_result {
   base_salary_cents int [not null, check: `base_salary_cents >= 0`]
   seniority_bonus_cents int [not null, default: 0, check: `seniority_bonus_cents >= 0`]
   gross_salary_cents int [not null, check: `gross_salary_cents >= 0`]
-  total_extra_bonus_cents int [not null, default: 0, check: `total_extra_bonus_cents >= 0`]
+  total_other_bonus_cents int [not null, default: 0, check: `total_extra_bonus_cents >= 0`]
   gross_salary_grand_total_cents int [not null, check: `gross_salary_grand_total_cents >= 0`]
   total_exemptions_cents int [not null, default: 0, check: `total_exemptions_cents >= 0`]
   taxable_gross_salary_cents int [not null, check: `taxable_gross_salary_cents >= 0`]
