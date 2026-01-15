@@ -251,6 +251,19 @@ func (m Money) LessThan(other Money) bool {
 	return m.cents < other.cents
 }
 
+// LessThanOrEqual returns true if m is less than or equal to other.
+//
+// Example:
+//
+//	salary, _ := money.FromMAD(8500.00)
+//	threshold, _ := money.FromMAD(10000.00)
+//	if salary.LessThanOrEqual(threshold) {
+//	    fmt.Println("At or below threshold")
+//	}
+func (m Money) LessThanOrEqual(other Money) bool {
+	return m.cents <= other.cents
+}
+
 // GreaterThan returns true if m is greater than other.
 //
 // Example:
@@ -262,6 +275,19 @@ func (m Money) LessThan(other Money) bool {
 //	}
 func (m Money) GreaterThan(other Money) bool {
 	return m.cents > other.cents
+}
+
+// GreaterThanOrEqual returns true if m is greater than or equal to other.
+//
+// Example:
+//
+//	salary, _ := money.FromMAD(8500.00)
+//	minimum, _ := money.FromMAD(3000.00)
+//	if salary.GreaterThanOrEqual(minimum) {
+//	    fmt.Println("At or above minimum wage")
+//	}
+func (m Money) GreaterThanOrEqual(other Money) bool {
+	return m.cents >= other.cents
 }
 
 // IsZero returns true if the Money value is zero.

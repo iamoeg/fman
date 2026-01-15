@@ -958,6 +958,41 @@ func TestLessThan(t *testing.T) {
 	}
 }
 
+func TestLessThanOrEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b Money
+		want bool
+	}{
+		{
+			name: "less than",
+			a:    Money{100},
+			b:    Money{200},
+			want: true,
+		},
+		{
+			name: "equal",
+			a:    Money{100},
+			b:    Money{100},
+			want: true,
+		},
+		{
+			name: "greater than",
+			a:    Money{200},
+			b:    Money{100},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.LessThanOrEqual(tt.b); got != tt.want {
+				t.Errorf("LessThanOrEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGreaterThan(t *testing.T) {
 	tests := []struct {
 		name string
@@ -1012,6 +1047,41 @@ func TestGreaterThan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.a.GreaterThan(tt.b); got != tt.want {
 				t.Errorf("GreaterThan() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGreaterThanOrEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b Money
+		want bool
+	}{
+		{
+			name: "greater than",
+			a:    Money{200},
+			b:    Money{100},
+			want: true,
+		},
+		{
+			name: "equal",
+			a:    Money{100},
+			b:    Money{100},
+			want: true,
+		},
+		{
+			name: "less than",
+			a:    Money{100},
+			b:    Money{200},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.GreaterThanOrEqual(tt.b); got != tt.want {
+				t.Errorf("GreaterThanOrEqual() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -1,6 +1,10 @@
 package money
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/iamoeg/bootdev-capstone/pkg/util"
+)
 
 // Currency represents a supported currency code.
 type Currency string
@@ -10,11 +14,14 @@ const (
 	MAD Currency = "MAD"
 )
 
-// SupportedCurrencies is the set of all supported currency codes.
+// supportedCurrencies is the set of all supported currency codes.
 // Currently only MAD is implemented.
-var SupportedCurrencies = map[Currency]struct{}{
-	MAD: struct{}{},
+var supportedCurrencies = map[Currency]struct{}{
+	MAD: {},
 }
+
+// SupportedCurrenciesStr is a comma-separated list of supported currency values.
+var SupportedCurrenciesStr = util.EnumMapToString(supportedCurrencies)
 
 var (
 	// ErrCurrencyNotSupported is returned when an unsupported currency is used.
@@ -23,7 +30,7 @@ var (
 
 // IsSupported returns true if the currency is supported.
 func (c Currency) IsSupported() bool {
-	_, ok := SupportedCurrencies[c]
+	_, ok := supportedCurrencies[c]
 	return ok
 }
 
