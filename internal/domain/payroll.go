@@ -29,8 +29,8 @@ import (
 // Business Rules:
 //   - One period per organization per month
 //   - Status and FinalizedAt must be consistent:
-//     • DRAFT: FinalizedAt must be nil
-//     • FINALIZED: FinalizedAt must not be nil
+//     └─ DRAFT: FinalizedAt must be nil
+//     └─ FINALIZED: FinalizedAt must not be nil
 //   - FinalizedAt must be >= CreatedAt
 //   - FinalizedAt cannot be in the future
 type PayrollPeriod struct {
@@ -256,26 +256,26 @@ var (
 // Moroccan Payroll Components:
 //
 // Gross Salary Calculation:
-//   GrossSalary = BaseSalary + SeniorityBonus
-//   GrossSalaryGrandTotal = GrossSalary + TotalOtherBonus
+//   - GrossSalary = BaseSalary + SeniorityBonus
+//   - GrossSalaryGrandTotal = GrossSalary + TotalOtherBonus
 //
 // Social Contributions:
-//   CNSS (Caisse Nationale de Sécurité Sociale):
-//     - Social Allowance (employee + employer)
-//     - Job Loss Compensation (IPE - employee + employer)
-//     - Training Tax (employer only)
-//     - Family Benefits (employer only)
-//   AMO (Assurance Maladie Obligatoire - Health Insurance):
-//     - Separate from CNSS but collected by CNSS in practice
-//     - Employee + employer contributions
+//   - CNSS (Caisse Nationale de Sécurité Sociale):
+//     └─ Social Allowance (employee + employer)
+//     └─ Job Loss Compensation (IPE - employee + employer)
+//     └─ Training Tax (employer only)
+//     └─ Family Benefits (employer only)
+//   - AMO (Assurance Maladie Obligatoire - Health Insurance):
+//     └─ Separate from CNSS but collected by CNSS in practice
+//     └─ Employee + employer contributions
 //
 // Tax Calculation:
-//   TaxableGrossSalary = GrossSalaryGrandTotal - TotalExemptions
-//   TaxableNetSalary = TaxableGrossSalary - TotalCNSSEmployeeContrib - AMOEmployeeContrib
-//   IncomeTax = Progressive tax on TaxableNetSalary (IR - Impôt sur le Revenu)
+//   - TaxableGrossSalary = GrossSalaryGrandTotal - TotalExemptions
+//   - TaxableNetSalary = TaxableGrossSalary - TotalCNSSEmployeeContrib - AMOEmployeeContrib
+//   - IncomeTax = Progressive tax on TaxableNetSalary (IR - Impôt sur le Revenu)
 //
 // Final Payment:
-//   NetToPay = TaxableNetSalary - IncomeTax + RoundingAmount
+//   - NetToPay = TaxableNetSalary - IncomeTax + RoundingAmount
 //
 // Business Rules:
 //   - All monetary amounts must be >= 0 (except RoundingAmount)
