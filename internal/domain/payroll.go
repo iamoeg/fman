@@ -492,7 +492,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.GrossSalary.Equals(grossSalaryExpected) {
 		return fmt.Errorf(
 			"%w: .GrossSalary must equal .BaseSalary + .SeniorityBonus",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -507,7 +507,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.GrossSalaryGrandTotal.Equals(grossSalaryGrandTotalExpected) {
 		return fmt.Errorf(
 			"%w: .GrossSalaryGrandTotal must equal .GrossSalary + .TotalOtherBonus",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -522,7 +522,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.TotalCNSSEmployeeContrib.Equals(totalCNSSEmployeeContribExpected) {
 		return fmt.Errorf(
 			"%w: .TotalCNSSEmployeeContrib must equal .SocialAllowanceEmployeeContrib + .JobLossCompensationEmployeeContrib (AMO excluded)",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -551,7 +551,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.TotalCNSSEmployerContrib.Equals(totalCNSSEmployerContribExpected) {
 		return fmt.Errorf(
 			"%w: .TotalCNSSEmployerContrib must equal .SocialAllowanceEmployerContrib + .JobLossCompensationEmployerContrib + .FamilyBenefitsEmployerContrib + .TrainingTaxEmployerContrib (AMO excluded)",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -566,7 +566,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.TaxableGrossSalary.Equals(taxableGrossSalaryExpected) {
 		return fmt.Errorf(
 			"%w: .TaxableGrossSalary must equal .GrossSalaryGrandTotal - .TotalExemptions",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -588,7 +588,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.TaxableNetSalary.Equals(taxableNetSalaryExpected) {
 		return fmt.Errorf(
 			"%w: .TaxableNetSalary must equal .TaxableGrossSalary - .TotalCNSSEmployeeContrib - .AMOEmployeeContrib",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -612,7 +612,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 	if !pr.NetToPay.Equals(netToPayExpected) {
 		return fmt.Errorf(
 			"%w: .NetToPay must equal .TaxableNetSalary - .IncomeTax + .RoundingAmount",
-			ErrPayrollResultCalculation,
+			ErrInconsistentPayrollResultCalculation,
 		)
 	}
 
@@ -687,7 +687,7 @@ var (
 	ErrPayrollResultIDRequired                    = errors.New("domain: payroll: payroll result id (uuid) is required")
 	ErrPayrollResultEmployeeIDRequired            = errors.New("domain: payroll: payroll result employee id (uuid) is required")
 	ErrPayrollResultCompensationPackageIDRequired = errors.New("domain: payroll: payroll result compensation package id (uuid) is required")
-	ErrPayrollResultCalculation                   = errors.New("domain: payroll: inconsistent payroll result calculation")
+	ErrInconsistentPayrollResultCalculation       = errors.New("domain: payroll: inconsistent payroll result calculation")
 	ErrInvalidPayrollResultRoundingAmount         = errors.New("domain: payroll: invalid payroll result rounding amount")
 	ErrInvalidPayrollResultMoneyValue             = errors.New("domain: payroll: invalid payroll result money value")
 )
