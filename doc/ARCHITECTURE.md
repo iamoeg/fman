@@ -96,7 +96,8 @@ finmgmt/
 │       ├── payroll/      # Moroccan calculation engine
 │       └── export/       # JSON/XML exporters
 ├── pkg/
-│   └── money/            # Money type (avoid float precision issues)
+│   ├── money/            # Money type (avoid float precision issues)
+│   └── util/             # Shared utilities (enum helpers, etc.)
 └── ui/
     └── tui/              # TUI-specific code
 ```
@@ -122,6 +123,12 @@ finmgmt/
 - Less boilerplate, easier to test
 - Still maintains clean architecture (dependency direction is what matters)
 
+**`pkg/` for reusable utilities:**
+
+- Money type is used across all layers
+- Utility functions (enum helpers) are shared
+- Can be imported by other projects if needed
+
 **Singular names:**
 
 - `migration` not `migrations`
@@ -142,12 +149,14 @@ finmgmt/
 - ✅ Pure Go structs
 - ✅ Validation methods
 - ✅ Business logic
-- ✅ Value objects (e.g., Money)
+- ✅ Enums (with validation)
+- ✅ Helper methods (e.g., TotalDueToCNSS)
+- ✅ Dependencies: uuid, time, pkg/money
 
 **Not Allowed:**
 
 - ❌ Database tags
-- ❌ External dependencies (except uuid, time)
+- ❌ External dependencies (except uuid, time, pkg/money)
 - ❌ Framework code
 - ❌ I/O operations
 
@@ -158,7 +167,9 @@ type Employee struct {
     ID             uuid.UUID
     OrgID          uuid.UUID
     FullName       string
-    CIN            string
+    CINNum         string
+    Gender         GenderEnum
+    MaritalStatus  MaritalStatusEnum
     CompensationID uuid.UUID
     // ...
 }
@@ -167,10 +178,22 @@ func (e *Employee) Validate() error {
     if e.FullName == "" {
         return errors.New("full_name is required")
     }
-    if !isValidCIN(e.CIN) {
-        return errors.New("invalid CIN format")
+    if !e.Gender.IsSupported() {
+        return fmt.Errorf("gender not supported: must be one of %v", SupportedGendersStr)
     }
     return nil
+}
+
+type GenderEnum string
+
+const (
+    GenderMale   GenderEnum = "MALE"
+    GenderFemale GenderEnum = "FEMALE"
+)
+
+func (g GenderEnum) IsSupported() bool {
+    _, ok := supportedGenders[g]
+    return ok
 }
 ```
 
@@ -183,7 +206,9 @@ func (e *Employee) Validate() error {
 - Define small, focused interfaces for dependencies
 - Coordinate domain objects
 - Implement use cases
+- Set timestamps and generate UUIDs
 - Transaction boundaries
+- Domain validation before persistence
 
 **Pattern:**
 
@@ -192,21 +217,36 @@ func (e *Employee) Validate() error {
 type employeeRepository interface {
     FindByID(ctx context.Context, id uuid.UUID) (*domain.Employee, error)
     FindByOrgID(ctx context.Context, orgID uuid.UUID) ([]*domain.Employee, error)
+    Create(ctx context.Context, emp *domain.Employee) error
 }
 
-type PayrollService struct {
+type EmployeeService struct {
     employees employeeRepository
 }
 
-func (s *PayrollService) GenerateMonthlyPayroll(
+func (s *EmployeeService) CreateEmployee(
     ctx context.Context,
-    orgID uuid.UUID,
-    year int,
-    month int,
+    emp *domain.Employee,
 ) error {
-    // Orchestrate domain objects
-    employees, err := s.employees.FindByOrgID(ctx, orgID)
-    // ... business logic
+    // Generate UUID
+    emp.ID = uuid.New()
+
+    // Set timestamps
+    now := time.Now().UTC()
+    emp.CreatedAt = now
+    emp.UpdatedAt = now
+
+    // Validate
+    if err := emp.Validate(); err != nil {
+        return fmt.Errorf("invalid employee: %w", err)
+    }
+
+    // Persist
+    if err := s.employees.Create(ctx, emp); err != nil {
+        return fmt.Errorf("failed to create employee: %w", err)
+    }
+
+    return nil
 }
 ```
 
@@ -236,13 +276,41 @@ type EmployeeRepository struct {
 }
 
 // This method implicitly satisfies the employeeRepository interface
-// defined in application/payroll_service.go
+// defined in application/employee_service.go
 func (r *EmployeeRepository) FindByID(
     ctx context.Context,
     id uuid.UUID,
 ) (*domain.Employee, error) {
     row, err := r.queries.GetEmployee(ctx, id.String())
-    // ... implementation
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, ErrNotFound
+        }
+        return nil, fmt.Errorf("failed to get employee: %w", err)
+    }
+
+    // Convert sqlc type to domain type
+    return rowToEmployee(row)
+}
+
+// Helper: Convert sqlc row to domain model
+func rowToEmployee(row sqldb.Employee) (*domain.Employee, error) {
+    id, err := uuid.Parse(row.ID)
+    if err != nil {
+        return nil, fmt.Errorf("invalid UUID: %w", err)
+    }
+
+    birthDate, err := time.Parse(time.RFC3339, row.BirthDate)
+    if err != nil {
+        return nil, fmt.Errorf("invalid birth_date: %w", err)
+    }
+
+    return &domain.Employee{
+        ID:        id,
+        FullName:  row.FullName,
+        BirthDate: birthDate,
+        // ... convert all fields
+    }, nil
 }
 ```
 
@@ -267,15 +335,18 @@ func (r *EmployeeRepository) FindByID(
 
 ## Key Design Decisions
 
-### 1. Money as Integer Cents
+### 1. Money as Integer Cents with Error Handling
 
 **Decision:** Store all monetary values as integers (cents/smallest unit)
+and return errors from operations
 
 **Rationale:**
 
 - Floating-point arithmetic is imprecise for financial calculations
 - Example: `0.1 + 0.2 = 0.30000000000000004` in float64
 - Integers guarantee exact calculations
+- Operations can fail (overflow, division by zero, NaN/Inf)
+- Explicit error handling prevents silent failures
 
 **Implementation:**
 
@@ -285,43 +356,58 @@ type Money struct {
     cents int64
 }
 
+func FromCents(cents int64) Money {
+    return Money{cents: cents}
+}
+
 func FromMAD(mad float64) (Money, error) {
-    // Validates input and checks for overflow
-    return Money{cents: int64(math.Round(mad * 100))}, nil
+    if math.IsNaN(mad) || math.IsInf(mad, 0) {
+        return Money{}, ErrInvalidValue
+    }
+
+    madCents := mad * 100
+    if madCents > float64(math.MaxInt64) || madCents < float64(math.MinInt64) {
+        return Money{}, fmt.Errorf("%w: %f MAD is too large", ErrOverflow, mad)
+    }
+
+    return Money{cents: int64(math.Round(madCents))}, nil
 }
 
 func (m Money) Add(other Money) (Money, error) {
-    // Checks for overflow before adding
+    // Check for overflow
+    if other.cents > 0 && m.cents > math.MaxInt64-other.cents {
+        return Money{}, fmt.Errorf("%w: %v + %v", ErrOverflow, m, other)
+    }
+    if other.cents < 0 && m.cents < math.MinInt64-other.cents {
+        return Money{}, fmt.Errorf("%w: %v + %v", ErrOverflow, m, other)
+    }
+
     return Money{cents: m.cents + other.cents}, nil
 }
+
+func (m Money) Divide(divisor float64) (Money, error) {
+    if divisor == 0.0 {
+        return Money{}, ErrDivByZero
+    }
+    if math.IsNaN(divisor) || math.IsInf(divisor, 0) {
+        return Money{}, ErrInvalidValue
+    }
+
+    result := float64(m.cents) / divisor
+    if result > float64(math.MaxInt64) || result < float64(math.MinInt64) {
+        return Money{}, fmt.Errorf("%w: %v / %f", ErrOverflow, m, divisor)
+    }
+
+    return Money{cents: int64(math.Round(result))}, nil
+}
 ```
 
-**Key Features:**
+**Benefits:**
 
-- **Overflow protection**: All arithmetic operations detect int64 overflow/underflow
-- **Error handling**: Operations return `(Money, error)` for safety
-- **Comparison methods**: `Equals()`, `LessThan()`, `GreaterThan()`
-- **Display formatting**: `String()` method for user-friendly output
-- **Comprehensive testing**: 146 test cases including edge cases and realistic payroll scenarios
-
-**Status:** ✅ Fully implemented and tested
-
-**Usage:**
-
-```go
-salary, err := money.FromMAD(8500.00)
-if err != nil {
-    return err
-}
-
-bonus, _ := money.FromMAD(500.00)
-total, err := salary.Add(bonus)
-if err != nil {
-    return fmt.Errorf("calculating total: %w", err)
-}
-
-fmt.Println(total)  // "9000.00 MAD"
-```
+- Exact precision for all financial calculations
+- Protection against arithmetic errors
+- Clear error handling
+- Type safety
 
 ### 2. Calculated Fields in Payroll
 
@@ -338,7 +424,96 @@ not just base values
 
 **Trade-off:** Some data redundancy, but financial/legal requirements justify it
 
-### 3. Soft Deletes
+### 3. Comprehensive Domain Validation
+
+**Decision:** Validate all business rules in domain layer with detailed error messages
+
+**Implementation:**
+
+Every domain entity has:
+
+- Main `Validate()` method that calls individual validators
+- Individual `ValidateX()` methods for each field/rule
+- Sentinel errors for each validation failure
+- Clear, descriptive error messages
+
+**Example:**
+
+```go
+func (e *Employee) Validate() error {
+    if err := e.ValidateID(); err != nil {
+        return err
+    }
+    if err := e.ValidateFullName(); err != nil {
+        return err
+    }
+    if err := e.ValidateBirthDate(); err != nil {
+        return err
+    }
+    // ... all validations
+    return nil
+}
+
+func (e *Employee) ValidateBirthDate() error {
+    now := time.Now().UTC()
+    minBirthDate := now.AddDate(-MaxWorkLegalAge, 0, 0)
+    maxBirthDate := now.AddDate(-MinWorkLegalAge, 0, 0)
+    if e.BirthDate.Before(minBirthDate) || e.BirthDate.After(maxBirthDate) {
+        return fmt.Errorf(
+            "%w: employee's age must be between %v and %v years",
+            ErrInvalidEmployeeBirthDate,
+            MinWorkLegalAge,
+            MaxWorkLegalAge,
+        )
+    }
+    return nil
+}
+```
+
+**Benefits:**
+
+- Catch errors early (before database)
+- Easy to test (no dependencies)
+- Clear error messages for debugging
+- Business rules documented in code
+
+### 4. CNSS and AMO Separation
+
+**Decision:** Keep CNSS and AMO contributions separate in calculations,
+provide helpers for combined totals
+
+**Rationale:**
+
+- CNSS (social security) and AMO (health insurance) are legally distinct
+- In practice, AMO is collected by CNSS
+- Separation allows for:
+  - Accurate reporting
+  - Future changes in collection
+  - Clear audit trail
+
+**Implementation:**
+
+```go
+type PayrollResult struct {
+    // CNSS (excludes AMO)
+    TotalCNSSEmployeeContrib money.Money
+    TotalCNSSEmployerContrib money.Money
+
+    // AMO (separate)
+    AMOEmployeeContrib money.Money
+    AMOEmployerContrib money.Money
+}
+
+// Helper: Total actually paid to CNSS (includes AMO)
+func (pr *PayrollResult) TotalDueToCNSS() (money.Money, error) {
+    total, _ := pr.TotalCNSSEmployeeContrib.Add(pr.TotalCNSSEmployerContrib)
+    total, _ = total.Add(pr.AMOEmployeeContrib)
+    total, _ = total.Add(pr.AMOEmployerContrib)
+    return total, nil
+}
+```
+
+### 5. Soft Deletes
 
 **Decision:** Never hard-delete financial data; use `deleted_at` timestamps
 
@@ -349,7 +524,7 @@ not just base values
 - Maintains referential integrity
 - Queries filter on `deleted_at IS NULL`
 
-### 4. Foreign Key Strategies
+### 6. Foreign Key Strategies
 
 **CASCADE** - Delete children when parent deleted:
 
@@ -366,7 +541,7 @@ not just base values
 **Rationale:** Compensation packages are historical artifacts.
 Once referenced by payroll, they're part of the permanent record.
 
-### 5. Payroll Immutability
+### 7. Payroll Immutability
 
 **Decision:** Once finalized, payroll results cannot be modified
 
@@ -382,7 +557,7 @@ Once referenced by payroll, they're part of the permanent record.
 - Matches legal/accounting practices
 - Simplifies audit trail
 
-### 6. sqlc Over ORMs
+### 8. sqlc Over ORMs
 
 **Decision:** Use sqlc for database access, not GORM or other ORMs
 
@@ -395,7 +570,7 @@ Once referenced by payroll, they're part of the permanent record.
 
 **Trade-off:** More initial setup, but better long-term maintainability
 
-### 7. Employee Serial Numbers
+### 9. Employee Serial Numbers
 
 **Decision:** Generate in application code, not database auto-increment
 
@@ -405,6 +580,41 @@ Once referenced by payroll, they're part of the permanent record.
 - Need per-organization numbering (Employee #1 in each org)
 - Logic: `SELECT MAX(serial_num) FROM employee WHERE org_id = ? + 1`
 - Database unique constraint catches race conditions
+
+### 10. Enum Pattern with String Helper
+
+**Decision:** Use map-based enums with pre-computed string representations
+
+**Implementation:**
+
+```go
+type GenderEnum string
+
+const (
+    GenderMale   GenderEnum = "MALE"
+    GenderFemale GenderEnum = "FEMALE"
+)
+
+var supportedGenders = map[GenderEnum]struct{}{
+    GenderMale:   {},
+    GenderFemale: {},
+}
+
+// Pre-computed string for error messages
+var SupportedGendersStr = util.EnumMapToString(supportedGenders)
+
+func (g GenderEnum) IsSupported() bool {
+    _, ok := supportedGenders[g]
+    return ok
+}
+```
+
+**Benefits:**
+
+- O(1) validation
+- Clean error messages
+- Easy to extend
+- Type-safe
 
 ---
 
@@ -438,10 +648,14 @@ db, err := sql.Open("sqlite", ":memory:")
 
 ```sql
 -- name: GetOrganization :one
-SELECT * FROM organization WHERE id = ? LIMIT 1;
+SELECT * FROM organization WHERE id = ? AND deleted_at IS NULL LIMIT 1;
 
 -- name: ListOrganizations :many
-SELECT * FROM organization WHERE deleted_at IS NULL;
+SELECT * FROM organization WHERE deleted_at IS NULL ORDER BY name;
+
+-- name: CreateOrganization :exec
+INSERT INTO organization (id, name, legal_form, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?);
 ```
 
 **Generate type-safe Go code:**
@@ -455,7 +669,14 @@ sqlc generate
 ```go
 func (r *OrgRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.Organization, error) {
     row, err := r.queries.GetOrganization(ctx, id.String())
-    // sqlc handles the scanning
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, ErrNotFound
+        }
+        return nil, fmt.Errorf("failed to get organization: %w", err)
+    }
+
+    return rowToOrganization(row)
 }
 ```
 
@@ -465,7 +686,7 @@ func (r *OrgRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.Organizat
 
 ```go
 var (
-    ErrNotFound = errors.New("record not found")
+    ErrNotFound  = errors.New("record not found")
     ErrDuplicate = errors.New("duplicate record")
 )
 ```
@@ -496,6 +717,53 @@ if errors.Is(err, ErrNotFound) {
 ---
 
 ## Testing Strategy
+
+### Domain Tests
+
+Test validation and business rules without any infrastructure:
+
+```go
+func TestEmployee_Validate(t *testing.T) {
+    t.Parallel()
+
+    tests := []struct {
+        name    string
+        emp     *domain.Employee
+        wantErr error
+    }{
+        {
+            name: "valid employee",
+            emp: &domain.Employee{
+                ID:       uuid.New(),
+                FullName: "Ahmed Ali",
+                // ... all required fields
+            },
+            wantErr: nil,
+        },
+        {
+            name: "empty full name",
+            emp: &domain.Employee{
+                FullName: "",
+            },
+            wantErr: domain.ErrEmployeeFullNameRequired,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            t.Parallel()
+
+            err := tt.emp.Validate()
+
+            if tt.wantErr == nil {
+                require.NoError(t, err)
+            } else {
+                require.ErrorIs(t, err, tt.wantErr)
+            }
+        })
+    }
+}
+```
 
 ### Repository Tests
 
@@ -545,21 +813,23 @@ func TestPayrollService_GeneratePayroll(t *testing.T) {
 }
 ```
 
-### Domain Tests
+### Test Patterns
 
-Test validation and business rules without any infrastructure:
+**Table-Driven Tests:**
 
-```go
-func TestEmployee_Validate(t *testing.T) {
-    emp := &domain.Employee{
-        FullName: "",  // Invalid
-    }
+- All domain validation tests use table-driven pattern
+- Easy to add new test cases
+- Clear test names
 
-    err := emp.Validate()
-    require.Error(t, err)
-    require.Contains(t, err.Error(), "full_name")
-}
-```
+**Parallel Execution:**
+
+- All tests use `t.Parallel()`
+- Fast test suite execution
+
+**Realistic Data:**
+
+- Use Moroccan names, amounts, dates
+- Makes tests more meaningful
 
 ---
 
@@ -576,6 +846,14 @@ func TestEmployee_Validate(t *testing.T) {
 4. **db/ for SQL, internal/ for Go** -
    Don't force SQL into Go package structure
 
+### Domain Design
+
+1. **Money type is fundamental** - Build it first, everything depends on it
+2. **Validation in domain is powerful** - Catches errors early, easy to test
+3. **Cross-field validation needs care** - BirthDate vs HireDate, Status vs FinalizedAt
+4. **Enums with helpers improve UX** - Pre-computed strings for error messages
+5. **Helper methods on entities** - TotalDueToCNSS() makes business logic clearer
+
 ### Database
 
 1. **Calculated fields in payroll ARE correct** -
@@ -589,32 +867,16 @@ func TestEmployee_Validate(t *testing.T) {
 
 ### Go Practices
 
-1. **Money as integer cents with overflow protection** -
-   Never float64 for financial calculations; always check for overflow
-2. **Return errors, don't panic** -
-   Financial operations should return `(result, error)` for graceful error handling
-3. **Test edge cases thoroughly** -
-   Boundary conditions in financial code are subtle (e.g., MaxInt64 boundaries)
-4. **Use context.Context everywhere** -
-   Enables timeouts and cancellation
-5. **sqlc over ORMs** -
-   Type safety without magic
-6. **`:memory:` for tests** -
-   Fast, isolated, auto-cleanup
-7. **Comprehensive test coverage** -
-   Financial code demands extensive testing
-   (unit, integration, edge cases, benchmarks)
+1. **Money as integer cents** - Never float64 for financial calculations
+2. **Error returns from Money operations** - Prevents silent failures
+3. **Use context.Context everywhere** - Enables timeouts and cancellation
+4. **sqlc over ORMs** - Type safety without magic
+5. **`:memory:` for tests** - Fast, isolated, auto-cleanup
+6. **Table-driven tests with t.Parallel()** - Best practice for Go testing
 
-### Money Type Lessons
+### Testing
 
-1. **Overflow is real** -
-   Even with int64, financial calculations can overflow; always detect and handle
-2. **Boundary testing is critical** -
-   `0 - (MinInt64 + 1) = MaxInt64` exactly (no overflow),
-   but `1 - MinInt64` overflows
-3. **Verify with concrete math** -
-   Don't assume overflow logic is correct; verify with actual int64 limits
-4. **Error handling > silent failures** -
-   Better to return an error than silently wrap around to negative
-5. **Document edge cases** -
-   Non-obvious boundary behaviors should be tested and documented
+1. **Test domain first** - Pure logic, no dependencies, easy to test
+2. **Comprehensive test coverage builds confidence** - 200+ test scenarios
+3. **Realistic test data matters** - Moroccan context makes tests meaningful
+4. **Benchmarks are valuable** - Know your performance characteristics
