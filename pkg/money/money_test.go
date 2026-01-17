@@ -12,6 +12,8 @@ import (
 // ============================================================================
 
 func TestFromCents(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		cents int64
@@ -46,6 +48,8 @@ func TestFromCents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := FromCents(tt.cents)
 			if got != tt.want {
 				t.Errorf("FromCents(%d) = %v, want %v", tt.cents, got, tt.want)
@@ -55,6 +59,8 @@ func TestFromCents(t *testing.T) {
 }
 
 func TestFromMAD(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		mad     float64
@@ -110,6 +116,8 @@ func TestFromMAD(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := FromMAD(tt.mad)
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -129,6 +137,8 @@ func TestFromMAD(t *testing.T) {
 }
 
 func TestFromMAD_InvalidValues(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		mad     float64
@@ -163,6 +173,8 @@ func TestFromMAD_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := FromMAD(tt.mad)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("FromMAD(%f) error = %v, wantErr %v", tt.mad, err, tt.wantErr)
@@ -176,6 +188,8 @@ func TestFromMAD_InvalidValues(t *testing.T) {
 // ============================================================================
 
 func TestCents(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -200,6 +214,8 @@ func TestCents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.m.Cents(); got != tt.want {
 				t.Errorf("Cents() = %d, want %d", got, tt.want)
 			}
@@ -208,6 +224,8 @@ func TestCents(t *testing.T) {
 }
 
 func TestToMAD(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -242,6 +260,8 @@ func TestToMAD(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tt.m.ToMAD()
 			if got != tt.want {
 				t.Errorf("ToMAD() = %f, want %f", got, tt.want)
@@ -251,6 +271,8 @@ func TestToMAD(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -280,6 +302,8 @@ func TestString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tt.m.String()
 			if got != tt.want {
 				t.Errorf("String() = %q, want %q", got, tt.want)
@@ -293,6 +317,8 @@ func TestString(t *testing.T) {
 // ============================================================================
 
 func TestAdd(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -356,6 +382,8 @@ func TestAdd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.a.Add(tt.b)
 			if err != nil {
 				t.Errorf("Add() unexpected error: %v", err)
@@ -369,6 +397,8 @@ func TestAdd(t *testing.T) {
 }
 
 func TestAdd_Overflow(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -402,6 +432,8 @@ func TestAdd_Overflow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tt.a.Add(tt.b)
 			if !errors.Is(err, ErrOverflow) {
 				t.Errorf("Add() error = %v, wantErr %v", err, ErrOverflow)
@@ -415,6 +447,8 @@ func TestAdd_Overflow(t *testing.T) {
 // ============================================================================
 
 func TestSubtract(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -496,6 +530,8 @@ func TestSubtract(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.a.Subtract(tt.b)
 			if err != nil {
 				t.Errorf("Subtract() unexpected error: %v", err)
@@ -509,6 +545,8 @@ func TestSubtract(t *testing.T) {
 }
 
 func TestSubtract_Overflow(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -542,6 +580,8 @@ func TestSubtract_Overflow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tt.a.Subtract(tt.b)
 			if !errors.Is(err, ErrOverflow) {
 				t.Errorf("Subtract() error = %v, wantErr %v", err, ErrOverflow)
@@ -555,6 +595,8 @@ func TestSubtract_Overflow(t *testing.T) {
 // ============================================================================
 
 func TestMultiply(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		m      Money
@@ -631,6 +673,8 @@ func TestMultiply(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.m.Multiply(tt.factor)
 			if err != nil {
 				t.Errorf("Multiply() unexpected error: %v", err)
@@ -644,6 +688,8 @@ func TestMultiply(t *testing.T) {
 }
 
 func TestMultiply_Overflow(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		m      Money
@@ -673,6 +719,8 @@ func TestMultiply_Overflow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tt.m.Multiply(tt.factor)
 			if !errors.Is(err, ErrOverflow) {
 				t.Errorf("Multiply() error = %v, wantErr %v", err, ErrOverflow)
@@ -682,6 +730,8 @@ func TestMultiply_Overflow(t *testing.T) {
 }
 
 func TestMultiply_InvalidValues(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		m       Money
@@ -710,6 +760,8 @@ func TestMultiply_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tt.m.Multiply(tt.factor)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Multiply() error = %v, wantErr %v", err, tt.wantErr)
@@ -723,6 +775,8 @@ func TestMultiply_InvalidValues(t *testing.T) {
 // ============================================================================
 
 func TestDivide(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		m       Money
@@ -781,6 +835,8 @@ func TestDivide(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.m.Divide(tt.divisor)
 			if err != nil {
 				t.Errorf("Divide() unexpected error: %v", err)
@@ -794,6 +850,8 @@ func TestDivide(t *testing.T) {
 }
 
 func TestDivide_Errors(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		m       Money
@@ -840,6 +898,8 @@ func TestDivide_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tt.m.Divide(tt.divisor)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Divide() error = %v, wantErr %v", err, tt.wantErr)
@@ -853,6 +913,8 @@ func TestDivide_Errors(t *testing.T) {
 // ============================================================================
 
 func TestEquals(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -892,6 +954,8 @@ func TestEquals(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.a.Equals(tt.b); got != tt.want {
 				t.Errorf("Equals() = %v, want %v", got, tt.want)
 			}
@@ -900,6 +964,8 @@ func TestEquals(t *testing.T) {
 }
 
 func TestLessThan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -951,6 +1017,8 @@ func TestLessThan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.a.LessThan(tt.b); got != tt.want {
 				t.Errorf("LessThan() = %v, want %v", got, tt.want)
 			}
@@ -959,6 +1027,8 @@ func TestLessThan(t *testing.T) {
 }
 
 func TestLessThanOrEqual(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -986,6 +1056,8 @@ func TestLessThanOrEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.a.LessThanOrEqual(tt.b); got != tt.want {
 				t.Errorf("LessThanOrEqual() = %v, want %v", got, tt.want)
 			}
@@ -994,6 +1066,8 @@ func TestLessThanOrEqual(t *testing.T) {
 }
 
 func TestGreaterThan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -1045,6 +1119,8 @@ func TestGreaterThan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.a.GreaterThan(tt.b); got != tt.want {
 				t.Errorf("GreaterThan() = %v, want %v", got, tt.want)
 			}
@@ -1053,6 +1129,8 @@ func TestGreaterThan(t *testing.T) {
 }
 
 func TestGreaterThanOrEqual(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a, b Money
@@ -1080,6 +1158,8 @@ func TestGreaterThanOrEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.a.GreaterThanOrEqual(tt.b); got != tt.want {
 				t.Errorf("GreaterThanOrEqual() = %v, want %v", got, tt.want)
 			}
@@ -1088,6 +1168,8 @@ func TestGreaterThanOrEqual(t *testing.T) {
 }
 
 func TestIsZero(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -1112,6 +1194,8 @@ func TestIsZero(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.m.IsZero(); got != tt.want {
 				t.Errorf("IsZero() = %v, want %v", got, tt.want)
 			}
@@ -1120,6 +1204,8 @@ func TestIsZero(t *testing.T) {
 }
 
 func TestIsPositive(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -1149,6 +1235,8 @@ func TestIsPositive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.m.IsPositive(); got != tt.want {
 				t.Errorf("IsPositive() = %v, want %v", got, tt.want)
 			}
@@ -1157,6 +1245,8 @@ func TestIsPositive(t *testing.T) {
 }
 
 func TestIsNegative(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		m    Money
@@ -1186,6 +1276,8 @@ func TestIsNegative(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.m.IsNegative(); got != tt.want {
 				t.Errorf("IsNegative() = %v, want %v", got, tt.want)
 			}
@@ -1198,6 +1290,8 @@ func TestIsNegative(t *testing.T) {
 // ============================================================================
 
 func TestFloatingPointPrecision(t *testing.T) {
+	t.Parallel()
+
 	// The classic floating-point problem: 0.1 + 0.2 != 0.3
 	// Our Money type should handle this correctly
 	m1, _ := FromMAD(0.1)
@@ -1216,6 +1310,8 @@ func TestFloatingPointPrecision(t *testing.T) {
 }
 
 func TestRoundTripConversion(t *testing.T) {
+	t.Parallel()
+
 	// Test that converting MAD -> Money -> MAD preserves value within 0.01 MAD
 	tests := []float64{
 		0.0,
@@ -1229,6 +1325,8 @@ func TestRoundTripConversion(t *testing.T) {
 
 	for _, original := range tests {
 		t.Run(fmt.Sprintf("%.2f MAD", original), func(t *testing.T) {
+			t.Parallel()
+
 			m, err := FromMAD(original)
 			if err != nil {
 				t.Errorf("FromMAD(%f) error: %v", original, err)
@@ -1248,6 +1346,8 @@ func TestRoundTripConversion(t *testing.T) {
 }
 
 func TestRealisticPayrollCalculation(t *testing.T) {
+	t.Parallel()
+
 	// Simulate a realistic Moroccan payroll calculation
 	baseSalary, _ := FromMAD(8500.00)    // 8,500 MAD base salary
 	seniorityBonus, _ := FromMAD(425.00) // 5% seniority

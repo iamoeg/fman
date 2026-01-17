@@ -5,6 +5,8 @@ import (
 )
 
 func TestEnumMapToString(t *testing.T) {
+	t.Parallel()
+
 	// Define some enum types for testing
 	type Status string
 	type Priority int
@@ -92,6 +94,8 @@ func TestEnumMapToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var result string
 
 			// Type switch to call the generic function with appropriate type
@@ -120,6 +124,8 @@ func TestEnumMapToString(t *testing.T) {
 // TestEnumMapToString_Consistency verifies that multiple calls
 // with the same input produce the same output (deterministic behavior)
 func TestEnumMapToString_Consistency(t *testing.T) {
+	t.Parallel()
+
 	type Status string
 	const (
 		StatusDraft     Status = "DRAFT"
