@@ -74,11 +74,33 @@ func (q *Queries) DeleteEmployeeCompensationPackage(ctx context.Context, arg Del
 const getEmployeeCompensationPackage = `-- name: GetEmployeeCompensationPackage :one
 SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
-WHERE id = ?
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 `
 
 func (q *Queries) GetEmployeeCompensationPackage(ctx context.Context, id string) (EmployeeCompensationPackage, error) {
 	row := q.db.QueryRowContext(ctx, getEmployeeCompensationPackage, id)
+	var i EmployeeCompensationPackage
+	err := row.Scan(
+		&i.ID,
+		&i.Currency,
+		&i.BaseSalaryCents,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getEmployeeCompensationPackageIncludingDeleted = `-- name: GetEmployeeCompensationPackageIncludingDeleted :one
+SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+FROM employee_compensation_package
+WHERE id = ?
+`
+
+func (q *Queries) GetEmployeeCompensationPackageIncludingDeleted(ctx context.Context, id string) (EmployeeCompensationPackage, error) {
+	row := q.db.QueryRowContext(ctx, getEmployeeCompensationPackageIncludingDeleted, id)
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
@@ -104,10 +126,46 @@ func (q *Queries) HardDeleteEmployeeCompensationPackage(ctx context.Context, id 
 const listEmployeeCompensationPackages = `-- name: ListEmployeeCompensationPackages :many
 SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
+WHERE deleted_at IS NULL
 `
 
 func (q *Queries) ListEmployeeCompensationPackages(ctx context.Context) ([]EmployeeCompensationPackage, error) {
 	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EmployeeCompensationPackage
+	for rows.Next() {
+		var i EmployeeCompensationPackage
+		if err := rows.Scan(
+			&i.ID,
+			&i.Currency,
+			&i.BaseSalaryCents,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEmployeeCompensationPackagesIncludingDeleted = `-- name: ListEmployeeCompensationPackagesIncludingDeleted :many
+SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+FROM employee_compensation_package
+`
+
+func (q *Queries) ListEmployeeCompensationPackagesIncludingDeleted(ctx context.Context) ([]EmployeeCompensationPackage, error) {
+	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackagesIncludingDeleted)
 	if err != nil {
 		return nil, err
 	}

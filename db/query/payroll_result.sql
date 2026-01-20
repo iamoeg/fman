@@ -1,9 +1,22 @@
 -- name: GetPayrollResult :one
 SELECT *
 FROM payroll_result
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
+
+-- name: GetPayrollResultIncludingDeleted :one
+SELECT *
+FROM payroll_result
 WHERE id = ?;
 
 -- name: ListPayrollResults :many
+SELECT *
+FROM payroll_result
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC;
+
+-- name: ListPayrollResultsIncludingDeleted :many
 SELECT *
 FROM payroll_result
 ORDER BY created_at DESC;
@@ -11,10 +24,26 @@ ORDER BY created_at DESC;
 -- name: ListPayrollResultsByPayrollPeriod :many
 SELECT *
 FROM payroll_result
+WHERE
+    payroll_period_id = ?
+    AND deleted_at IS NULL
+ORDER BY employee_id;
+
+-- name: ListPayrollResultsByPayrollPeriodIncludingDeleted :many
+SELECT *
+FROM payroll_result
 WHERE payroll_period_id = ?
 ORDER BY employee_id;
 
 -- name: ListPayrollResultsByEmployee :many
+SELECT *
+FROM payroll_result
+WHERE
+    employee_id = ?
+    AND deleted_at IS NULL
+ORDER BY created_at DESC;
+
+-- name: ListPayrollResultsByEmployeeIncludingDeleted :many
 SELECT *
 FROM payroll_result
 WHERE employee_id = ?

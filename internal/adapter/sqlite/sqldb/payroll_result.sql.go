@@ -183,11 +183,56 @@ func (q *Queries) DeletePayrollResult(ctx context.Context, arg DeletePayrollResu
 const getPayrollResult = `-- name: GetPayrollResult :one
 SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
-WHERE id = ?
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPayrollResult(ctx context.Context, id string) (PayrollResult, error) {
 	row := q.db.QueryRowContext(ctx, getPayrollResult, id)
+	var i PayrollResult
+	err := row.Scan(
+		&i.ID,
+		&i.PayrollPeriodID,
+		&i.EmployeeID,
+		&i.CompensationPackageID,
+		&i.Currency,
+		&i.BaseSalaryCents,
+		&i.SeniorityBonusCents,
+		&i.GrossSalaryCents,
+		&i.TotalOtherBonusCents,
+		&i.GrossSalaryGrandTotalCents,
+		&i.TotalExemptionsCents,
+		&i.TaxableGrossSalaryCents,
+		&i.SocialAllowanceEmployeeContribCents,
+		&i.SocialAllowanceEmployerContribCents,
+		&i.JobLossCompensationEmployeeContribCents,
+		&i.JobLossCompensationEmployerContribCents,
+		&i.TrainingTaxEmployerContribCents,
+		&i.FamilyBenefitsEmployerContribCents,
+		&i.TotalCnssEmployeeContribCents,
+		&i.TotalCnssEmployerContribCents,
+		&i.AmoEmployeeContribCents,
+		&i.AmoEmployerContribCents,
+		&i.TaxableNetSalaryCents,
+		&i.IncomeTaxCents,
+		&i.RoundingAmountCents,
+		&i.NetToPayCents,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getPayrollResultIncludingDeleted = `-- name: GetPayrollResultIncludingDeleted :one
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+FROM payroll_result
+WHERE id = ?
+`
+
+func (q *Queries) GetPayrollResultIncludingDeleted(ctx context.Context, id string) (PayrollResult, error) {
+	row := q.db.QueryRowContext(ctx, getPayrollResultIncludingDeleted, id)
 	var i PayrollResult
 	err := row.Scan(
 		&i.ID,
@@ -236,6 +281,7 @@ func (q *Queries) HardDeletePayrollResult(ctx context.Context, id string) error 
 const listPayrollResults = `-- name: ListPayrollResults :many
 SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 `
 
@@ -295,7 +341,9 @@ func (q *Queries) ListPayrollResults(ctx context.Context) ([]PayrollResult, erro
 const listPayrollResultsByEmployee = `-- name: ListPayrollResultsByEmployee :many
 SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
-WHERE employee_id = ?
+WHERE
+    employee_id = ?
+    AND deleted_at IS NULL
 ORDER BY created_at DESC
 `
 
@@ -352,15 +400,196 @@ func (q *Queries) ListPayrollResultsByEmployee(ctx context.Context, employeeID s
 	return items, nil
 }
 
+const listPayrollResultsByEmployeeIncludingDeleted = `-- name: ListPayrollResultsByEmployeeIncludingDeleted :many
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+FROM payroll_result
+WHERE employee_id = ?
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListPayrollResultsByEmployeeIncludingDeleted(ctx context.Context, employeeID string) ([]PayrollResult, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollResultsByEmployeeIncludingDeleted, employeeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollResult
+	for rows.Next() {
+		var i PayrollResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.PayrollPeriodID,
+			&i.EmployeeID,
+			&i.CompensationPackageID,
+			&i.Currency,
+			&i.BaseSalaryCents,
+			&i.SeniorityBonusCents,
+			&i.GrossSalaryCents,
+			&i.TotalOtherBonusCents,
+			&i.GrossSalaryGrandTotalCents,
+			&i.TotalExemptionsCents,
+			&i.TaxableGrossSalaryCents,
+			&i.SocialAllowanceEmployeeContribCents,
+			&i.SocialAllowanceEmployerContribCents,
+			&i.JobLossCompensationEmployeeContribCents,
+			&i.JobLossCompensationEmployerContribCents,
+			&i.TrainingTaxEmployerContribCents,
+			&i.FamilyBenefitsEmployerContribCents,
+			&i.TotalCnssEmployeeContribCents,
+			&i.TotalCnssEmployerContribCents,
+			&i.AmoEmployeeContribCents,
+			&i.AmoEmployerContribCents,
+			&i.TaxableNetSalaryCents,
+			&i.IncomeTaxCents,
+			&i.RoundingAmountCents,
+			&i.NetToPayCents,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPayrollResultsByPayrollPeriod = `-- name: ListPayrollResultsByPayrollPeriod :many
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+FROM payroll_result
+WHERE
+    payroll_period_id = ?
+    AND deleted_at IS NULL
+ORDER BY employee_id
+`
+
+func (q *Queries) ListPayrollResultsByPayrollPeriod(ctx context.Context, payrollPeriodID string) ([]PayrollResult, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollResultsByPayrollPeriod, payrollPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollResult
+	for rows.Next() {
+		var i PayrollResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.PayrollPeriodID,
+			&i.EmployeeID,
+			&i.CompensationPackageID,
+			&i.Currency,
+			&i.BaseSalaryCents,
+			&i.SeniorityBonusCents,
+			&i.GrossSalaryCents,
+			&i.TotalOtherBonusCents,
+			&i.GrossSalaryGrandTotalCents,
+			&i.TotalExemptionsCents,
+			&i.TaxableGrossSalaryCents,
+			&i.SocialAllowanceEmployeeContribCents,
+			&i.SocialAllowanceEmployerContribCents,
+			&i.JobLossCompensationEmployeeContribCents,
+			&i.JobLossCompensationEmployerContribCents,
+			&i.TrainingTaxEmployerContribCents,
+			&i.FamilyBenefitsEmployerContribCents,
+			&i.TotalCnssEmployeeContribCents,
+			&i.TotalCnssEmployerContribCents,
+			&i.AmoEmployeeContribCents,
+			&i.AmoEmployerContribCents,
+			&i.TaxableNetSalaryCents,
+			&i.IncomeTaxCents,
+			&i.RoundingAmountCents,
+			&i.NetToPayCents,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayrollResultsByPayrollPeriodIncludingDeleted = `-- name: ListPayrollResultsByPayrollPeriodIncludingDeleted :many
 SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE payroll_period_id = ?
 ORDER BY employee_id
 `
 
-func (q *Queries) ListPayrollResultsByPayrollPeriod(ctx context.Context, payrollPeriodID string) ([]PayrollResult, error) {
-	rows, err := q.db.QueryContext(ctx, listPayrollResultsByPayrollPeriod, payrollPeriodID)
+func (q *Queries) ListPayrollResultsByPayrollPeriodIncludingDeleted(ctx context.Context, payrollPeriodID string) ([]PayrollResult, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollResultsByPayrollPeriodIncludingDeleted, payrollPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollResult
+	for rows.Next() {
+		var i PayrollResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.PayrollPeriodID,
+			&i.EmployeeID,
+			&i.CompensationPackageID,
+			&i.Currency,
+			&i.BaseSalaryCents,
+			&i.SeniorityBonusCents,
+			&i.GrossSalaryCents,
+			&i.TotalOtherBonusCents,
+			&i.GrossSalaryGrandTotalCents,
+			&i.TotalExemptionsCents,
+			&i.TaxableGrossSalaryCents,
+			&i.SocialAllowanceEmployeeContribCents,
+			&i.SocialAllowanceEmployerContribCents,
+			&i.JobLossCompensationEmployeeContribCents,
+			&i.JobLossCompensationEmployerContribCents,
+			&i.TrainingTaxEmployerContribCents,
+			&i.FamilyBenefitsEmployerContribCents,
+			&i.TotalCnssEmployeeContribCents,
+			&i.TotalCnssEmployerContribCents,
+			&i.AmoEmployeeContribCents,
+			&i.AmoEmployerContribCents,
+			&i.TaxableNetSalaryCents,
+			&i.IncomeTaxCents,
+			&i.RoundingAmountCents,
+			&i.NetToPayCents,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayrollResultsIncludingDeleted = `-- name: ListPayrollResultsIncludingDeleted :many
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+FROM payroll_result
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListPayrollResultsIncludingDeleted(ctx context.Context) ([]PayrollResult, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollResultsIncludingDeleted)
 	if err != nil {
 		return nil, err
 	}

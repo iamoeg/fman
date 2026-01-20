@@ -1,9 +1,21 @@
 -- name: GetEmployeeCompensationPackage :one
 SELECT *
 FROM employee_compensation_package
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
+
+-- name: GetEmployeeCompensationPackageIncludingDeleted :one
+SELECT *
+FROM employee_compensation_package
 WHERE id = ?;
 
 -- name: ListEmployeeCompensationPackages :many
+SELECT *
+FROM employee_compensation_package
+WHERE deleted_at IS NULL;
+
+-- name: ListEmployeeCompensationPackagesIncludingDeleted :many
 SELECT *
 FROM employee_compensation_package;
 

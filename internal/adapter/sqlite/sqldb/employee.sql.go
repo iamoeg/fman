@@ -155,7 +155,9 @@ func (q *Queries) DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) 
 const getEmployee = `-- name: GetEmployee :one
 SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
-WHERE id = ?
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 `
 
 func (q *Queries) GetEmployee(ctx context.Context, id string) (Employee, error) {
@@ -231,6 +233,42 @@ func (q *Queries) GetEmployeeByOrgAndSerialNum(ctx context.Context, arg GetEmplo
 	return i, err
 }
 
+const getEmployeeIncludingDeleted = `-- name: GetEmployeeIncludingDeleted :one
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+FROM employee
+WHERE id = ?
+`
+
+func (q *Queries) GetEmployeeIncludingDeleted(ctx context.Context, id string) (Employee, error) {
+	row := q.db.QueryRowContext(ctx, getEmployeeIncludingDeleted, id)
+	var i Employee
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.SerialNum,
+		&i.FullName,
+		&i.DisplayName,
+		&i.Address,
+		&i.EmailAddress,
+		&i.PhoneNumber,
+		&i.BirthDate,
+		&i.Gender,
+		&i.MaritalStatus,
+		&i.NumDependents,
+		&i.NumKids,
+		&i.CinNum,
+		&i.CnssNum,
+		&i.HireDate,
+		&i.Position,
+		&i.CompensationPackageID,
+		&i.BankRib,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getNextSerialNumber = `-- name: GetNextSerialNumber :one
 SELECT COALESCE(MAX(serial_num), 0) + 1
 FROM employee
@@ -257,6 +295,7 @@ func (q *Queries) HardDeleteEmployee(ctx context.Context, id string) error {
 const listEmployees = `-- name: ListEmployees :many
 SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
+WHERE deleted_at IS NULL
 ORDER BY org_id, serial_num
 `
 
@@ -309,12 +348,119 @@ func (q *Queries) ListEmployees(ctx context.Context) ([]Employee, error) {
 const listEmployeesByOrganization = `-- name: ListEmployeesByOrganization :many
 SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
-WHERE org_id = ?
+WHERE
+    org_id = ?
+    AND deleted_at IS NULL
 ORDER BY serial_num
 `
 
 func (q *Queries) ListEmployeesByOrganization(ctx context.Context, orgID string) ([]Employee, error) {
 	rows, err := q.db.QueryContext(ctx, listEmployeesByOrganization, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Employee
+	for rows.Next() {
+		var i Employee
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.SerialNum,
+			&i.FullName,
+			&i.DisplayName,
+			&i.Address,
+			&i.EmailAddress,
+			&i.PhoneNumber,
+			&i.BirthDate,
+			&i.Gender,
+			&i.MaritalStatus,
+			&i.NumDependents,
+			&i.NumKids,
+			&i.CinNum,
+			&i.CnssNum,
+			&i.HireDate,
+			&i.Position,
+			&i.CompensationPackageID,
+			&i.BankRib,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEmployeesByOrganizationIncludingDeleted = `-- name: ListEmployeesByOrganizationIncludingDeleted :many
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+FROM employee
+WHERE org_id = ?
+ORDER BY serial_num
+`
+
+func (q *Queries) ListEmployeesByOrganizationIncludingDeleted(ctx context.Context, orgID string) ([]Employee, error) {
+	rows, err := q.db.QueryContext(ctx, listEmployeesByOrganizationIncludingDeleted, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Employee
+	for rows.Next() {
+		var i Employee
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.SerialNum,
+			&i.FullName,
+			&i.DisplayName,
+			&i.Address,
+			&i.EmailAddress,
+			&i.PhoneNumber,
+			&i.BirthDate,
+			&i.Gender,
+			&i.MaritalStatus,
+			&i.NumDependents,
+			&i.NumKids,
+			&i.CinNum,
+			&i.CnssNum,
+			&i.HireDate,
+			&i.Position,
+			&i.CompensationPackageID,
+			&i.BankRib,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEmployeesIncludingDeleted = `-- name: ListEmployeesIncludingDeleted :many
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+FROM employee
+ORDER BY org_id, serial_num
+`
+
+func (q *Queries) ListEmployeesIncludingDeleted(ctx context.Context) ([]Employee, error) {
+	rows, err := q.db.QueryContext(ctx, listEmployeesIncludingDeleted)
 	if err != nil {
 		return nil, err
 	}

@@ -1,9 +1,26 @@
 -- name: GetOrganization :one
 SELECT *
 FROM organization
-WHERE id = ?;
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
+
+-- name: GetOrganizationIncludingDeleted :one
+SELECT *
+FROM organization
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
 
 -- name: ListOrganizations :many
+SELECT *
+FROM organization
+WHERE
+    id = ?
+    AND deleted_at IS NULL
+ORDER BY name;
+
+-- name: ListOrganizationsIncludingDeleted :many
 SELECT *
 FROM organization
 ORDER BY name;

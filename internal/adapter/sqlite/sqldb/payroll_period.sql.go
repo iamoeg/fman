@@ -122,7 +122,9 @@ func (q *Queries) FinalizePayrollPeriod(ctx context.Context, arg FinalizePayroll
 const getPayrollPeriod = `-- name: GetPayrollPeriod :one
 SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
 FROM payroll_period
-WHERE id = ?
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPayrollPeriod(ctx context.Context, id string) (PayrollPeriod, error) {
@@ -149,6 +151,7 @@ WHERE
     org_id = ?
     AND year = ?
     AND month = ?
+    AND deleted_at IS NULL
 `
 
 type GetPayrollPeriodByOrgYearMonthParams struct {
@@ -159,6 +162,61 @@ type GetPayrollPeriodByOrgYearMonthParams struct {
 
 func (q *Queries) GetPayrollPeriodByOrgYearMonth(ctx context.Context, arg GetPayrollPeriodByOrgYearMonthParams) (PayrollPeriod, error) {
 	row := q.db.QueryRowContext(ctx, getPayrollPeriodByOrgYearMonth, arg.OrgID, arg.Year, arg.Month)
+	var i PayrollPeriod
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Year,
+		&i.Month,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getPayrollPeriodByOrgYearMonthIncludingDeleted = `-- name: GetPayrollPeriodByOrgYearMonthIncludingDeleted :one
+SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
+FROM payroll_period
+WHERE
+    org_id = ?
+    AND year = ?
+    AND month = ?
+`
+
+type GetPayrollPeriodByOrgYearMonthIncludingDeletedParams struct {
+	OrgID string `json:"org_id"`
+	Year  int64  `json:"year"`
+	Month int64  `json:"month"`
+}
+
+func (q *Queries) GetPayrollPeriodByOrgYearMonthIncludingDeleted(ctx context.Context, arg GetPayrollPeriodByOrgYearMonthIncludingDeletedParams) (PayrollPeriod, error) {
+	row := q.db.QueryRowContext(ctx, getPayrollPeriodByOrgYearMonthIncludingDeleted, arg.OrgID, arg.Year, arg.Month)
+	var i PayrollPeriod
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Year,
+		&i.Month,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getPayrollPeriodIncludingDeleted = `-- name: GetPayrollPeriodIncludingDeleted :one
+SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
+FROM payroll_period
+WHERE id = ?
+`
+
+func (q *Queries) GetPayrollPeriodIncludingDeleted(ctx context.Context, id string) (PayrollPeriod, error) {
+	row := q.db.QueryRowContext(ctx, getPayrollPeriodIncludingDeleted, id)
 	var i PayrollPeriod
 	err := row.Scan(
 		&i.ID,
@@ -187,7 +245,9 @@ func (q *Queries) HardDeletePayrollPeriod(ctx context.Context, id string) error 
 const listDraftPayrollPeriods = `-- name: ListDraftPayrollPeriods :many
 SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
 FROM payroll_period
-WHERE status = 'DRAFT'
+WHERE
+    status = 'DRAFT'
+    AND deleted_at IS NULL
 ORDER BY
     year DESC,
     month DESC
@@ -226,9 +286,52 @@ func (q *Queries) ListDraftPayrollPeriods(ctx context.Context) ([]PayrollPeriod,
 	return items, nil
 }
 
+const listDraftPayrollPeriodsIncludingDeleted = `-- name: ListDraftPayrollPeriodsIncludingDeleted :many
+SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
+FROM payroll_period
+WHERE status = 'DRAFT'
+ORDER BY
+    year DESC,
+    month DESC
+`
+
+func (q *Queries) ListDraftPayrollPeriodsIncludingDeleted(ctx context.Context) ([]PayrollPeriod, error) {
+	rows, err := q.db.QueryContext(ctx, listDraftPayrollPeriodsIncludingDeleted)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollPeriod
+	for rows.Next() {
+		var i PayrollPeriod
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Year,
+			&i.Month,
+			&i.Status,
+			&i.FinalizedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPayrollPeriods = `-- name: ListPayrollPeriods :many
 SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
 FROM payroll_period
+WHERE deleted_at IS NULL
 ORDER BY
     year DESC,
     month DESC
@@ -272,6 +375,7 @@ SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, de
 FROM payroll_period
 WHERE
     org_id = ?
+    AND deleted_at IS NULL
 ORDER BY
     year DESC,
     month DESC
@@ -279,6 +383,90 @@ ORDER BY
 
 func (q *Queries) ListPayrollPeriodsByOrganization(ctx context.Context, orgID string) ([]PayrollPeriod, error) {
 	rows, err := q.db.QueryContext(ctx, listPayrollPeriodsByOrganization, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollPeriod
+	for rows.Next() {
+		var i PayrollPeriod
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Year,
+			&i.Month,
+			&i.Status,
+			&i.FinalizedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayrollPeriodsByOrganizationIncludingDeleted = `-- name: ListPayrollPeriodsByOrganizationIncludingDeleted :many
+SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
+FROM payroll_period
+WHERE
+    org_id = ?
+ORDER BY
+    year DESC,
+    month DESC
+`
+
+func (q *Queries) ListPayrollPeriodsByOrganizationIncludingDeleted(ctx context.Context, orgID string) ([]PayrollPeriod, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollPeriodsByOrganizationIncludingDeleted, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PayrollPeriod
+	for rows.Next() {
+		var i PayrollPeriod
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Year,
+			&i.Month,
+			&i.Status,
+			&i.FinalizedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayrollPeriodsIncludingDeleted = `-- name: ListPayrollPeriodsIncludingDeleted :many
+SELECT id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
+FROM payroll_period
+ORDER BY
+    year DESC,
+    month DESC
+`
+
+func (q *Queries) ListPayrollPeriodsIncludingDeleted(ctx context.Context) ([]PayrollPeriod, error) {
+	rows, err := q.db.QueryContext(ctx, listPayrollPeriodsIncludingDeleted)
 	if err != nil {
 		return nil, err
 	}

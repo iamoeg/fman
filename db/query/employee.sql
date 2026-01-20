@@ -1,6 +1,13 @@
 -- name: GetEmployee :one
 SELECT *
 FROM employee
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
+
+-- name: GetEmployeeIncludingDeleted :one
+SELECT *
+FROM employee
 WHERE id = ?;
 
 -- name: GetEmployeeByOrgAndSerialNum :one
@@ -13,9 +20,23 @@ WHERE
 -- name: ListEmployees :many
 SELECT *
 FROM employee
+WHERE deleted_at IS NULL
+ORDER BY org_id, serial_num;
+
+-- name: ListEmployeesIncludingDeleted :many
+SELECT *
+FROM employee
 ORDER BY org_id, serial_num;
 
 -- name: ListEmployeesByOrganization :many
+SELECT *
+FROM employee
+WHERE
+    org_id = ?
+    AND deleted_at IS NULL
+ORDER BY serial_num;
+
+-- name: ListEmployeesByOrganizationIncludingDeleted :many
 SELECT *
 FROM employee
 WHERE org_id = ?

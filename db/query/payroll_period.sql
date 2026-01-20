@@ -1,6 +1,13 @@
 -- name: GetPayrollPeriod :one
 SELECT *
 FROM payroll_period
+WHERE
+    id = ?
+    AND deleted_at IS NULL;
+
+-- name: GetPayrollPeriodIncludingDeleted :one
+SELECT *
+FROM payroll_period
 WHERE id = ?;
 
 -- name: GetPayrollPeriodByOrgYearMonth :one
@@ -9,9 +16,26 @@ FROM payroll_period
 WHERE
     org_id = ?
     AND year = ?
+    AND month = ?
+    AND deleted_at IS NULL;
+
+-- name: GetPayrollPeriodByOrgYearMonthIncludingDeleted :one
+SELECT *
+FROM payroll_period
+WHERE
+    org_id = ?
+    AND year = ?
     AND month = ?;
 
 -- name: ListPayrollPeriods :many
+SELECT *
+FROM payroll_period
+WHERE deleted_at IS NULL
+ORDER BY
+    year DESC,
+    month DESC;
+
+-- name: ListPayrollPeriodsIncludingDeleted :many
 SELECT *
 FROM payroll_period
 ORDER BY
@@ -23,11 +47,31 @@ SELECT *
 FROM payroll_period
 WHERE
     org_id = ?
+    AND deleted_at IS NULL
+ORDER BY
+    year DESC,
+    month DESC;
+
+-- name: ListPayrollPeriodsByOrganizationIncludingDeleted :many
+SELECT *
+FROM payroll_period
+WHERE
+    org_id = ?
 ORDER BY
     year DESC,
     month DESC;
 
 -- name: ListDraftPayrollPeriods :many
+SELECT *
+FROM payroll_period
+WHERE
+    status = 'DRAFT'
+    AND deleted_at IS NULL
+ORDER BY
+    year DESC,
+    month DESC;
+
+-- name: ListDraftPayrollPeriodsIncludingDeleted :many
 SELECT *
 FROM payroll_period
 WHERE status = 'DRAFT'

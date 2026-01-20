@@ -102,11 +102,42 @@ func (q *Queries) DeleteOrganization(ctx context.Context, arg DeleteOrganization
 const getOrganization = `-- name: GetOrganization :one
 SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
 FROM organization
-WHERE id = ?
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 `
 
 func (q *Queries) GetOrganization(ctx context.Context, id string) (Organization, error) {
 	row := q.db.QueryRowContext(ctx, getOrganization, id)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Address,
+		&i.Activity,
+		&i.LegalForm,
+		&i.IceNum,
+		&i.IfNum,
+		&i.RcNum,
+		&i.CnssNum,
+		&i.BankRib,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getOrganizationIncludingDeleted = `-- name: GetOrganizationIncludingDeleted :one
+SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
+FROM organization
+WHERE
+    id = ?
+    AND deleted_at IS NULL
+`
+
+func (q *Queries) GetOrganizationIncludingDeleted(ctx context.Context, id string) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, getOrganizationIncludingDeleted, id)
 	var i Organization
 	err := row.Scan(
 		&i.ID,
@@ -139,11 +170,57 @@ func (q *Queries) HardDeleteOrganization(ctx context.Context, id string) error {
 const listOrganizations = `-- name: ListOrganizations :many
 SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
 FROM organization
+WHERE
+    id = ?
+    AND deleted_at IS NULL
 ORDER BY name
 `
 
-func (q *Queries) ListOrganizations(ctx context.Context) ([]Organization, error) {
-	rows, err := q.db.QueryContext(ctx, listOrganizations)
+func (q *Queries) ListOrganizations(ctx context.Context, id string) ([]Organization, error) {
+	rows, err := q.db.QueryContext(ctx, listOrganizations, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Address,
+			&i.Activity,
+			&i.LegalForm,
+			&i.IceNum,
+			&i.IfNum,
+			&i.RcNum,
+			&i.CnssNum,
+			&i.BankRib,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrganizationsIncludingDeleted = `-- name: ListOrganizationsIncludingDeleted :many
+SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
+FROM organization
+ORDER BY name
+`
+
+func (q *Queries) ListOrganizationsIncludingDeleted(ctx context.Context) ([]Organization, error) {
+	rows, err := q.db.QueryContext(ctx, listOrganizationsIncludingDeleted)
 	if err != nil {
 		return nil, err
 	}
