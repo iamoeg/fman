@@ -13,24 +13,35 @@ type Querier interface {
 	CreateEmployee(ctx context.Context, arg CreateEmployeeParams) (Employee, error)
 	CreateEmployeeCompensationPackage(ctx context.Context, arg CreateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	CreatePayrollPeriod(ctx context.Context, arg CreatePayrollPeriodParams) (PayrollPeriod, error)
 	DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) error
 	DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) error
 	DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) error
+	DeletePayrollPeriod(ctx context.Context, arg DeletePayrollPeriodParams) error
+	FinalizePayrollPeriod(ctx context.Context, arg FinalizePayrollPeriodParams) (PayrollPeriod, error)
 	GetEmployee(ctx context.Context, id string) (Employee, error)
 	GetEmployeeByOrgAndSerialNum(ctx context.Context, arg GetEmployeeByOrgAndSerialNumParams) (Employee, error)
 	GetEmployeeCompensationPackage(ctx context.Context, id string) (EmployeeCompensationPackage, error)
 	GetNextSerialNumber(ctx context.Context, orgID string) (int64, error)
 	GetOrganization(ctx context.Context, id string) (Organization, error)
+	GetPayrollPeriod(ctx context.Context, id string) (PayrollPeriod, error)
+	GetPayrollPeriodByOrgYearMonth(ctx context.Context, arg GetPayrollPeriodByOrgYearMonthParams) (PayrollPeriod, error)
 	HardDeleteEmployee(ctx context.Context, id string) error
 	HardDeleteEmployeeCompensationPackage(ctx context.Context, id string) error
 	HardDeleteOrganization(ctx context.Context, id string) error
+	HardDeletePayrollPeriod(ctx context.Context, id string) error
+	ListDraftPayrollPeriods(ctx context.Context) ([]PayrollPeriod, error)
 	ListEmployeeCompensationPackages(ctx context.Context) ([]EmployeeCompensationPackage, error)
 	ListEmployees(ctx context.Context) ([]Employee, error)
 	ListEmployeesByOrganization(ctx context.Context, orgID string) ([]Employee, error)
 	ListOrganizations(ctx context.Context) ([]Organization, error)
+	ListPayrollPeriods(ctx context.Context) ([]PayrollPeriod, error)
+	ListPayrollPeriodsByOrganization(ctx context.Context, orgID string) ([]PayrollPeriod, error)
 	RestoreEmployee(ctx context.Context, arg RestoreEmployeeParams) (Employee, error)
 	RestoreEmployeeCompensationPackage(ctx context.Context, arg RestoreEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	RestoreOrganization(ctx context.Context, arg RestoreOrganizationParams) (Organization, error)
+	RestorePayrollPeriod(ctx context.Context, arg RestorePayrollPeriodParams) (PayrollPeriod, error)
+	UnfinalizePayrollPeriod(ctx context.Context, arg UnfinalizePayrollPeriodParams) (PayrollPeriod, error)
 	UpdateEmployee(ctx context.Context, arg UpdateEmployeeParams) (Employee, error)
 	UpdateEmployeeCompensationPackage(ctx context.Context, arg UpdateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
