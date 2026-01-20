@@ -9,12 +9,19 @@ import (
 )
 
 type Querier interface {
+	CreateEmployeeCompensationPackage(ctx context.Context, arg CreateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) error
 	DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) error
+	GetEmployeeCompensationPackage(ctx context.Context, id string) (EmployeeCompensationPackage, error)
 	GetOrganization(ctx context.Context, id string) (Organization, error)
+	HardDeleteEmployeeCompensationPackage(ctx context.Context, id string) error
 	HardDeleteOrganization(ctx context.Context, id string) error
+	ListEmployeeCompensationPackages(ctx context.Context) ([]EmployeeCompensationPackage, error)
 	ListOrganizations(ctx context.Context) ([]Organization, error)
+	RestoreEmployeeCompensationPackage(ctx context.Context, arg RestoreEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	RestoreOrganization(ctx context.Context, arg RestoreOrganizationParams) (Organization, error)
+	UpdateEmployeeCompensationPackage(ctx context.Context, arg UpdateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
 }
 
