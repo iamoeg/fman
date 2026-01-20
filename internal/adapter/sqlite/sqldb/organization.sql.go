@@ -131,9 +131,7 @@ func (q *Queries) GetOrganization(ctx context.Context, id string) (Organization,
 const getOrganizationIncludingDeleted = `-- name: GetOrganizationIncludingDeleted :one
 SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
 FROM organization
-WHERE
-    id = ?
-    AND deleted_at IS NULL
+WHERE id = ?
 `
 
 func (q *Queries) GetOrganizationIncludingDeleted(ctx context.Context, id string) (Organization, error) {
@@ -170,14 +168,12 @@ func (q *Queries) HardDeleteOrganization(ctx context.Context, id string) error {
 const listOrganizations = `-- name: ListOrganizations :many
 SELECT id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
 FROM organization
-WHERE
-    id = ?
-    AND deleted_at IS NULL
+WHERE deleted_at IS NULL
 ORDER BY name
 `
 
-func (q *Queries) ListOrganizations(ctx context.Context, id string) ([]Organization, error) {
-	rows, err := q.db.QueryContext(ctx, listOrganizations, id)
+func (q *Queries) ListOrganizations(ctx context.Context) ([]Organization, error) {
+	rows, err := q.db.QueryContext(ctx, listOrganizations)
 	if err != nil {
 		return nil, err
 	}

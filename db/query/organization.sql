@@ -8,16 +8,12 @@ WHERE
 -- name: GetOrganizationIncludingDeleted :one
 SELECT *
 FROM organization
-WHERE
-    id = ?
-    AND deleted_at IS NULL;
+WHERE id = ?;
 
 -- name: ListOrganizations :many
 SELECT *
 FROM organization
-WHERE
-    id = ?
-    AND deleted_at IS NULL
+WHERE deleted_at IS NULL
 ORDER BY name;
 
 -- name: ListOrganizationsIncludingDeleted :many

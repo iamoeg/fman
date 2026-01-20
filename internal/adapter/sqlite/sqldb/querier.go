@@ -54,7 +54,7 @@ type Querier interface {
 	ListEmployeesByOrganization(ctx context.Context, orgID string) ([]Employee, error)
 	ListEmployeesByOrganizationIncludingDeleted(ctx context.Context, orgID string) ([]Employee, error)
 	ListEmployeesIncludingDeleted(ctx context.Context) ([]Employee, error)
-	ListOrganizations(ctx context.Context, id string) ([]Organization, error)
+	ListOrganizations(ctx context.Context) ([]Organization, error)
 	ListOrganizationsIncludingDeleted(ctx context.Context) ([]Organization, error)
 	ListPayrollPeriods(ctx context.Context) ([]PayrollPeriod, error)
 	ListPayrollPeriodsByOrganization(ctx context.Context, orgID string) ([]PayrollPeriod, error)
