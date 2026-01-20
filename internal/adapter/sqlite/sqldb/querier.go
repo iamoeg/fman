@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	CountEmployeesUsingCompensationPackage(ctx context.Context, compensationPackageID string) (int64, error)
 	CountPayrollResultsUsingCompensationPackage(ctx context.Context, compensationPackageID string) (int64, error)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error
 	CreateEmployee(ctx context.Context, arg CreateEmployeeParams) (Employee, error)
 	CreateEmployeeCompensationPackage(ctx context.Context, arg CreateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
@@ -35,6 +36,10 @@ type Querier interface {
 	HardDeleteOrganization(ctx context.Context, id string) error
 	HardDeletePayrollPeriod(ctx context.Context, id string) error
 	HardDeletePayrollResult(ctx context.Context, id string) error
+	ListAuditLogsByAction(ctx context.Context, arg ListAuditLogsByActionParams) ([]AuditLog, error)
+	ListAuditLogsByTable(ctx context.Context, arg ListAuditLogsByTableParams) ([]AuditLog, error)
+	ListAuditLogsForRecord(ctx context.Context, arg ListAuditLogsForRecordParams) ([]AuditLog, error)
+	ListAuditLogsRecent(ctx context.Context, limit int64) ([]AuditLog, error)
 	ListDraftPayrollPeriods(ctx context.Context) ([]PayrollPeriod, error)
 	ListEmployeeCompensationPackages(ctx context.Context) ([]EmployeeCompensationPackage, error)
 	ListEmployees(ctx context.Context) ([]Employee, error)
