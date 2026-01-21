@@ -9,7 +9,7 @@ Phase-by-phase implementation guide for the financial management application.
 1. [Overview](#overview)
 2. [Phase 1A - Foundation](#phase-1a---foundation-completed)
 3. [Phase 1B - Domain Models & Tests](#phase-1b---domain-models--tests-completed)
-4. [Phase 1C - Repositories & Application Services](#phase-1c---repositories--application-services-next)
+4. [Phase 1C - Repositories & Application Services](#phase-1c---repositories--application-services-in-progress)
 5. [Phase 1D - Payroll Engine](#phase-1d---payroll-engine)
 6. [Phase 1E - TUI Implementation](#phase-1e---tui-implementation)
 7. [Phase 1F - Export & Polish](#phase-1f---export--polish)
@@ -214,254 +214,127 @@ Complete implementation of Money type with:
 
 ---
 
-## Phase 1C - Repositories & Application Services ⏳ NEXT
+## Phase 1C - Repositories & Application Services 🔄 IN PROGRESS
 
 **Duration:** Weeks 3-4  
-**Status:** 📋 Planned
+**Status:** 🔄 In Progress
 
-### Goals
+### Progress Overview
 
-- Set up sqlc for type-safe SQL
-- Implement SQLite repositories
-- Create application services with inline interfaces
-- Write repository and service tests
+#### ✅ Completed: SQL Query Definitions
 
-### Tasks
+All SQL query files have been created, reviewed, and are ready for sqlc code generation.
 
-#### 1. Set Up sqlc
+**Files Created:**
 
-**Install sqlc:**
+- `db/query/organization.sql` - Organization CRUD operations
+- `db/query/employee.sql` - Employee CRUD operations
+- `db/query/employee_compensation_package.sql` - Compensation package operations
+- `db/query/payroll_period.sql` - Payroll period operations
+- `db/query/payroll_result.sql` - Payroll result operations
+- `db/query/audit_log.sql` - Audit trail operations
 
-```bash
-go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-```
+**Query Pattern Established:**
 
-**Create `sqlc.yaml`:**
+All entity query files follow a consistent pattern:
 
-```yaml
-version: "2"
-sql:
-  - engine: "sqlite"
-    queries: "db/query/"
-    schema: "db/migration/"
-    gen:
-      go:
-        package: "sqldb"
-        out: "internal/adapter/sqlite/sqldb/"
-        emit_json_tags: true
-        emit_interface: true
-        emit_prepared_queries: false
-```
+1. **Get Operations:**
+   - `Get{Entity}` - Single record by ID, active only
+   - `Get{Entity}IncludingDeleted` - Single record by ID, includes soft-deleted
 
-**Create query files in `db/query/`:**
+2. **List Operations:**
+   - `List{Entities}` - All records, active only
+   - `List{Entities}IncludingDeleted` - All records, includes soft-deleted
+   - `List{Entities}By{Criteria}` - Filtered lists with variations
 
-- `organization.sql` - CRUD operations for organizations
-- `employee.sql` - CRUD operations for employees
-- `compensation_package.sql` - CRUD operations for compensation packages
-- `payroll_period.sql` - CRUD operations for payroll periods
-- `payroll_result.sql` - CRUD operations for payroll results
+3. **Mutation Operations:**
+   - `Create{Entity}` - Insert new record (returns created record)
+   - `Update{Entity}` - Update existing record (returns updated record)
+   - `Delete{Entity}` - Soft delete (sets deleted_at)
+   - `Restore{Entity}` - Undelete (clears deleted_at, returns restored record)
+   - `HardDelete{Entity}` - Permanent deletion (use with extreme caution)
 
-**Generate code:**
+4. **Specialized Operations:**
+   - Entity-specific queries (e.g., `GetNextSerialNumber` for employees)
+   - Relationship queries (e.g., `CountEmployeesUsingCompensationPackage`)
 
-```bash
-sqlc generate
-```
+**Key Design Decisions Made:**
 
-#### 2. Implement Repositories (`internal/adapter/sqlite/`)
+1. **Primitive Queries with Repository-Level Filtering:**
+   - SQL queries are "primitives" - they don't filter deleted_at by default
+   - Repository layer decides whether to use filtered or unfiltered queries
+   - Supports user requirement: view/restore archived data
 
-**Files to create:**
+2. **Immutable Core Fields:**
+   - `org_id`, `serial_num` excluded from employee UPDATE
+   - `org_id`, `year`, `month` excluded from payroll_period UPDATE
+   - These fields define identity and should never change
 
-- `organization_repo.go` - Organization repository
-- `employee_repo.go` - Employee repository
-- `compensation_package_repo.go` - Compensation package repository
-- `payroll_period_repo.go` - Payroll period repository
-- `payroll_result_repo.go` - Payroll result repository
+3. **Explicit Workflow Queries:**
+   - `FinalizePayrollPeriod` / `UnfinalizePayrollPeriod` instead of generic UPDATE
+   - Enforces business workflow at query level
+   - Prevents accidental status changes
 
-**Each repository should:**
+4. **Audit Trail Queries:**
+   - `ListAuditLogsForRecord` - View complete history for a record
+   - `ListAuditLogsRecent` - View recent changes system-wide
+   - `ListAuditLogsByTable` / `ListAuditLogsByAction` - Filtered views
+   - `CreateAuditLog` - Repository layer inserts audit records in transactions
 
-- Use sqlc-generated code
-- Convert between sqlc types and domain types
-- Handle UUIDs and timestamps (SQLite stores as TEXT)
-- Handle nullable fields with `sql.NullString`, etc.
-- Define sentinel errors (ErrNotFound, ErrDuplicate)
-- Wrap errors with context
+5. **Consistent Naming Convention:**
+   - All queries use `-- name: QueryName :type` format
+   - `:one` returns single record or error
+   - `:many` returns slice of records
+   - `:exec` executes without returning data
 
-**Key Patterns:**
+**Query Statistics:**
 
-```go
-type OrganizationRepository struct {
-    db      *sql.DB
-    queries *sqldb.Queries
-}
+| Entity                        | Queries | GET | LIST | CREATE | UPDATE | DELETE | SPECIAL |
+| ----------------------------- | ------- | --- | ---- | ------ | ------ | ------ | ------- |
+| Organization                  | 8       | 2   | 2    | 1      | 1      | 3      | 0       |
+| Employee                      | 12      | 3   | 4    | 1      | 1      | 3      | 2       |
+| Employee Compensation Package | 8       | 2   | 2    | 1      | 1      | 3      | 0       |
+| Payroll Period                | 15      | 4   | 6    | 1      | 2      | 3      | 0       |
+| Payroll Result                | 11      | 2   | 6    | 1      | 0      | 3      | 1       |
+| Audit Log                     | 5       | 0   | 4    | 1      | 0      | 0      | 0       |
+| **TOTAL**                     | **59**  | 13  | 24   | 6      | 5      | 15     | 3       |
 
-func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organization) error {
-    err := r.queries.CreateOrganization(ctx, sqldb.CreateOrganizationParams{
-        ID:        org.ID.String(),
-        Name:      org.Name,
-        // ... convert all fields
-        CreatedAt: org.CreatedAt.Format(time.RFC3339),
-        UpdatedAt: org.UpdatedAt.Format(time.RFC3339),
-    })
+**Lessons Learned:**
 
-    if err != nil {
-        if isUniqueConstraintError(err) {
-            return fmt.Errorf("%w: %v", ErrDuplicate, err)
-        }
-        return fmt.Errorf("failed to create organization: %w", err)
-    }
+1. **Review is Essential:** Multiple rounds of review caught:
+   - Copy-paste errors (wrong table names, wrong WHERE clauses)
+   - Missing fields in INSERT statements
+   - Typos in field names
+   - Missing RETURNING clauses
+   - Inconsistent filtering logic
 
-    return nil
-}
+2. **Primitives vs Safety:** Chose primitive queries (no built-in filtering) over safe-by-default queries
+   - Provides flexibility for archive/restore features
+   - Requires discipline in repository layer
+   - Document which queries to use when
 
-func (r *OrganizationRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Organization, error) {
-    row, err := r.queries.GetOrganization(ctx, id.String())
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrNotFound
-        }
-        return nil, fmt.Errorf("failed to get organization: %w", err)
-    }
+3. **Consistency Matters:** Establishing patterns early (naming, structure, annotations) makes maintenance easier
 
-    return rowToOrganization(row)
-}
-```
+4. **Special Cases Need Special Queries:**
+   - Employee serial number generation
+   - Payroll period finalization workflow
+   - Compensation package usage checking
+   - All handled with dedicated queries
 
-#### 3. Implement Application Services (`internal/application/`)
+5. **Field Order in INSERT Matters:** Keep consistent with schema definition to avoid confusion
 
-**Files to create:**
+#### 📋 Next: Repository Implementation
 
-- `organization_service.go` - Organization management
-- `employee_service.go` - Employee management
-- `payroll_service.go` - Payroll generation and management
+**Tasks:**
 
-**Each service should:**
+1. Implement repository layer (`internal/adapter/sqlite/`)
+2. Implement application services (`internal/application/`)
+3. Implement audit logging helper
+4. Write repository tests (using `:memory:`)
+5. Write service tests (using mocks)
+6. Configuration system (XDG paths)
 
-- Define small, focused interfaces for dependencies
-- Orchestrate domain objects
-- Set timestamps (CreatedAt, UpdatedAt)
-- Generate UUIDs
-- Handle transaction boundaries
-- Validate domain objects before persistence
-
-**Key Pattern:**
-
-```go
-type organizationRepository interface {
-    Create(ctx context.Context, org *domain.Organization) error
-    FindByID(ctx context.Context, id uuid.UUID) (*domain.Organization, error)
-    List(ctx context.Context) ([]*domain.Organization, error)
-    Update(ctx context.Context, org *domain.Organization) error
-    SoftDelete(ctx context.Context, id uuid.UUID) error
-}
-
-type OrganizationService struct {
-    repo organizationRepository
-}
-
-func NewOrganizationService(repo organizationRepository) *OrganizationService {
-    return &OrganizationService{repo: repo}
-}
-
-func (s *OrganizationService) CreateOrganization(ctx context.Context, org *domain.Organization) error {
-    // Set timestamps
-    now := time.Now().UTC()
-    org.CreatedAt = now
-    org.UpdatedAt = now
-
-    // Generate UUID
-    org.ID = uuid.New()
-
-    // Validate
-    if err := org.Validate(); err != nil {
-        return fmt.Errorf("invalid organization: %w", err)
-    }
-
-    // Persist
-    if err := s.repo.Create(ctx, org); err != nil {
-        return fmt.Errorf("failed to create organization: %w", err)
-    }
-
-    return nil
-}
-```
-
-#### 4. Write Tests
-
-**Repository Tests (using `:memory:`):**
-
-```go
-func TestOrganizationRepository_Create(t *testing.T) {
-    db, _ := sql.Open("sqlite", ":memory:")
-    defer db.Close()
-
-    db.Exec("PRAGMA foreign_keys = ON")
-    goose.Up(db, "../../../db/migration")
-
-    repo := NewOrganizationRepository(db)
-
-    org := &domain.Organization{
-        ID:        uuid.New(),
-        Name:      "Test Company",
-        LegalForm: domain.LegalFormSARL,
-        CreatedAt: time.Now().UTC(),
-        UpdatedAt: time.Now().UTC(),
-    }
-
-    err := repo.Create(context.Background(), org)
-    require.NoError(t, err)
-
-    found, err := repo.FindByID(context.Background(), org.ID)
-    require.NoError(t, err)
-    require.Equal(t, org.Name, found.Name)
-}
-```
-
-**Service Tests (using mocks):**
-
-```go
-type mockOrgRepo struct {
-    createFunc func(context.Context, *domain.Organization) error
-}
-
-func (m *mockOrgRepo) Create(ctx context.Context, org *domain.Organization) error {
-    if m.createFunc != nil {
-        return m.createFunc(ctx, org)
-    }
-    return nil
-}
-
-func TestOrganizationService_CreateOrganization(t *testing.T) {
-    var capturedOrg *domain.Organization
-
-    mock := &mockOrgRepo{
-        createFunc: func(ctx context.Context, org *domain.Organization) error {
-            capturedOrg = org
-            return nil
-        },
-    }
-
-    service := NewOrganizationService(mock)
-
-    org := &domain.Organization{Name: "Test Company", LegalForm: domain.LegalFormSARL}
-    err := service.CreateOrganization(context.Background(), org)
-
-    require.NoError(t, err)
-    require.NotEqual(t, uuid.Nil, capturedOrg.ID)
-    require.False(t, capturedOrg.CreatedAt.IsZero())
-}
-```
-
-### Deliverables
-
-By end of Phase 1C:
-
-- [ ] sqlc configured and generating code
-- [ ] SQL query files for all entities
-- [ ] SQLite repositories for all entities
-- [ ] Application services for Organization and Employee
-- [ ] Repository tests using `:memory:`
-- [ ] Service tests using mocks
-- [ ] Configuration system (XDG paths)
+**Target:** Week 3-4
 
 ---
 
