@@ -124,7 +124,7 @@ CREATE TABLE audit_log(
     id TEXT PRIMARY KEY,
     table_name TEXT NOT NULL,
     record_id TEXT NOT NULL,
-    action TEXT NOT NULL CHECK(action IN ('CREATE', 'UPDATE', 'SOFT_DELETE', 'DELETE')),
+    action TEXT NOT NULL CHECK(action IN ('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'HARD_DELETE')),
     before TEXT CHECK(json_valid(before)),
     after TEXT NOT NULL CHECK(json_valid(after)),
     timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
