@@ -78,7 +78,7 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 	return i, err
 }
 
-const deleteOrganization = `-- name: DeleteOrganization :exec
+const deleteOrganization = `-- name: DeleteOrganization :one
 UPDATE organization
 SET
     updated_at = ?,
@@ -86,6 +86,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
+RETURNING id, name, address, activity, legal_form, ice_num, if_num, rc_num, cnss_num, bank_rib, created_at, updated_at, deleted_at
 `
 
 type DeleteOrganizationParams struct {
@@ -94,9 +95,25 @@ type DeleteOrganizationParams struct {
 	ID        string         `json:"id"`
 }
 
-func (q *Queries) DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) error {
-	_, err := q.db.ExecContext(ctx, deleteOrganization, arg.UpdatedAt, arg.DeletedAt, arg.ID)
-	return err
+func (q *Queries) DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, deleteOrganization, arg.UpdatedAt, arg.DeletedAt, arg.ID)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Address,
+		&i.Activity,
+		&i.LegalForm,
+		&i.IceNum,
+		&i.IfNum,
+		&i.RcNum,
+		&i.CnssNum,
+		&i.BankRib,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getOrganization = `-- name: GetOrganization :one

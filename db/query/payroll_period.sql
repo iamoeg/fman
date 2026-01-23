@@ -117,14 +117,15 @@ WHERE
     AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeletePayrollPeriod :exec
+-- name: DeletePayrollPeriod :one
 UPDATE payroll_period
 SET
     updated_at = ?,
     deleted_at = ?
 WHERE
     id = ?
-    AND deleted_at IS NULL;
+    AND deleted_at IS NULL
+RETURNING *;
 
 -- name: RestorePayrollPeriod :one
 UPDATE payroll_period

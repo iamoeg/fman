@@ -41,14 +41,15 @@ WHERE
     AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeleteEmployeeCompensationPackage :exec
+-- name: DeleteEmployeeCompensationPackage :one
 UPDATE employee_compensation_package
 SET
     updated_at = ?,
     deleted_at = ?
 WHERE
     id = ?
-    AND deleted_at IS NULL;
+    AND deleted_at IS NULL
+RETURNING *;
 
 -- name: RestoreEmployeeCompensationPackage :one
 UPDATE employee_compensation_package

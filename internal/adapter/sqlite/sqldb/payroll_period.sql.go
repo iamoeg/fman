@@ -62,7 +62,7 @@ func (q *Queries) CreatePayrollPeriod(ctx context.Context, arg CreatePayrollPeri
 	return i, err
 }
 
-const deletePayrollPeriod = `-- name: DeletePayrollPeriod :exec
+const deletePayrollPeriod = `-- name: DeletePayrollPeriod :one
 UPDATE payroll_period
 SET
     updated_at = ?,
@@ -70,6 +70,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
+RETURNING id, org_id, year, month, status, finalized_at, created_at, updated_at, deleted_at
 `
 
 type DeletePayrollPeriodParams struct {
@@ -78,9 +79,21 @@ type DeletePayrollPeriodParams struct {
 	ID        string         `json:"id"`
 }
 
-func (q *Queries) DeletePayrollPeriod(ctx context.Context, arg DeletePayrollPeriodParams) error {
-	_, err := q.db.ExecContext(ctx, deletePayrollPeriod, arg.UpdatedAt, arg.DeletedAt, arg.ID)
-	return err
+func (q *Queries) DeletePayrollPeriod(ctx context.Context, arg DeletePayrollPeriodParams) (PayrollPeriod, error) {
+	row := q.db.QueryRowContext(ctx, deletePayrollPeriod, arg.UpdatedAt, arg.DeletedAt, arg.ID)
+	var i PayrollPeriod
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Year,
+		&i.Month,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const finalizePayrollPeriod = `-- name: FinalizePayrollPeriod :one

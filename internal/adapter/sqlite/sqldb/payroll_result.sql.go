@@ -159,7 +159,7 @@ func (q *Queries) CreatePayrollResult(ctx context.Context, arg CreatePayrollResu
 	return i, err
 }
 
-const deletePayrollResult = `-- name: DeletePayrollResult :exec
+const deletePayrollResult = `-- name: DeletePayrollResult :one
 UPDATE payroll_result
 SET
     updated_at = ?,
@@ -167,6 +167,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
+RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 `
 
 type DeletePayrollResultParams struct {
@@ -175,9 +176,41 @@ type DeletePayrollResultParams struct {
 	ID        string         `json:"id"`
 }
 
-func (q *Queries) DeletePayrollResult(ctx context.Context, arg DeletePayrollResultParams) error {
-	_, err := q.db.ExecContext(ctx, deletePayrollResult, arg.UpdatedAt, arg.DeletedAt, arg.ID)
-	return err
+func (q *Queries) DeletePayrollResult(ctx context.Context, arg DeletePayrollResultParams) (PayrollResult, error) {
+	row := q.db.QueryRowContext(ctx, deletePayrollResult, arg.UpdatedAt, arg.DeletedAt, arg.ID)
+	var i PayrollResult
+	err := row.Scan(
+		&i.ID,
+		&i.PayrollPeriodID,
+		&i.EmployeeID,
+		&i.CompensationPackageID,
+		&i.Currency,
+		&i.BaseSalaryCents,
+		&i.SeniorityBonusCents,
+		&i.GrossSalaryCents,
+		&i.TotalOtherBonusCents,
+		&i.GrossSalaryGrandTotalCents,
+		&i.TotalExemptionsCents,
+		&i.TaxableGrossSalaryCents,
+		&i.SocialAllowanceEmployeeContribCents,
+		&i.SocialAllowanceEmployerContribCents,
+		&i.JobLossCompensationEmployeeContribCents,
+		&i.JobLossCompensationEmployerContribCents,
+		&i.TrainingTaxEmployerContribCents,
+		&i.FamilyBenefitsEmployerContribCents,
+		&i.TotalCnssEmployeeContribCents,
+		&i.TotalCnssEmployerContribCents,
+		&i.AmoEmployeeContribCents,
+		&i.AmoEmployerContribCents,
+		&i.TaxableNetSalaryCents,
+		&i.IncomeTaxCents,
+		&i.RoundingAmountCents,
+		&i.NetToPayCents,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getPayrollResult = `-- name: GetPayrollResult :one

@@ -131,7 +131,7 @@ func (q *Queries) CreateEmployee(ctx context.Context, arg CreateEmployeeParams) 
 	return i, err
 }
 
-const deleteEmployee = `-- name: DeleteEmployee :exec
+const deleteEmployee = `-- name: DeleteEmployee :one
 UPDATE employee
 SET
     updated_at = ?,
@@ -139,6 +139,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
+RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 `
 
 type DeleteEmployeeParams struct {
@@ -147,9 +148,34 @@ type DeleteEmployeeParams struct {
 	ID        string         `json:"id"`
 }
 
-func (q *Queries) DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) error {
-	_, err := q.db.ExecContext(ctx, deleteEmployee, arg.UpdatedAt, arg.DeletedAt, arg.ID)
-	return err
+func (q *Queries) DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) (Employee, error) {
+	row := q.db.QueryRowContext(ctx, deleteEmployee, arg.UpdatedAt, arg.DeletedAt, arg.ID)
+	var i Employee
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.SerialNum,
+		&i.FullName,
+		&i.DisplayName,
+		&i.Address,
+		&i.EmailAddress,
+		&i.PhoneNumber,
+		&i.BirthDate,
+		&i.Gender,
+		&i.MaritalStatus,
+		&i.NumDependents,
+		&i.NumKids,
+		&i.CinNum,
+		&i.CnssNum,
+		&i.HireDate,
+		&i.Position,
+		&i.CompensationPackageID,
+		&i.BankRib,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getEmployee = `-- name: GetEmployee :one

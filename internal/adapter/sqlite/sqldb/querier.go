@@ -17,11 +17,11 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreatePayrollPeriod(ctx context.Context, arg CreatePayrollPeriodParams) (PayrollPeriod, error)
 	CreatePayrollResult(ctx context.Context, arg CreatePayrollResultParams) (PayrollResult, error)
-	DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) error
-	DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) error
-	DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) error
-	DeletePayrollPeriod(ctx context.Context, arg DeletePayrollPeriodParams) error
-	DeletePayrollResult(ctx context.Context, arg DeletePayrollResultParams) error
+	DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) (Employee, error)
+	DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error)
+	DeleteOrganization(ctx context.Context, arg DeleteOrganizationParams) (Organization, error)
+	DeletePayrollPeriod(ctx context.Context, arg DeletePayrollPeriodParams) (PayrollPeriod, error)
+	DeletePayrollResult(ctx context.Context, arg DeletePayrollResultParams) (PayrollResult, error)
 	FinalizePayrollPeriod(ctx context.Context, arg FinalizePayrollPeriodParams) (PayrollPeriod, error)
 	GetEmployee(ctx context.Context, id string) (Employee, error)
 	GetEmployeeByOrgAndSerialNum(ctx context.Context, arg GetEmployeeByOrgAndSerialNumParams) (Employee, error)

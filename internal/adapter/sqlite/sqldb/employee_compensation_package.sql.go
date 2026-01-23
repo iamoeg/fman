@@ -50,7 +50,7 @@ func (q *Queries) CreateEmployeeCompensationPackage(ctx context.Context, arg Cre
 	return i, err
 }
 
-const deleteEmployeeCompensationPackage = `-- name: DeleteEmployeeCompensationPackage :exec
+const deleteEmployeeCompensationPackage = `-- name: DeleteEmployeeCompensationPackage :one
 UPDATE employee_compensation_package
 SET
     updated_at = ?,
@@ -58,6 +58,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
+RETURNING id, currency, base_salary_cents, created_at, updated_at, deleted_at
 `
 
 type DeleteEmployeeCompensationPackageParams struct {
@@ -66,9 +67,18 @@ type DeleteEmployeeCompensationPackageParams struct {
 	ID        string         `json:"id"`
 }
 
-func (q *Queries) DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) error {
-	_, err := q.db.ExecContext(ctx, deleteEmployeeCompensationPackage, arg.UpdatedAt, arg.DeletedAt, arg.ID)
-	return err
+func (q *Queries) DeleteEmployeeCompensationPackage(ctx context.Context, arg DeleteEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error) {
+	row := q.db.QueryRowContext(ctx, deleteEmployeeCompensationPackage, arg.UpdatedAt, arg.DeletedAt, arg.ID)
+	var i EmployeeCompensationPackage
+	err := row.Scan(
+		&i.ID,
+		&i.Currency,
+		&i.BaseSalaryCents,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getEmployeeCompensationPackage = `-- name: GetEmployeeCompensationPackage :one

@@ -57,14 +57,15 @@ WHERE
     AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeleteOrganization :exec
+-- name: DeleteOrganization :one
 UPDATE organization
 SET
     updated_at = ?,
     deleted_at = ?
 WHERE
     id = ?
-    AND deleted_at IS NULL;
+    AND deleted_at IS NULL
+RETURNING *;
 
 -- name: RestoreOrganization :one
 UPDATE organization

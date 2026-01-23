@@ -85,14 +85,15 @@ INSERT INTO payroll_result(
     ?, ?, ?, ?, ?, ?, ?, ?
 ) RETURNING *;
 
--- name: DeletePayrollResult :exec
+-- name: DeletePayrollResult :one
 UPDATE payroll_result
 SET
     updated_at = ?,
     deleted_at = ?
 WHERE
     id = ?
-    AND deleted_at IS NULL;
+    AND deleted_at IS NULL
+RETURNING *;
 
 -- name: RestorePayrollResult :one
 UPDATE payroll_result

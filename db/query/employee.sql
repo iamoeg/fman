@@ -96,14 +96,15 @@ WHERE
     AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeleteEmployee :exec
+-- name: DeleteEmployee :one
 UPDATE employee
 SET
     updated_at = ?,
     deleted_at = ?
 WHERE
     id = ?
-    AND deleted_at IS NULL;
+    AND deleted_at IS NULL
+RETURNING *;
 
 -- name: RestoreEmployee :one
 UPDATE employee
