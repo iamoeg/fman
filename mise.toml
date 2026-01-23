@@ -10,7 +10,7 @@ run = "go run cmd/tui/main.go"
 
 [tasks.goose-create]
 description = "Create a new SQL migration file"
-dir = "db/migrations/"
+dir = "db/migration/"
 usage = '''
 arg "<name>" help="Migration file name"
 arg "<type>" help="Migration file type" default="sql" { choices "sql" "go" }
@@ -22,7 +22,7 @@ description = "Perform UP SQL migrations"
 usage = '''
 flag "--dir <migrations_dir>" {
     help "Directory with SQL migration files"
-    default "db/migrations/"
+    default "db/migration/"
 }
 arg "<driver>" help="SQL driver" {
     choices "sqlite" "postgres"
@@ -40,7 +40,7 @@ description = "Perform DOWN SQL migrations"
 usage = '''
 flag "--dir <migrations_dir>" {
     help "Directory with SQL migration files"
-    default "db/migrations/"
+    default "db/migration/"
 }
 arg "<driver>" help="SQL driver" {
     choices "sqlite" "postgres"
