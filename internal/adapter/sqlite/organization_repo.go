@@ -501,55 +501,10 @@ func organizationToRestoreParams(org *domain.Organization) (sqldb.RestoreOrganiz
 }
 
 // ============================================================================
-// Helper Functions - Null String Conversion
-// ============================================================================
-
-// nullStringToString converts sql.NullString to string.
-// Returns empty string if the NullString is not valid (SQL NULL).
-func nullStringToString(ns sql.NullString) string {
-	if ns.Valid {
-		return ns.String
-	}
-	return ""
-}
-
-// stringToNullString converts a string to sql.NullString.
-// Empty strings are converted to SQL NULL (Valid: false).
-func stringToNullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{Valid: false}
-	}
-	return sql.NullString{
-		String: s,
-		Valid:  true,
-	}
-}
-
-// ============================================================================
-// Errors
-// ============================================================================
-
-// Sentinel errors for programmatic error handling.
-var (
-	ErrRecordNotFound = errors.New("sqlite: record not found")
-)
-
-// ============================================================================
 // Constants
 // ============================================================================
 
 // Table name constant for audit logging.
 const (
 	OrganizationTableName = "organization"
-)
-
-// Error message format strings for consistent error wrapping.
-const (
-	FmtErrDBQuery       = "failed to perform database query %s: %w"
-	FmtErrParseDBRow    = "failed to parse database row as %s: %w"
-	FmtErrBeginDBTx     = "failed to begin database transaction: %w"
-	FmtErrCommitDBTx    = "failed to commit database transaction: %w"
-	FmtErrAuditLog      = "failed to create audit log entry: %w"
-	FmtErrParseDBParams = "failed to parse %s as database query params: %w"
-	FmtErrParseDBColumn = "failed to parse value %s: %w"
 )

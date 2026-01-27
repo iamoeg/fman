@@ -58,6 +58,9 @@ func createAuditLog(
 			return fmt.Errorf("failed to marshal after: %w", err)
 		}
 		afterJSON = string(a)
+	} else {
+		// For HARD_DELETE, after is nil, so use "null" (valid JSON)
+		afterJSON = "null"
 	}
 
 	return qtx.CreateAuditLog(ctx, sqldb.CreateAuditLogParams{
@@ -70,16 +73,6 @@ func createAuditLog(
 		Timestamp: time.Now().UTC().Format(DBTimeFormat),
 	})
 }
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-// DBTimeFormat is the standard time format used for all timestamp columns in SQLite.
-// Uses RFC3339 for ISO 8601 compliance and human readability.
-const (
-	DBTimeFormat = time.RFC3339
-)
 
 // ============================================================================
 // Database Action Enum
@@ -117,10 +110,57 @@ var supportedDBActions = map[DBActionEnum]struct{}{
 var SupportedDBActionsStr = util.EnumMapToString(supportedDBActions)
 
 // ============================================================================
+// Helper Functions - Null String Conversion
+// ============================================================================
+
+// nullStringToString converts sql.NullString to string.
+// Returns empty string if the NullString is not valid (SQL NULL).
+func nullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
+// stringToNullString converts a string to sql.NullString.
+// Empty strings are converted to SQL NULL (Valid: false).
+func stringToNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+// DBTimeFormat is the standard time format used for all timestamp columns in SQLite.
+// Uses RFC3339 for ISO 8601 compliance and human readability.
+const (
+	DBTimeFormat = time.RFC3339
+)
+
+// Error message format strings for consistent error wrapping.
+const (
+	FmtErrDBQuery       = "failed to perform database query %s: %w"
+	FmtErrParseDBRow    = "failed to parse database row as %s: %w"
+	FmtErrBeginDBTx     = "failed to begin database transaction: %w"
+	FmtErrCommitDBTx    = "failed to commit database transaction: %w"
+	FmtErrAuditLog      = "failed to create audit log entry: %w"
+	FmtErrParseDBParams = "failed to parse %s as database query params: %w"
+	FmtErrParseDBColumn = "failed to parse value %s: %w"
+)
+
+// ============================================================================
 // Errors
 // ============================================================================
 
-// Sentinel error for unsupported database actions.
+// Sentinel errors for programmatic error handling.
 var (
+	ErrRecordNotFound       = errors.New("sqlite: record not found")
 	ErrDBActionNotSupported = errors.New("sqlite: database action not supported")
 )
