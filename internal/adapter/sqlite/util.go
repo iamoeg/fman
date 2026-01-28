@@ -146,13 +146,13 @@ const (
 
 // Error message format strings for consistent error wrapping.
 const (
-	FmtErrDBQuery       = "failed to perform database query %s: %w"
-	FmtErrParseDBRow    = "failed to parse database row as %s: %w"
-	FmtErrBeginDBTx     = "failed to begin database transaction: %w"
-	FmtErrCommitDBTx    = "failed to commit database transaction: %w"
-	FmtErrAuditLog      = "failed to create audit log entry: %w"
-	FmtErrParseDBParams = "failed to parse %s as database query params: %w"
-	FmtErrParseDBColumn = "failed to parse value %s: %w"
+	FmtDBQueryErr       = "failed to perform database query %s: %w"
+	FmtRowParsingErr    = "failed to parse database row as %s: %w"
+	FmtColumnParsingErr = "failed to parse value %s: %w"
+	FmtParamsParsingErr = "failed to parse %s as database query params: %w"
+	FmtBeginTxErr       = "failed to begin database transaction: %w"
+	FmtCommitTxErr      = "failed to commit database transaction: %w"
+	FmtAuditLogErr      = "failed to create audit log entry: %w"
 )
 
 // ============================================================================

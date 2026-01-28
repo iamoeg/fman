@@ -43,12 +43,12 @@ func (r *OrganizationRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrRecordNotFound
 		}
-		return nil, fmt.Errorf(FmtErrDBQuery, "get organization", err)
+		return nil, fmt.Errorf(FmtDBQueryErr, "get organization", err)
 	}
 
 	org, err := rowToOrganization(row)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return nil, fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 	return org, nil
 }
@@ -61,12 +61,12 @@ func (r *OrganizationRepository) FindByIDIncludingDeleted(ctx context.Context, i
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrRecordNotFound
 		}
-		return nil, fmt.Errorf(FmtErrDBQuery, "get organization (including deleted)", err)
+		return nil, fmt.Errorf(FmtDBQueryErr, "get organization (including deleted)", err)
 	}
 
 	org, err := rowToOrganization(row)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return nil, fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 	return org, nil
 }
@@ -76,14 +76,14 @@ func (r *OrganizationRepository) FindByIDIncludingDeleted(ctx context.Context, i
 func (r *OrganizationRepository) FindAll(ctx context.Context) ([]*domain.Organization, error) {
 	rows, err := r.queries.ListOrganizations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrDBQuery, "list organizations", err)
+		return nil, fmt.Errorf(FmtDBQueryErr, "list organizations", err)
 	}
 
 	orgs := make([]*domain.Organization, 0, len(rows))
 	for _, row := range rows {
 		o, err := rowToOrganization(row)
 		if err != nil {
-			return nil, fmt.Errorf(FmtErrParseDBRow, "organization", err)
+			return nil, fmt.Errorf(FmtRowParsingErr, "organization", err)
 		}
 		orgs = append(orgs, o)
 	}
@@ -96,14 +96,14 @@ func (r *OrganizationRepository) FindAll(ctx context.Context) ([]*domain.Organiz
 func (r *OrganizationRepository) FindAllIncludingDeleted(ctx context.Context) ([]*domain.Organization, error) {
 	rows, err := r.queries.ListOrganizationsIncludingDeleted(ctx)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrDBQuery, "list organizations (including deleted)", err)
+		return nil, fmt.Errorf(FmtDBQueryErr, "list organizations (including deleted)", err)
 	}
 
 	orgs := make([]*domain.Organization, 0, len(rows))
 	for _, row := range rows {
 		org, err := rowToOrganization(row)
 		if err != nil {
-			return nil, fmt.Errorf(FmtErrParseDBRow, "organization", err)
+			return nil, fmt.Errorf(FmtRowParsingErr, "organization", err)
 		}
 		orgs = append(orgs, org)
 	}
@@ -120,7 +120,7 @@ func (r *OrganizationRepository) FindAllIncludingDeleted(ctx context.Context) ([
 func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organization) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf(FmtErrBeginDBTx, err)
+		return fmt.Errorf(FmtBeginTxErr, err)
 	}
 	defer tx.Rollback()
 
@@ -129,12 +129,12 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 	params := organizationToCreateParams(org)
 	row, err := qtx.CreateOrganization(ctx, params)
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "create organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "create organization", err)
 	}
 
 	orgCreated, err := rowToOrganization(row)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	if err = createAuditLog(
@@ -146,11 +146,11 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 		nil,
 		orgCreated,
 	); err != nil {
-		return fmt.Errorf(FmtErrAuditLog, err)
+		return fmt.Errorf(FmtAuditLogErr, err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf(FmtErrCommitDBTx, err)
+		return fmt.Errorf(FmtCommitTxErr, err)
 	}
 
 	return nil
@@ -162,7 +162,7 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organization) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf(FmtErrBeginDBTx, err)
+		return fmt.Errorf(FmtBeginTxErr, err)
 	}
 	defer tx.Rollback()
 
@@ -173,23 +173,23 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrRecordNotFound
 		}
-		return fmt.Errorf(FmtErrDBQuery, "get organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "get organization", err)
 	}
 
 	orgOld, err := rowToOrganization(orgOldRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	params := organizationToUpdateParams(org)
 	orgUpdatedRow, err := qtx.UpdateOrganization(ctx, params)
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "update organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "update organization", err)
 	}
 
 	orgUpdated, err := rowToOrganization(orgUpdatedRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	if err := createAuditLog(
@@ -201,11 +201,11 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 		orgOld,
 		orgUpdated,
 	); err != nil {
-		return fmt.Errorf(FmtErrAuditLog, err)
+		return fmt.Errorf(FmtAuditLogErr, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf(FmtErrCommitDBTx, err)
+		return fmt.Errorf(FmtCommitTxErr, err)
 	}
 
 	return nil
@@ -218,7 +218,7 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 func (r *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf(FmtErrBeginDBTx, err)
+		return fmt.Errorf(FmtBeginTxErr, err)
 	}
 	defer tx.Rollback()
 
@@ -226,23 +226,23 @@ func (r *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error
 
 	orgRow, err := qtx.GetOrganization(ctx, id.String())
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "get organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "get organization", err)
 	}
 
 	org, err := rowToOrganization(orgRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	params := organizationToDeleteParams(org)
 	orgDeletedRow, err := qtx.DeleteOrganization(ctx, params)
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "delete organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "delete organization", err)
 	}
 
 	orgDeleted, err := rowToOrganization(orgDeletedRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	if err := createAuditLog(
@@ -254,11 +254,11 @@ func (r *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error
 		org,
 		orgDeleted,
 	); err != nil {
-		return fmt.Errorf(FmtErrAuditLog, err)
+		return fmt.Errorf(FmtAuditLogErr, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf(FmtErrCommitDBTx, err)
+		return fmt.Errorf(FmtCommitTxErr, err)
 	}
 
 	return nil
@@ -271,7 +271,7 @@ func (r *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error
 func (r *OrganizationRepository) Restore(ctx context.Context, id uuid.UUID) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf(FmtErrBeginDBTx, err)
+		return fmt.Errorf(FmtBeginTxErr, err)
 	}
 	defer tx.Rollback()
 
@@ -279,23 +279,23 @@ func (r *OrganizationRepository) Restore(ctx context.Context, id uuid.UUID) erro
 
 	deletedOrgRow, err := qtx.GetOrganizationIncludingDeleted(ctx, id.String())
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "get organization (including deleted)", err)
+		return fmt.Errorf(FmtDBQueryErr, "get organization (including deleted)", err)
 	}
 
 	deletedOrg, err := rowToOrganization(deletedOrgRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	params := organizationToRestoreParams(deletedOrg)
 	restoredOrgRow, err := qtx.RestoreOrganization(ctx, params)
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "restore organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "restore organization", err)
 	}
 
 	restoredOrg, err := rowToOrganization(restoredOrgRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	if err := createAuditLog(
@@ -307,11 +307,11 @@ func (r *OrganizationRepository) Restore(ctx context.Context, id uuid.UUID) erro
 		deletedOrg,
 		restoredOrg,
 	); err != nil {
-		return fmt.Errorf(FmtErrAuditLog, err)
+		return fmt.Errorf(FmtAuditLogErr, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf(FmtErrCommitDBTx, err)
+		return fmt.Errorf(FmtCommitTxErr, err)
 	}
 
 	return nil
@@ -325,7 +325,7 @@ func (r *OrganizationRepository) Restore(ctx context.Context, id uuid.UUID) erro
 func (r *OrganizationRepository) HardDelete(ctx context.Context, id uuid.UUID) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf(FmtErrBeginDBTx, err)
+		return fmt.Errorf(FmtBeginTxErr, err)
 	}
 	defer tx.Rollback()
 
@@ -333,16 +333,16 @@ func (r *OrganizationRepository) HardDelete(ctx context.Context, id uuid.UUID) e
 
 	deletedOrgRow, err := qtx.GetOrganizationIncludingDeleted(ctx, id.String())
 	if err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "get organization (including deleted)", err)
+		return fmt.Errorf(FmtDBQueryErr, "get organization (including deleted)", err)
 	}
 
 	deletedOrg, err := rowToOrganization(deletedOrgRow)
 	if err != nil {
-		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
+		return fmt.Errorf(FmtRowParsingErr, "organization", err)
 	}
 
 	if err := qtx.HardDeleteOrganization(ctx, deletedOrg.ID.String()); err != nil {
-		return fmt.Errorf(FmtErrDBQuery, "hard delete organization", err)
+		return fmt.Errorf(FmtDBQueryErr, "hard delete organization", err)
 	}
 
 	if err := createAuditLog(
@@ -354,11 +354,11 @@ func (r *OrganizationRepository) HardDelete(ctx context.Context, id uuid.UUID) e
 		deletedOrg,
 		nil,
 	); err != nil {
-		return fmt.Errorf(FmtErrAuditLog, err)
+		return fmt.Errorf(FmtAuditLogErr, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf(FmtErrCommitDBTx, err)
+		return fmt.Errorf(FmtCommitTxErr, err)
 	}
 
 	return nil
@@ -386,24 +386,24 @@ func (r *OrganizationRepository) WithTx(tx *sql.Tx) *OrganizationRepository {
 func rowToOrganization(row sqldb.Organization) (*domain.Organization, error) {
 	id, err := uuid.Parse(row.ID)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrParseDBColumn, "id as uuid", err)
+		return nil, fmt.Errorf(FmtColumnParsingErr, "id as uuid", err)
 	}
 
 	createdAt, err := time.Parse(DBTimeFormat, row.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrParseDBColumn, "created_at as time", err)
+		return nil, fmt.Errorf(FmtColumnParsingErr, "created_at as time", err)
 	}
 
 	updatedAt, err := time.Parse(DBTimeFormat, row.UpdatedAt)
 	if err != nil {
-		return nil, fmt.Errorf(FmtErrParseDBColumn, "updated_at as time", err)
+		return nil, fmt.Errorf(FmtColumnParsingErr, "updated_at as time", err)
 	}
 
 	var deletedAt *time.Time
 	if row.DeletedAt.Valid {
 		t, err := time.Parse(DBTimeFormat, row.DeletedAt.String)
 		if err != nil {
-			return nil, fmt.Errorf(FmtErrParseDBColumn, "deleted_at as time", err)
+			return nil, fmt.Errorf(FmtColumnParsingErr, "deleted_at as time", err)
 		}
 		deletedAt = &t
 	}
