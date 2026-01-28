@@ -126,11 +126,7 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 
 	qtx := r.queries.WithTx(tx)
 
-	params, err := organizationToCreateParams(org)
-	if err != nil {
-		return fmt.Errorf(FmtErrParseDBParams, "organization", err)
-	}
-
+	params := organizationToCreateParams(org)
 	row, err := qtx.CreateOrganization(ctx, params)
 	if err != nil {
 		return fmt.Errorf(FmtErrDBQuery, "create organization", err)
@@ -185,11 +181,7 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
 	}
 
-	params, err := organizationToUpdateParams(org)
-	if err != nil {
-		return fmt.Errorf(FmtErrParseDBParams, "organization", err)
-	}
-
+	params := organizationToUpdateParams(org)
 	orgUpdatedRow, err := qtx.UpdateOrganization(ctx, params)
 	if err != nil {
 		return fmt.Errorf(FmtErrDBQuery, "update organization", err)
@@ -242,11 +234,7 @@ func (r *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error
 		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
 	}
 
-	params, err := organizationToDeleteParams(org)
-	if err != nil {
-		return fmt.Errorf(FmtErrParseDBParams, "organization", err)
-	}
-
+	params := organizationToDeleteParams(org)
 	orgDeletedRow, err := qtx.DeleteOrganization(ctx, params)
 	if err != nil {
 		return fmt.Errorf(FmtErrDBQuery, "delete organization", err)
@@ -299,11 +287,7 @@ func (r *OrganizationRepository) Restore(ctx context.Context, id uuid.UUID) erro
 		return fmt.Errorf(FmtErrParseDBRow, "organization", err)
 	}
 
-	params, err := organizationToRestoreParams(deletedOrg)
-	if err != nil {
-		return fmt.Errorf(FmtErrParseDBParams, "organization", err)
-	}
-
+	params := organizationToRestoreParams(deletedOrg)
 	restoredOrgRow, err := qtx.RestoreOrganization(ctx, params)
 	if err != nil {
 		return fmt.Errorf(FmtErrDBQuery, "restore organization", err)
@@ -442,7 +426,7 @@ func rowToOrganization(row sqldb.Organization) (*domain.Organization, error) {
 }
 
 // organizationToCreateParams converts a domain.Organization to sqlc CreateOrganizationParams.
-func organizationToCreateParams(org *domain.Organization) (sqldb.CreateOrganizationParams, error) {
+func organizationToCreateParams(org *domain.Organization) sqldb.CreateOrganizationParams {
 	return sqldb.CreateOrganizationParams{
 		ID:        org.ID.String(),
 		Name:      org.Name,
@@ -456,12 +440,12 @@ func organizationToCreateParams(org *domain.Organization) (sqldb.CreateOrganizat
 		BankRib:   stringToNullString(org.BankRIB),
 		CreatedAt: org.CreatedAt.Format(DBTimeFormat),
 		UpdatedAt: org.UpdatedAt.Format(DBTimeFormat),
-	}, nil
+	}
 }
 
 // organizationToUpdateParams converts a domain.Organization to sqlc UpdateOrganizationParams.
 // Note: UpdatedAt is set to current time, not taken from the domain object.
-func organizationToUpdateParams(org *domain.Organization) (sqldb.UpdateOrganizationParams, error) {
+func organizationToUpdateParams(org *domain.Organization) sqldb.UpdateOrganizationParams {
 	return sqldb.UpdateOrganizationParams{
 		Name:      org.Name,
 		Address:   stringToNullString(org.Address),
@@ -474,12 +458,12 @@ func organizationToUpdateParams(org *domain.Organization) (sqldb.UpdateOrganizat
 		BankRib:   stringToNullString(org.BankRIB),
 		UpdatedAt: time.Now().Format(DBTimeFormat),
 		ID:        org.ID.String(),
-	}, nil
+	}
 }
 
 // organizationToDeleteParams converts a domain.Organization to sqlc DeleteOrganizationParams.
 // Sets both deleted_at and updated_at to current time.
-func organizationToDeleteParams(org *domain.Organization) (sqldb.DeleteOrganizationParams, error) {
+func organizationToDeleteParams(org *domain.Organization) sqldb.DeleteOrganizationParams {
 	now := time.Now().Format(DBTimeFormat)
 	return sqldb.DeleteOrganizationParams{
 		ID:        org.ID.String(),
@@ -488,16 +472,16 @@ func organizationToDeleteParams(org *domain.Organization) (sqldb.DeleteOrganizat
 			String: now,
 			Valid:  true,
 		},
-	}, nil
+	}
 }
 
 // organizationToRestoreParams converts a domain.Organization to sqlc RestoreOrganizationParams.
 // Sets updated_at to current time.
-func organizationToRestoreParams(org *domain.Organization) (sqldb.RestoreOrganizationParams, error) {
+func organizationToRestoreParams(org *domain.Organization) sqldb.RestoreOrganizationParams {
 	return sqldb.RestoreOrganizationParams{
 		ID:        org.ID.String(),
 		UpdatedAt: time.Now().Format(DBTimeFormat),
-	}, nil
+	}
 }
 
 // ============================================================================
