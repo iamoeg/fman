@@ -468,10 +468,7 @@ func organizationToDeleteParams(org *domain.Organization) sqldb.DeleteOrganizati
 	return sqldb.DeleteOrganizationParams{
 		ID:        org.ID.String(),
 		UpdatedAt: now,
-		DeletedAt: sql.NullString{
-			String: now,
-			Valid:  true,
-		},
+		DeletedAt: stringToNullString(now),
 	}
 }
 
