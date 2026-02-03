@@ -146,13 +146,21 @@ func (e *Employee) ValidateOrgID() error {
 	return nil
 }
 
-// ValidateSerialNum ensures the employee number is valid (>= 1).
+// ValidateSerialNum ensures the employee number is valid.
 // Employee serial numbers are unique within an organization.
 func (e *Employee) ValidateSerialNum() error {
 	if e.SerialNum < MinEmployeeSerialNum {
 		return fmt.Errorf(
 			"%w: must be >= 1",
 			ErrInvalidEmployeeSerialNum,
+		)
+	}
+	if e.SerialNum > MaxEmployeeSerialNum {
+		return fmt.Errorf(
+			"%w: serial number %d exceeds maximum safe value %d",
+			ErrInvalidEmployeeSerialNum,
+			e.SerialNum,
+			MaxEmployeeSerialNum,
 		)
 	}
 	return nil
@@ -368,6 +376,9 @@ func (ms MaritalStatusEnum) IsSupported() bool {
 const (
 	// MinEmployeeSerialNum is the minimum valid employee serial number.
 	MinEmployeeSerialNum = 1
+
+	// MaxEmployeeSerialNum is the maximum valid employee serial number (max safe int32 value).
+	MaxEmployeeSerialNum = 2_147_483_647
 
 	// MinEmployeeNumDependents is the minimum number of dependents (0).
 	MinEmployeeNumDependents = 0
