@@ -94,6 +94,10 @@ func (r *EmployeeRepository) FindByOrgAndSerialNum(ctx context.Context, orgID uu
 		return nil, fmt.Errorf(FmtRowParsingErr, "employee", err)
 	}
 
+	if emp.DeletedAt != nil {
+		return nil, ErrRecordNotFound
+	}
+
 	return emp, nil
 }
 
@@ -591,7 +595,7 @@ func employeeToUpdateParams(emp *domain.Employee) sqldb.UpdateEmployeeParams {
 		Position:              emp.Position,
 		CompensationPackageID: emp.CompensationPackageID.String(),
 		BankRib:               stringToNullString(emp.BankRIB),
-		UpdatedAt:             emp.UpdatedAt.Format(DBTimeFormat),
+		UpdatedAt:             time.Now().Format(DBTimeFormat),
 		ID:                    emp.ID.String(),
 	}
 }
