@@ -255,6 +255,16 @@ func TestLoad_ConfigNotFound(t *testing.T) {
 	require.ErrorIs(t, err, config.ErrConfigNotFound)
 }
 
+func TestLoad_ConfigNotFoundInXDGSearch(t *testing.T) {
+	// Override XDG paths to non-existent directories
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// Load with empty path (triggers XDG search)
+	_, err := config.Load("")
+	require.Error(t, err)
+	require.ErrorIs(t, err, config.ErrConfigNotFound)
+}
+
 func TestLoad_InvalidYAML(t *testing.T) {
 	t.Parallel()
 
