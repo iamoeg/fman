@@ -333,6 +333,751 @@ func rowToEmployee(row sqldb.Employee) (*domain.Employee, error) {
 
 ---
 
+## Repository Layer Implementation
+
+### Overview
+
+The repository layer has been fully implemented following Go-idiomatic
+hexagonal architecture principles.
+All repositories implicitly satisfy interfaces defined by application services
+through structural typing.
+
+**Location:** `internal/adapter/sqlite/`
+
+**Implemented Repositories:**
+
+- `OrganizationRepository` - Organization data persistence
+- `EmployeeRepository` - Employee data with serial number management
+- `EmployeeCompensationPackageRepository` - Compensation packages with usage guards
+- `PayrollPeriodRepository` - Payroll periods with workflow methods
+- `PayrollResultRepository` - Immutable payroll calculation results
+- `AuditLogRepository` - Read-only audit trail queries
+
+### Common Repository Pattern
+
+All repositories follow a consistent structure:
+
+```go
+// Repository struct with dependencies
+type EntityRepository struct {
+    db      *sql.DB
+    queries *sqldb.Queries
+}
+
+// Constructor
+func NewEntityRepository(db *sql.DB) *EntityRepository {
+    return &EntityRepository{
+        db:      db,
+        queries: sqldb.New(db),
+    }
+}
+
+// Transaction support
+func (r *EntityRepository) WithTx(tx *sql.Tx) *EntityRepository {
+    return &EntityRepository{
+        db:      r.db,
+        queries: r.queries.WithTx(tx),
+    }
+}
+
+// Query methods (read operations)
+func (r *EntityRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Entity, error) {
+    row, err := r.queries.GetEntity(ctx, id.String())
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, ErrRecordNotFound
+        }
+        return nil, fmt.Errorf(FmtDBQueryErr, "find by id", err)
+    }
+
+    entity, err := rowToEntity(row)
+    if err != nil {
+        return nil, err
+    }
+
+    // Filter soft-deleted records
+    if entity.DeletedAt != nil {
+        return nil, ErrRecordNotFound
+    }
+
+    return entity, nil
+}
+
+// Mutation methods (write operations with transactions and audit logging)
+func (r *EntityRepository) Create(ctx context.Context, entity *domain.Entity) error {
+    // Start transaction
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    qtx := r.queries.WithTx(tx)
+
+    // Create entity
+    params, err := entityToCreateParams(entity)
+    if err != nil {
+        return err
+    }
+
+    row, err := qtx.CreateEntity(ctx, params)
+    if err != nil {
+        return fmt.Errorf(FmtDBQueryErr, "create", err)
+    }
+
+    // Convert back to domain (to get any DB-generated values)
+    created, err := rowToEntity(row)
+    if err != nil {
+        return err
+    }
+
+    // Create audit log
+    err = createAuditLog(ctx, qtx, TableNameEntity, created.ID, DBActionCreate, nil, created)
+    if err != nil {
+        return fmt.Errorf("failed to create audit log: %w", err)
+    }
+
+    // Commit transaction
+    if err := tx.Commit(); err != nil {
+        return fmt.Errorf("failed to commit transaction: %w", err)
+    }
+
+    return nil
+}
+```
+
+### Repository-Specific Patterns
+
+#### 1. OrganizationRepository
+
+**Characteristics:**
+
+- Simplest repository - no complex dependencies
+- Serves as the base pattern for all other repositories
+- All fields can be updated (no immutable fields)
+
+**Unique Methods:** None - follows base CRUD pattern exactly
+
+#### 2. EmployeeRepository
+
+**Characteristics:**
+
+- Multi-tenant with organization-scoped serial numbers
+- Immutable fields: `org_id`, `serial_num`
+- Foreign keys: `org_id` (CASCADE), `compensation_package_id` (RESTRICT)
+
+**Unique Methods:**
+
+```go
+// GetNextSerialNumber returns the next available serial number for an organization
+func (r *EmployeeRepository) GetNextSerialNumber(
+    ctx context.Context,
+    orgID uuid.UUID,
+) (int, error) {
+    sn, err := r.queries.GetNextSerialNumber(ctx, orgID.String())
+    if err != nil {
+        return 0, fmt.Errorf(FmtDBQueryErr, "get next serial number", err)
+    }
+    return int(sn), nil
+}
+
+// FindByOrgAndSerialNum finds an employee by organization and serial number
+func (r *EmployeeRepository) FindByOrgAndSerialNum(
+    ctx context.Context,
+    orgID uuid.UUID,
+    serialNum int,
+) (*domain.Employee, error) {
+    // ... implementation with soft-delete filtering
+}
+```
+
+**Usage Pattern:**
+
+```go
+// Service layer generates serial number
+serialNum, err := empRepo.GetNextSerialNumber(ctx, orgID)
+employee.SerialNum = serialNum
+err = empRepo.Create(ctx, employee)
+```
+
+#### 3. EmployeeCompensationPackageRepository
+
+**Characteristics:**
+
+- Historical artifact protection
+- Cannot Update/Delete if referenced by employees or payroll results
+- Usage guard pattern
+
+**Unique Methods:**
+
+```go
+// CountEmployeesUsing returns count of employees using this package
+func (r *EmployeeCompensationPackageRepository) CountEmployeesUsing(
+    ctx context.Context,
+    pkgID uuid.UUID,
+) (int64, error) {
+    count, err := r.queries.CountEmployeesUsingCompensationPackage(ctx, pkgID.String())
+    if err != nil {
+        return 0, fmt.Errorf(FmtDBQueryErr, "count employees using", err)
+    }
+    return count, nil
+}
+
+// CountPayrollResultsUsing returns count of payroll results using this package
+func (r *EmployeeCompensationPackageRepository) CountPayrollResultsUsing(
+    ctx context.Context,
+    pkgID uuid.UUID,
+) (int64, error) {
+    count, err := r.queries.CountPayrollResultsUsingCompensationPackage(ctx, pkgID.String())
+    if err != nil {
+        return 0, fmt.Errorf(FmtDBQueryErr, "count payroll results using", err)
+    }
+    return count, nil
+}
+
+// checkNotInUse verifies package is not referenced before allowing modifications
+func (r *EmployeeCompensationPackageRepository) checkNotInUse(
+    ctx context.Context,
+    qtx *sqldb.Queries,
+    id uuid.UUID,
+) error {
+    empCount, err := qtx.CountEmployeesUsingCompensationPackage(ctx, id.String())
+    if err != nil {
+        return fmt.Errorf(FmtDBQueryErr, "count employees using", err)
+    }
+    if empCount > 0 {
+        return ErrCompensationPackageInUse
+    }
+
+    resultCount, err := qtx.CountPayrollResultsUsingCompensationPackage(ctx, id.String())
+    if err != nil {
+        return fmt.Errorf(FmtDBQueryErr, "count payroll results using", err)
+    }
+    if resultCount > 0 {
+        return ErrCompensationPackageInUse
+    }
+
+    return nil
+}
+```
+
+**Update/Delete Pattern:**
+
+```go
+func (r *EmployeeCompensationPackageRepository) Update(...) error {
+    tx, _ := r.db.BeginTx(ctx, nil)
+    defer tx.Rollback()
+
+    qtx := r.queries.WithTx(tx)
+
+    // Check usage before allowing update
+    if err := r.checkNotInUse(ctx, qtx, pkg.ID); err != nil {
+        return err
+    }
+
+    // Proceed with update...
+}
+```
+
+#### 4. PayrollPeriodRepository
+
+**Characteristics:**
+
+- Workflow-based state management
+- Explicit methods for status transitions
+- Immutable fields: `org_id`, `year`, `month`
+- UNIQUE constraint on (org_id, year, month)
+
+**Unique Methods:**
+
+```go
+// Finalize transitions a payroll period from DRAFT to FINALIZED
+func (r *PayrollPeriodRepository) Finalize(
+    ctx context.Context,
+    id uuid.UUID,
+) error {
+    tx, _ := r.db.BeginTx(ctx, nil)
+    defer tx.Rollback()
+
+    qtx := r.queries.WithTx(tx)
+
+    // Get current state
+    old, err := qtx.GetPayrollPeriod(ctx, id.String())
+    if err != nil {
+        return fmt.Errorf(FmtDBQueryErr, "get period", err)
+    }
+
+    // Use explicit finalization query
+    now := time.Now().UTC().Format(DBTimeFormat)
+    updated, err := qtx.FinalizePayrollPeriod(ctx, sqldb.FinalizePayrollPeriodParams{
+        FinalizedAt: sql.NullString{String: now, Valid: true},
+        UpdatedAt:   now,
+        ID:          id.String(),
+    })
+    if err != nil {
+        return fmt.Errorf(FmtDBQueryErr, "finalize period", err)
+    }
+
+    // Create audit log
+    periodOld, _ := rowToPayrollPeriod(old)
+    periodUpdated, _ := rowToPayrollPeriod(updated)
+    createAuditLog(ctx, qtx, TableNamePayrollPeriod, periodUpdated.ID, DBActionUpdate, periodOld, periodUpdated)
+
+    return tx.Commit()
+}
+
+// Unfinalize transitions a payroll period from FINALIZED back to DRAFT
+// Used for error correction
+func (r *PayrollPeriodRepository) Unfinalize(ctx context.Context, id uuid.UUID) error {
+    // Similar pattern using UnfinalizePayrollPeriod query
+}
+
+// FindByOrgYearMonth finds a payroll period by organization, year, and month
+func (r *PayrollPeriodRepository) FindByOrgYearMonth(
+    ctx context.Context,
+    orgID uuid.UUID,
+    year, month int,
+) (*domain.PayrollPeriod, error) {
+    // ... implementation
+}
+
+// FindAllDraft returns all draft (unfinalized) payroll periods
+func (r *PayrollPeriodRepository) FindAllDraft(ctx context.Context) ([]*domain.PayrollPeriod, error) {
+    // ... implementation
+}
+```
+
+**Why Explicit Workflow Methods:**
+
+- Enforces business rules at SQL level (WHERE status = 'DRAFT')
+- Prevents accidental status changes
+- Self-documenting code
+- Type-safe with sqlc-generated functions
+
+#### 5. PayrollResultRepository
+
+**Characteristics:**
+
+- **No Update method** - completely immutable
+- Most complex domain model (20+ money fields)
+- UNIQUE constraint on (payroll_period_id, employee_id)
+- Money field conversions (int64 ↔ Money)
+
+**Key Differences:**
+
+```go
+// PayrollResultRepository DOES NOT HAVE:
+func (r *PayrollResultRepository) Update(...) error  // ❌ Does not exist!
+
+// If correction needed: Delete and recreate
+func CorrectPayrollResult(ctx, periodID uuid.UUID) error {
+    // Delete entire period's results
+    results, _ := repo.FindByPayrollPeriod(ctx, periodID)
+    for _, result := range results {
+        repo.Delete(ctx, result.ID)
+    }
+
+    // Regenerate from scratch
+    service.GeneratePayroll(ctx, periodID)
+}
+```
+
+**Money Field Conversions:**
+
+```go
+func rowToPayrollResult(row sqldb.PayrollResult) (*domain.PayrollResult, error) {
+    return &domain.PayrollResult{
+        // Convert int64 cents to Money
+        BaseSalary: money.FromCents(row.BaseSalaryCents),
+        SeniorityBonus: money.FromCents(row.SeniorityBonusCents),
+        GrossSalary: money.FromCents(row.GrossSalaryCents),
+        // ... 20+ more money fields
+    }, nil
+}
+
+func payrollResultToCreateParams(res *domain.PayrollResult) sqldb.CreatePayrollResultParams {
+    return sqldb.CreatePayrollResultParams{
+        // Convert Money to int64 cents
+        BaseSalaryCents: res.BaseSalary.Cents(),
+        SeniorityBonusCents: res.SeniorityBonus.Cents(),
+        GrossSalaryCents: res.GrossSalary.Cents(),
+        // ... 20+ more money fields
+    }
+}
+```
+
+#### 6. AuditLogRepository
+
+**Characteristics:**
+
+- **Read-only** - no Create/Update/Delete methods exposed
+- Audit logs created automatically via `createAuditLog()` helper
+- Infrastructure concern, not domain entity
+- All queries return results in DESC order (most recent first)
+
+**Unique Approach:**
+
+```go
+// ❌ AuditLogRepository DOES NOT HAVE:
+func (r *AuditLogRepository) Create(...) error  // Does not exist!
+func (r *AuditLogRepository) Update(...) error  // Does not exist!
+func (r *AuditLogRepository) Delete(...) error  // Does not exist!
+
+// ✅ AuditLogRepository ONLY HAS query methods:
+func (r *AuditLogRepository) FindForRecord(...) ([]*AuditLog, error)
+func (r *AuditLogRepository) FindRecent(...) ([]*AuditLog, error)
+func (r *AuditLogRepository) FindByTable(...) ([]*AuditLog, error)
+func (r *AuditLogRepository) FindByAction(...) ([]*AuditLog, error)
+```
+
+**Audit logs are created in other repositories:**
+
+```go
+// In OrganizationRepository.Create()
+tx, _ := r.db.BeginTx(ctx, nil)
+qtx := r.queries.WithTx(tx)
+
+// Create organization
+org, _ := qtx.CreateOrganization(ctx, params)
+
+// Create audit log (same transaction)
+createAuditLog(ctx, qtx, "organization", org.ID, "CREATE", nil, org)
+
+tx.Commit()
+```
+
+### Utility Functions
+
+#### Audit Logging Helper (`util.go`)
+
+```go
+// DBActionEnum represents types of database actions for audit logging
+type DBActionEnum string
+
+const (
+    DBActionCreate     DBActionEnum = "CREATE"
+    DBActionUpdate     DBActionEnum = "UPDATE"
+    DBActionDelete     DBActionEnum = "DELETE"
+    DBActionRestore    DBActionEnum = "RESTORE"
+    DBActionHardDelete DBActionEnum = "HARD_DELETE"
+)
+
+// createAuditLog creates an audit log entry for a database mutation
+func createAuditLog(
+    ctx context.Context,
+    qtx *sqldb.Queries,
+    tableName string,
+    recordID uuid.UUID,
+    action DBActionEnum,
+    before, after interface{},
+) error {
+    var beforeJSON, afterJSON string
+
+    // Serialize before state
+    if before != nil {
+        b, _ := json.Marshal(before)
+        beforeJSON = string(b)
+    }
+
+    // Serialize after state
+    if after != nil {
+        b, _ := json.Marshal(after)
+        afterJSON = string(b)
+    } else {
+        // HARD_DELETE: after is nil, but SQL expects valid JSON
+        afterJSON = "null"
+    }
+
+    params := sqldb.CreateAuditLogParams{
+        ID:        uuid.New().String(),
+        TableName: tableName,
+        RecordID:  recordID.String(),
+        Action:    string(action),
+        Before:    sql.NullString{String: beforeJSON, Valid: beforeJSON != ""},
+        After:     afterJSON,
+        Timestamp: time.Now().UTC().Format(DBTimeFormat),
+    }
+
+    return qtx.CreateAuditLog(ctx, params)
+}
+```
+
+#### NULL Handling Helpers
+
+```go
+// stringToNullString converts empty string to SQL NULL
+func stringToNullString(s string) sql.NullString {
+    if s == "" {
+        return sql.NullString{Valid: false}
+    }
+    return sql.NullString{String: s, Valid: true}
+}
+
+// nullStringToString converts SQL NULL to empty string
+func nullStringToString(ns sql.NullString) string {
+    if !ns.Valid {
+        return ""
+    }
+    return ns.String
+}
+```
+
+### Error Handling
+
+#### Sentinel Errors
+
+```go
+var (
+    // ErrRecordNotFound is returned when a record is not found in the database
+    ErrRecordNotFound = errors.New("record not found")
+
+    // ErrCompensationPackageInUse is returned when attempting to modify/delete
+    // a compensation package that is currently referenced by employees or payroll results
+    ErrCompensationPackageInUse = errors.New("compensation package is in use and cannot be modified")
+)
+```
+
+#### Error Message Formats
+
+```go
+const (
+    // FmtDBQueryErr is the format string for database query errors
+    FmtDBQueryErr = "database query error (%s): %w"
+)
+```
+
+#### Usage Pattern
+
+```go
+func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Entity, error) {
+    row, err := r.queries.GetEntity(ctx, id.String())
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, ErrRecordNotFound  // Sentinel error for programmatic handling
+        }
+        return nil, fmt.Errorf(FmtDBQueryErr, "find by id", err)  // Wrapped with context
+    }
+    // ...
+}
+```
+
+### Testing Strategy
+
+#### Test Database Setup
+
+Every test uses a fresh in-memory SQLite database:
+
+```go
+func setupTestDB(t *testing.T) *sql.DB {
+    t.Helper()
+
+    // Set SQLite dialect for goose
+    goose.SetDialect("sqlite3")
+
+    // Create in-memory database
+    db, err := sql.Open("sqlite", ":memory:")
+    require.NoError(t, err)
+
+    // Enable foreign keys (CRITICAL for SQLite)
+    _, err = db.Exec("PRAGMA foreign_keys = ON")
+    require.NoError(t, err)
+
+    // Run migrations
+    err = goose.Up(db, "../../../../db/migration")
+    require.NoError(t, err)
+
+    return db
+}
+```
+
+#### Test Data Generation
+
+Use atomic counters to generate unique test data:
+
+```go
+var orgCounter int64
+var empCounter int64
+
+func createTestOrganization() *domain.Organization {
+    counter := atomic.AddInt64(&orgCounter, 1)
+    return &domain.Organization{
+        ID:         uuid.New(),
+        Name:       fmt.Sprintf("Test Organization %d", counter),
+        LegalForm:  domain.LegalFormSARL,
+        ICENum:     fmt.Sprintf("%015d", counter),  // Unique ICE number
+        IFNum:      fmt.Sprintf("%08d", counter),   // Unique IF number
+        RCNum:      fmt.Sprintf("%06d", counter),   // Unique RC number
+        CreatedAt:  time.Now().UTC(),
+        UpdatedAt:  time.Now().UTC(),
+    }
+}
+
+func createTestEmployee(orgID, compPackID uuid.UUID, serialNum int) *domain.Employee {
+    counter := atomic.AddInt64(&empCounter, 1)
+    return &domain.Employee{
+        ID:                    uuid.New(),
+        OrgID:                 orgID,
+        SerialNum:             serialNum,
+        FullName:              fmt.Sprintf("Employee %d", counter),
+        CINNum:                fmt.Sprintf("AA%06d", counter),  // Unique CIN
+        CNSSNum:               fmt.Sprintf("%09d", counter),    // Unique CNSS
+        CompensationPackageID: compPackID,
+        // ... other fields
+    }
+}
+```
+
+#### Test Isolation Pattern
+
+Each test subtest gets its own database:
+
+```go
+func TestEmployeeRepository_CRUD(t *testing.T) {
+    tests := []struct {
+        name string
+        test func(*testing.T)
+    }{
+        {"creates employee successfully", testCreateEmployee},
+        {"finds employee by ID", testFindEmployee},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            t.Parallel()  // Run subtests in parallel
+
+            // Each subtest gets fresh database
+            db := setupTestDB(t)
+            defer db.Close()
+
+            // Run the test
+            tt.test(t)
+        })
+    }
+}
+```
+
+#### Timestamp Comparison
+
+Always normalize timestamps before comparison:
+
+```go
+// Store time before operation
+before := time.Now().UTC().Truncate(time.Second)
+
+// Perform operation
+repo.Create(ctx, entity)
+
+// Find created entity
+found, _ := repo.FindByID(ctx, entity.ID)
+
+// Compare with normalization
+assert.Equal(t,
+    before,
+    found.CreatedAt.UTC().Truncate(time.Second),
+)
+```
+
+### Testing Statistics
+
+Total test coverage across all repositories:
+
+| Repository           | Test Cases | Coverage |
+| -------------------- | ---------- | -------- |
+| Organization         | ~40        | ~95%     |
+| Employee             | ~50        | ~95%     |
+| Compensation Package | ~45        | ~95%     |
+| Payroll Period       | ~60        | ~95%     |
+| Payroll Result       | ~40        | ~95%     |
+| Audit Log            | ~25        | ~90%     |
+| **TOTAL**            | **~260**   | **~94%** |
+
+### Common Pitfalls & Solutions
+
+#### 1. Forgetting `defer tx.Rollback()`
+
+**Problem:** Transaction leaks if commit fails
+
+**Solution:**
+
+```go
+tx, _ := r.db.BeginTx(ctx, nil)
+defer tx.Rollback()  // ✅ Always defer immediately!
+
+// ... operations
+
+tx.Commit()  // Rollback becomes no-op after commit
+```
+
+#### 2. Using `r.queries` Instead of `qtx` in Transactions
+
+**Problem:** Operations not part of transaction
+
+**Solution:**
+
+```go
+tx, _ := r.db.BeginTx(ctx, nil)
+defer tx.Rollback()
+
+qtx := r.queries.WithTx(tx)  // ✅ Get transaction-aware queries
+
+// ❌ WRONG: r.queries.CreateEntity(...)
+// ✅ RIGHT: qtx.CreateEntity(...)
+```
+
+#### 3. Forgetting Soft-Delete Filtering
+
+**Problem:** Primitive queries return soft-deleted records
+
+**Solution:**
+
+```go
+func (r *Repo) FindByID(ctx, id) (*Entity, error) {
+    row, _ := r.queries.GetEntity(ctx, id)
+    entity, _ := rowToEntity(row)
+
+    // ✅ Always check for soft delete
+    if entity.DeletedAt != nil {
+        return nil, ErrRecordNotFound
+    }
+
+    return entity, nil
+}
+```
+
+#### 4. Not Using Atomic Counters in Tests
+
+**Problem:** UNIQUE constraint violations in parallel tests
+
+**Solution:**
+
+```go
+// ❌ WRONG: Same value every time
+return &Organization{ICENum: "123456789"}
+
+// ✅ RIGHT: Atomic counter ensures uniqueness
+counter := atomic.AddInt64(&orgCounter, 1)
+return &Organization{ICENum: fmt.Sprintf("%015d", counter)}
+```
+
+#### 5. Timestamp Comparison Failures
+
+**Problem:** Timezone and precision differences
+
+**Solution:**
+
+```go
+// ❌ WRONG: Different timezones or precision
+assert.Equal(t, expected, found.CreatedAt)
+
+// ✅ RIGHT: Normalize both
+assert.Equal(t,
+    expected.UTC().Truncate(time.Second),
+    found.CreatedAt.UTC().Truncate(time.Second),
+)
+```
+
+---
+
 ## Key Design Decisions
 
 ### 1. Money as Integer Cents with Error Handling

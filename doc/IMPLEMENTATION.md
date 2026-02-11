@@ -9,11 +9,12 @@ Phase-by-phase implementation guide for the financial management application.
 1. [Overview](#overview)
 2. [Phase 1A - Foundation](#phase-1a---foundation-completed)
 3. [Phase 1B - Domain Models & Tests](#phase-1b---domain-models--tests-completed)
-4. [Phase 1C - Repositories & Application Services](#phase-1c---repositories--application-services-in-progress)
-5. [Phase 1D - Payroll Engine](#phase-1d---payroll-engine)
-6. [Phase 1E - TUI Implementation](#phase-1e---tui-implementation)
-7. [Phase 1F - Export & Polish](#phase-1f---export--polish)
-8. [Things to Consider](#things-to-consider)
+4. [Phase 1C - Repositories](#phase-1c---repositories-completed)
+5. [Phase 1D - Application Services](#phase-1d---application-services)
+6. [Phase 1E - Payroll Engine](#phase-1e---payroll-engine)
+7. [Phase 1F - TUI Implementation](#phase-1f---tui-implementation)
+8. [Phase 1G - Export & Polish](#phase-1g---export--polish)
+9. [Things to Consider](#things-to-consider)
 
 ---
 
@@ -26,7 +27,7 @@ Development follows an iterative, phased approach:
 - Test as you go
 - Payroll is the priority (Phase 1 focus)
 
-**Current Phase:** 1C - Repositories & Application Services
+**Current Phase:** 1D - Application Services
 
 ---
 
@@ -214,25 +215,32 @@ Complete implementation of Money type with:
 
 ---
 
-## Phase 1C - Repositories & Application Services 🔄 IN PROGRESS
+## Phase 1C - Repositories ✅ COMPLETED
 
-**Duration:** Weeks 3-4  
-**Status:** 🔄 In Progress
+**Duration:** Weeks 3-4
+**Status:** ✅ Complete
 
-### Progress Overview
+### Overview
 
-#### ✅ Completed: SQL Query Definitions
+Complete implementation of all repository layer components including SQL queries,
+repository implementations, comprehensive testing, and utility functions.
 
-All SQL query files have been created, reviewed, and are ready for sqlc code generation.
+### Delivered
+
+#### 1. SQL Query Definitions ✅
+
+All SQL query files created, reviewed, and sqlc code generated:
 
 **Files Created:**
 
-- `db/query/organization.sql` - Organization CRUD operations
-- `db/query/employee.sql` - Employee CRUD operations
-- `db/query/employee_compensation_package.sql` - Compensation package operations
-- `db/query/payroll_period.sql` - Payroll period operations
-- `db/query/payroll_result.sql` - Payroll result operations
-- `db/query/audit_log.sql` - Audit trail operations
+- `db/query/organization.sql` - Organization CRUD operations (8 queries)
+- `db/query/employee.sql` - Employee CRUD operations (12 queries)
+- `db/query/employee_compensation_package.sql` - Compensation package operations (8 queries)
+- `db/query/payroll_period.sql` - Payroll period operations (15 queries)
+- `db/query/payroll_result.sql` - Payroll result operations (11 queries)
+- `db/query/audit_log.sql` - Audit trail operations (5 queries)
+
+**Total:** 59 SQL queries across 6 entity types
 
 **Query Pattern Established:**
 
@@ -258,94 +266,307 @@ All entity query files follow a consistent pattern:
    - Entity-specific queries (e.g., `GetNextSerialNumber` for employees)
    - Relationship queries (e.g., `CountEmployeesUsingCompensationPackage`)
 
-**Key Design Decisions Made:**
+#### 2. Repository Implementations ✅
 
-1. **Primitive Queries with Repository-Level Filtering:**
-   - SQL queries are "primitives" - they don't filter deleted_at by default
-   - Repository layer decides whether to use filtered or unfiltered queries
-   - Supports user requirement: view/restore archived data
+**All 6 repositories fully implemented:**
 
-2. **Immutable Core Fields:**
-   - `org_id`, `serial_num` excluded from employee UPDATE
-   - `org_id`, `year`, `month` excluded from payroll_period UPDATE
-   - These fields define identity and should never change
+1. **OrganizationRepository** (`organization_repo.go`)
+   - Base pattern for all other repositories
+   - Simple entity with no complex dependencies
+   - ~40 test cases
 
-3. **Explicit Workflow Queries:**
-   - `FinalizePayrollPeriod` / `UnfinalizePayrollPeriod` instead of generic UPDATE
-   - Enforces business workflow at query level
-   - Prevents accidental status changes
+2. **EmployeeRepository** (`employee_repo.go`)
+   - Per-organization serial number generation
+   - Multi-organization isolation
+   - Immutable fields (org_id, serial_num)
+   - Complex foreign key handling (CASCADE + RESTRICT)
+   - ~50 test cases with Arabic name support
 
-4. **Audit Trail Queries:**
-   - `ListAuditLogsForRecord` - View complete history for a record
-   - `ListAuditLogsRecent` - View recent changes system-wide
-   - `ListAuditLogsByTable` / `ListAuditLogsByAction` - Filtered views
-   - `CreateAuditLog` - Repository layer inserts audit records in transactions
+3. **EmployeeCompensationPackageRepository** (`compensation_package_repo.go`)
+   - Historical artifact protection - cannot modify if in use
+   - Usage guard pattern with `checkNotInUse()` helper
+   - Checks both employees and payroll results before Update/Delete
+   - Money precision preservation
+   - ~45 test cases
 
-5. **Consistent Naming Convention:**
-   - All queries use `-- name: QueryName :type` format
-   - `:one` returns single record or error
-   - `:many` returns slice of records
-   - `:exec` executes without returning data
+4. **PayrollPeriodRepository** (`payroll_period_repo.go`)
+   - Explicit workflow methods: `Finalize()` / `Unfinalize()`
+   - Status transitions enforced at SQL level
+   - UNIQUE constraint on (org_id, year, month)
+   - Draft period filtering
+   - ~60 test cases with comprehensive workflow testing
 
-**Query Statistics:**
+5. **PayrollResultRepository** (`payroll_result_repo.go`)
+   - **No Update method** - immutable by design
+   - 20+ money fields with exact precision
+   - Most complex domain model
+   - UNIQUE constraint on (payroll_period_id, employee_id)
+   - Complete audit trail even for immutable records
+   - ~40 test cases
 
-| Entity                        | Queries | GET | LIST | CREATE | UPDATE | DELETE | SPECIAL |
-| ----------------------------- | ------- | --- | ---- | ------ | ------ | ------ | ------- |
-| Organization                  | 8       | 2   | 2    | 1      | 1      | 3      | 0       |
-| Employee                      | 12      | 3   | 4    | 1      | 1      | 3      | 2       |
-| Employee Compensation Package | 8       | 2   | 2    | 1      | 1      | 3      | 0       |
-| Payroll Period                | 15      | 4   | 6    | 1      | 2      | 3      | 0       |
-| Payroll Result                | 11      | 2   | 6    | 1      | 0      | 3      | 1       |
-| Audit Log                     | 5       | 0   | 4    | 1      | 0      | 0      | 0       |
-| **TOTAL**                     | **59**  | 13  | 24   | 6      | 5      | 15     | 3       |
+6. **AuditLogRepository** (`audit_log_repo.go`)
+   - Read-only repository - no Create/Update/Delete methods
+   - Query methods: FindForRecord, FindRecent, FindByTable, FindByAction
+   - Automatic creation via `createAuditLog()` helper
+   - Infrastructure concern, not domain entity
+   - ~25 test cases
 
-**Lessons Learned:**
+#### 3. Utility Functions ✅
 
-1. **Review is Essential:** Multiple rounds of review caught:
-   - Copy-paste errors (wrong table names, wrong WHERE clauses)
-   - Missing fields in INSERT statements
-   - Typos in field names
-   - Missing RETURNING clauses
-   - Inconsistent filtering logic
+**Audit Logging Helper (`util.go`):**
 
-2. **Primitives vs Safety:** Chose primitive queries (no built-in filtering) over safe-by-default queries
-   - Provides flexibility for archive/restore features
-   - Requires discipline in repository layer
-   - Document which queries to use when
+- `createAuditLog()` - Creates audit trail for all mutations
+- `DBActionEnum` - Type-safe action types (CREATE, UPDATE, DELETE, RESTORE, HARD_DELETE)
+- Handles before/after JSON snapshots
+- Special handling for `nil` values (HARD_DELETE uses "null" JSON)
 
-3. **Consistency Matters:** Establishing patterns early (naming, structure, annotations) makes maintenance easier
+**Conversion Helpers:**
 
-4. **Special Cases Need Special Queries:**
-   - Employee serial number generation
-   - Payroll period finalization workflow
-   - Compensation package usage checking
-   - All handled with dedicated queries
+- `stringToNullString()` / `nullStringToString()` - NULL handling
+- `rowToEntity()` - Database row to domain entity
+- `entityToCreateParams()` - Domain entity to SQL INSERT params
+- `entityToUpdateParams()` - Domain entity to SQL UPDATE params
 
-5. **Field Order in INSERT Matters:** Keep consistent with schema definition to avoid confusion
+### Key Features Implemented
 
-#### 📋 Next: Repository Implementation
+- ✅ Full CRUD operations with soft deletes
+- ✅ Transaction support (BeginTx, WithTx, Rollback/Commit)
+- ✅ Comprehensive audit logging for all mutations
+- ✅ Money type conversions (integer cents ↔ domain Money)
+- ✅ Foreign key relationship handling
+- ✅ Query flexibility (with/without soft-deleted records)
+- ✅ ~260+ test cases across all repositories
+- ✅ Concurrency testing
+- ✅ Edge case coverage
+- ✅ Arabic name and Unicode support
 
-**Tasks:**
+### Design Patterns Established
 
-1. Implement repository layer (`internal/adapter/sqlite/`)
-2. Implement application services (`internal/application/`)
-3. Implement audit logging helper
-4. Write repository tests (using `:memory:`)
-5. Write service tests (using mocks)
-6. Configuration system (XDG paths)
+#### 1. Transaction Pattern
 
-**Target:** Week 3-4
+```go
+func (r *Repo) Mutate(ctx context.Context, entity *domain.Entity) error {
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback() // No-op if already committed
+
+    qtx := r.queries.WithTx(tx)
+
+    // Perform mutation
+    result, err := qtx.MutateEntity(ctx, params)
+    if err != nil {
+        return fmt.Errorf("failed to mutate: %w", err)
+    }
+
+    // Create audit log
+    err = createAuditLog(ctx, qtx, "table_name", entity.ID, action, before, after)
+    if err != nil {
+        return fmt.Errorf("failed to create audit log: %w", err)
+    }
+
+    if err := tx.Commit(); err != nil {
+        return fmt.Errorf("failed to commit transaction: %w", err)
+    }
+
+    return nil
+}
+```
+
+#### 2. Audit Logging Pattern
+
+- **CREATE:** before=nil, after=created record
+- **UPDATE:** before=old record, after=new record
+- **DELETE:** before=active record, after=deleted record
+- **RESTORE:** before=deleted record, after=restored record
+- **HARD_DELETE:** before=deleted record, after="null" (JSON)
+
+#### 3. Primitive Queries + Repository Filtering
+
+- SQL queries don't filter `deleted_at` by default
+- Repository methods choose filtered vs unfiltered queries
+- Supports archive/restore features
+- Requires discipline in implementation
+
+#### 4. Immutable Field Protection
+
+- Excluded from UPDATE queries at SQL level
+- Examples: serial_num, org_id, (year, month)
+- Tests verify fields cannot be changed
+
+#### 5. Explicit Workflow Queries
+
+- `FinalizePayrollPeriod` / `UnfinalizePayrollPeriod`
+- Enforces business rules at database level
+- Prevents accidental status changes
+
+#### 6. Historical Artifact Protection
+
+- Compensation packages in use cannot be modified
+- `checkNotInUse()` helper before Update/Delete/HardDelete
+- Protects audit trail integrity
+
+#### 7. Money Field Conversions
+
+- Domain: `money.Money` (type-safe operations)
+- Database: `int64` (exact precision, no float errors)
+- Conversion: `money.Cents()` → DB, `money.FromCents()` ← DB
+
+### Testing Statistics
+
+| Repository           | Test Cases | Lines of Test Code |
+| -------------------- | ---------- | ------------------ |
+| Organization         | ~40        | ~800               |
+| Employee             | ~50        | ~1000              |
+| Compensation Package | ~45        | ~900               |
+| Payroll Period       | ~60        | ~1200              |
+| Payroll Result       | ~40        | ~800               |
+| Audit Log            | ~25        | ~500               |
+| **TOTAL**            | **~260**   | **~5200**          |
+
+### Key Bugs Found & Fixed
+
+#### OrganizationRepository
+
+1. HardDelete called wrong SQL function
+2. Update used wrong "before" value in audit log
+3. Delete missing error check
+4. Missing transaction usage in Delete()
+5. Audit log JSON validation for HARD_DELETE (needed "null" not "")
+6. DBActionRestore missing from supported actions map
+
+#### EmployeeRepository
+
+1. FindByOrgAndSerialNum missing soft-delete filter
+2. UpdatedAt using `emp.UpdatedAt` instead of `time.Now()`
+
+#### Testing Issues
+
+1. Migration failures (missing `goose.SetDialect("sqlite3")`)
+2. UNIQUE constraint violations (needed atomic counters)
+3. Test isolation (database sharing between subtests)
+4. Timestamp comparison failures (timezone/precision)
+5. Concurrency test race conditions with :memory: database
+
+### Best Practices Established
+
+✅ Always `defer tx.Rollback()` immediately after `BeginTx()`  
+✅ Use qtx (transaction queries) not r.queries inside transactions  
+✅ Check errors after every conversion (rowTo, toParams)  
+✅ Create fresh database per test subtest for isolation  
+✅ Use atomic counters for generating unique test data  
+✅ Normalize timestamps (`.UTC().Truncate(time.Second)`) before comparing  
+✅ Test with realistic data (Arabic names, special chars)  
+✅ Document decisions while implementing, not after
+
+### What's NOT Completed
+
+**Application Services Layer** - Still need to implement:
+
+1. OrganizationService - Business logic for organizations
+2. EmployeeService - Employee CRUD + serial number generation
+3. CompensationPackageService - Usage validation before mutations
+4. PayrollService - Payroll generation, period finalization
+
+**Configuration System** - Still need:
+
+- XDG Base Directory compliance
+- YAML configuration file parsing
+- Database path management
+- Config struct and loading
+
+### Lessons Learned
+
+#### What Worked Well
+
+1. **Establishing Pattern First** - Organization repo as template saved time
+2. **Comprehensive Testing** - Caught bugs immediately
+3. **Realistic Test Data** - Moroccan context made tests meaningful
+4. **Atomic Counters** - Solved UNIQUE constraint issues elegantly
+5. **:memory: Databases** - Fast, isolated, auto-cleanup
+6. **Documentation as You Go** - Summaries captured decisions while fresh
+
+#### What Was Harder Than Expected
+
+1. **Foreign Key Complexity** - Test setup more complex with dependencies
+2. **Timestamp Handling** - UTC, Truncate, Sleep needed careful attention
+3. **Copy-Paste Errors** - Review rounds essential to catch
+4. **Transaction Patterns** - Took time to get rollback/commit right
+5. **Concurrency Testing** - SQLite :memory: + goroutines = race conditions
+
+### Time Investment
+
+| Phase                | Estimated  | Actual     | Notes                            |
+| -------------------- | ---------- | ---------- | -------------------------------- |
+| Query Definitions    | 1 day      | 2 days     | Multiple review rounds needed    |
+| Organization Repo    | 1 day      | 2 days     | Established patterns, found bugs |
+| Employee Repo        | 1 day      | 1.5 days   | Complex but pattern established  |
+| Compensation Package | 0.5 day    | 1 day      | Historical protection logic      |
+| Payroll Period       | 1 day      | 1 day      | Workflow methods                 |
+| Payroll Result       | 1 day      | 1 day      | Many fields, immutability        |
+| Audit Log            | 0.5 day    | 0.5 day    | Simplest - read-only             |
+| **TOTAL**            | **6 days** | **9 days** | Learning curve worth investment  |
 
 ---
 
-## Phase 1D - Payroll Engine
+## Phase 1D - Application Services
 
 **Duration:** Weeks 5-6  
+**Status:** 📋 Next
+
+### Goals
+
+- Implement application service layer
+- Define service interfaces
+- Orchestrate domain and repository operations
+- Implement business logic coordination
+
+### High-Level Tasks
+
+1. **EmployeeService** - Employee management
+   - Orchestrates employee repository
+   - Generates serial numbers
+   - Validates business rules
+   - Returns domain errors
+
+2. **OrganizationService** - Organization management
+   - Simple passthrough to repository initially
+   - May add business logic later
+
+3. **CompensationPackageService** - Compensation management
+   - Guards against modifying packages in use
+   - Validates SMIG (minimum wage) compliance
+
+4. **PayrollService** - Payroll processing
+   - Most complex service
+   - Coordinates multiple repositories
+   - Integrates with payroll calculator (Phase 1E)
+   - Manages period finalization workflow
+
+5. **Configuration System**
+   - XDG Base Directory compliance
+   - YAML configuration loading
+   - Database path management
+
+6. **Service Tests**
+   - Mock repositories
+   - Test orchestration logic
+   - Test error handling
+
+**Target:** 4-5 days
+
+---
+
+## Phase 1E - Payroll Engine
+
+**Duration:** Weeks 7-8  
 **Status:** 📋 Planned
 
 ### Goals
 
-- Implement Moroccan payroll calculator
+- Research exact Moroccan payroll calculation rules
+- Implement payroll calculator adapter
 - Generate monthly payroll periods
 - Create payslip PDF generation
 - Build payroll TUI screens
@@ -354,18 +575,18 @@ All entity query files follow a consistent pattern:
 
 1. Research and document exact Moroccan payroll calculation rules
 2. Implement payroll calculator (`internal/adapter/payroll/morocco/`)
-3. Implement PayrollService
+3. Integrate calculator with PayrollService
 4. Implement PDF generation adapter (payslips)
 5. Build TUI screens for payroll workflow
 6. Comprehensive testing of calculations against known examples
 
-**Details TBD when Phase 1C is complete.**
+**Details TBD when Phase 1D is complete.**
 
 ---
 
-## Phase 1E - TUI Implementation
+## Phase 1F - TUI Implementation
 
-**Duration:** Week 7  
+**Duration:** Week 9  
 **Status:** 📋 Planned
 
 ### Goals
@@ -379,9 +600,9 @@ All entity query files follow a consistent pattern:
 
 ---
 
-## Phase 1F - Export & Polish
+## Phase 1G - Export & Polish
 
-**Duration:** Week 8  
+**Duration:** Week 10  
 **Status:** 📋 Planned
 
 ### Goals
@@ -455,13 +676,14 @@ All entity query files follow a consistent pattern:
 
 ## Progress Summary
 
-| Phase                 | Status      | Duration  | Completion |
-| --------------------- | ----------- | --------- | ---------- |
-| 1A - Foundation       | ✅ Complete | Week 1    | 100%       |
-| 1B - Domain & Tests   | ✅ Complete | Week 2    | 100%       |
-| 1C - Repos & Services | ⏳ Next     | Weeks 3-4 | 0%         |
-| 1D - Payroll Engine   | 📋 Planned  | Weeks 5-6 | 0%         |
-| 1E - TUI              | 📋 Planned  | Week 7    | 0%         |
-| 1F - Export & Polish  | 📋 Planned  | Week 8    | 0%         |
+| Phase                | Status      | Duration  | Completion |
+| -------------------- | ----------- | --------- | ---------- |
+| 1A - Foundation      | ✅ Complete | Week 1    | 100%       |
+| 1B - Domain & Tests  | ✅ Complete | Week 2    | 100%       |
+| 1C - Repositories    | ✅ Complete | Weeks 3-4 | 100%       |
+| 1D - App Services    | 📋 Next     | Weeks 5-6 | 0%         |
+| 1E - Payroll Engine  | 📋 Planned  | Weeks 7-8 | 0%         |
+| 1F - TUI             | 📋 Planned  | Week 9    | 0%         |
+| 1G - Export & Polish | 📋 Planned  | Week 10   | 0%         |
 
-**Overall Progress:** Phase 1B Complete (25%)
+**Overall Progress:** Phase 1C Complete (43%)
