@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -204,6 +203,7 @@ func (r *PayrollResultRepository) FindAllIncludingDeleted(ctx context.Context) (
 // ============================================================================
 
 // Create persists a new payroll result and creates an audit log entry.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the payroll result and audit log are created in a single transaction.
 func (r *PayrollResultRepository) Create(ctx context.Context, res *domain.PayrollResult) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -217,7 +217,7 @@ func (r *PayrollResultRepository) Create(ctx context.Context, res *domain.Payrol
 	params := payrollResultToCreateParams(res)
 	row, err := qtx.CreatePayrollResult(ctx, params)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return fmt.Errorf(FmtDBQueryErr, "create payroll result", err)

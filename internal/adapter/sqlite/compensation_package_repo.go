@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -149,6 +148,7 @@ func (r *EmployeeCompensationPackageRepository) CountPayrollResultsUsing(ctx con
 // ============================================================================
 
 // Create persists a new compensation package and creates an audit log entry.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the package and audit log are created in a single transaction.
 func (r *EmployeeCompensationPackageRepository) Create(ctx context.Context, pkg *domain.EmployeeCompensationPackage) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -162,7 +162,7 @@ func (r *EmployeeCompensationPackageRepository) Create(ctx context.Context, pkg 
 	params := compensationPackageToCreateParams(pkg)
 	row, err := qtx.CreateEmployeeCompensationPackage(ctx, params)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return fmt.Errorf(FmtDBQueryErr, "create employee compensation package", err)
@@ -194,6 +194,7 @@ func (r *EmployeeCompensationPackageRepository) Create(ctx context.Context, pkg 
 
 // Update modifies an existing compensation package and creates an audit log entry with before/after snapshots.
 // Returns ErrRecordNotFound if the package doesn't exist or is soft-deleted.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // Returns ErrCompensationPackageInUse if the package is referenced by any employees or payroll results.
 // The operation is atomic - both the update and audit log are created in a single transaction.
 //
@@ -229,6 +230,9 @@ func (r *EmployeeCompensationPackageRepository) Update(ctx context.Context, pkg 
 	params := compensationPackageToUpdateParams(pkg)
 	pkgUpdatedRow, err := qtx.UpdateEmployeeCompensationPackage(ctx, params)
 	if err != nil {
+		if isUniqueConstraintViolation(err) {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "update employee compensation package", err)
 	}
 

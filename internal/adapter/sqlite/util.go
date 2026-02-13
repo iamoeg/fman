@@ -73,7 +73,7 @@ func createAuditLog(
 		After:     afterJSON,
 		Timestamp: time.Now().UTC().Format(DBTimeFormat),
 	}); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return err
@@ -118,7 +118,7 @@ var supportedDBActions = map[DBActionEnum]struct{}{
 var SupportedDBActionsStr = util.EnumMapToString(supportedDBActions)
 
 // ============================================================================
-// Helper Functions - Null String Conversion
+// Helper Functions
 // ============================================================================
 
 // nullStringToString converts sql.NullString to string.
@@ -140,6 +140,12 @@ func stringToNullString(s string) sql.NullString {
 		String: s,
 		Valid:  true,
 	}
+}
+
+// isUniqueConstraintError returns true if the error is a UNIQUE constraint violation,
+// false otherwise.
+func isUniqueConstraintViolation(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 // ============================================================================

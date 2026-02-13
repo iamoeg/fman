@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -200,6 +199,7 @@ func (r *EmployeeRepository) GetNextSerialNumber(ctx context.Context, orgID uuid
 // ============================================================================
 
 // Create persists a new employee and creates an audit log entry.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the employee and audit log are created in a single transaction.
 func (r *EmployeeRepository) Create(ctx context.Context, emp *domain.Employee) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -213,7 +213,7 @@ func (r *EmployeeRepository) Create(ctx context.Context, emp *domain.Employee) e
 	params := employeeToCreateParams(emp)
 	row, err := qtx.CreateEmployee(ctx, params)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return fmt.Errorf(FmtDBQueryErr, "create employee", err)
@@ -245,6 +245,7 @@ func (r *EmployeeRepository) Create(ctx context.Context, emp *domain.Employee) e
 
 // Update modifies an existing employee and creates an audit log entry with before/after snapshots.
 // Returns ErrRecordNotFound if the employee doesn't exist or is soft-deleted.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // Note: org_id and serial_num cannot be updated (immutable identity fields).
 // The operation is atomic - both the update and audit log are created in a single transaction.
 func (r *EmployeeRepository) Update(ctx context.Context, emp *domain.Employee) error {
@@ -272,6 +273,9 @@ func (r *EmployeeRepository) Update(ctx context.Context, emp *domain.Employee) e
 	params := employeeToUpdateParams(emp)
 	empUpdatedRow, err := qtx.UpdateEmployee(ctx, params)
 	if err != nil {
+		if isUniqueConstraintViolation(err) {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "update employee", err)
 	}
 

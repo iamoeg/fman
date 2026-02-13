@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -117,6 +116,7 @@ func (r *OrganizationRepository) FindAllIncludingDeleted(ctx context.Context) ([
 // ============================================================================
 
 // Create persists a new organization and creates an audit log entry.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the organization and audit log are created in a single transaction.
 func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organization) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -130,7 +130,7 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 	params := organizationToCreateParams(org)
 	row, err := qtx.CreateOrganization(ctx, params)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return fmt.Errorf(FmtDBQueryErr, "create organization", err)
@@ -162,6 +162,7 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 
 // Update modifies an existing organization and creates an audit log entry with before/after snapshots.
 // Returns ErrRecordNotFound if the organization doesn't exist or is soft-deleted.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the update and audit log are created in a single transaction.
 func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organization) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -188,6 +189,9 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 	params := organizationToUpdateParams(org)
 	orgUpdatedRow, err := qtx.UpdateOrganization(ctx, params)
 	if err != nil {
+		if isUniqueConstraintViolation(err) {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "update organization", err)
 	}
 

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -264,6 +263,7 @@ func (r *PayrollPeriodRepository) FindAllIncludingDeleted(ctx context.Context) (
 // ============================================================================
 
 // Create persists a new payroll period and creates an audit log entry.
+// Returns ErrDuplicateRecord in case of UNIQUE constraint violations.
 // The operation is atomic - both the period and audit log are created in a single transaction.
 func (r *PayrollPeriodRepository) Create(ctx context.Context, period *domain.PayrollPeriod) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -277,7 +277,7 @@ func (r *PayrollPeriodRepository) Create(ctx context.Context, period *domain.Pay
 	params := payrollPeriodToCreateParams(period)
 	row, err := qtx.CreatePayrollPeriod(ctx, params)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueConstraintViolation(err) {
 			return ErrDuplicateRecord
 		}
 		return fmt.Errorf(FmtDBQueryErr, "create payroll period", err)
