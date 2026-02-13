@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -216,6 +217,9 @@ func (r *PayrollResultRepository) Create(ctx context.Context, res *domain.Payrol
 	params := payrollResultToCreateParams(res)
 	row, err := qtx.CreatePayrollResult(ctx, params)
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "create payroll result", err)
 	}
 

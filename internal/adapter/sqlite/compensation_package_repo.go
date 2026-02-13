@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -161,6 +162,9 @@ func (r *EmployeeCompensationPackageRepository) Create(ctx context.Context, pkg 
 	params := compensationPackageToCreateParams(pkg)
 	row, err := qtx.CreateEmployeeCompensationPackage(ctx, params)
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "create employee compensation package", err)
 	}
 

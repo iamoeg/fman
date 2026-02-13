@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,7 +64,7 @@ func createAuditLog(
 		afterJSON = "null"
 	}
 
-	return qtx.CreateAuditLog(ctx, sqldb.CreateAuditLogParams{
+	if err := qtx.CreateAuditLog(ctx, sqldb.CreateAuditLogParams{
 		ID:        uuid.New().String(),
 		TableName: tableName,
 		RecordID:  recordID,
@@ -71,7 +72,14 @@ func createAuditLog(
 		Before:    beforeJSON,
 		After:     afterJSON,
 		Timestamp: time.Now().UTC().Format(DBTimeFormat),
-	})
+	}); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateRecord
+		}
+		return err
+	}
+
+	return nil
 }
 
 // ============================================================================
@@ -161,6 +169,13 @@ const (
 
 // Sentinel errors for programmatic error handling.
 var (
-	ErrRecordNotFound       = errors.New("sqlite: record not found")
+	// ErrRecordNotFound is returned when a record is not found in the database
+	ErrRecordNotFound = errors.New("sqlite: record not found")
+
+	// ErrDuplicateRecord is returned when attempting to create a record
+	// that violates a UNIQUE constraint
+	ErrDuplicateRecord = errors.New("duplicate record")
+
+	// ErrDBActionNotSupported is returned when attempting to perform an action on the database that isn't supported
 	ErrDBActionNotSupported = errors.New("sqlite: database action not supported")
 )

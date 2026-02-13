@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -129,6 +130,9 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 	params := organizationToCreateParams(org)
 	row, err := qtx.CreateOrganization(ctx, params)
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateRecord
+		}
 		return fmt.Errorf(FmtDBQueryErr, "create organization", err)
 	}
 
