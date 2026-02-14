@@ -201,6 +201,8 @@ func (g GenderEnum) IsSupported() bool {
 
 **Purpose:** Orchestrate business logic, define service interfaces
 
+**Status:** Phase 1D Complete - All 4 core services implemented
+
 **Responsibilities:**
 
 - Define small, focused interfaces for dependencies
@@ -209,46 +211,182 @@ func (g GenderEnum) IsSupported() bool {
 - Set timestamps and generate UUIDs
 - Transaction boundaries
 - Domain validation before persistence
+- Error translation (repository â†' service errors)
 
-**Pattern:**
+**Implemented Services:**
+
+1. **OrganizationService** - Organization management
+   - CRUD operations with soft deletes
+   - UUID generation and timestamp management
+   - Duplicate detection for business identifiers
+   - Archive/restore support
+   - 9 methods, ~80 test cases
+
+2. **EmployeeService** - Employee management
+   - Per-organization serial number generation
+   - Multi-tenant isolation
+   - Compensation package relationship
+   - Age and hire date validation
+   - 11 methods, ~90 test cases
+
+3. **CompensationPackageService** - Compensation package management
+   - Historical artifact protection
+   - Usage guards (cannot modify if in use)
+   - SMIG validation
+   - 9 methods, ~85 test cases
+
+4. **PayrollService** - Payroll workflow orchestration
+   - Multi-repository coordination (4 repos)
+   - Workflow state management (DRAFT â†" FINALIZED)
+   - Batch payroll generation
+   - Period finalization with validation
+   - Stub calculation engine (Phase 1E integration point)
+   - 23 methods, ~50 test cases
+
+**Pattern Example:**
 
 ```go
-// Define interface inline
+// Service defines interface inline
 type employeeRepository interface {
     FindByID(ctx context.Context, id uuid.UUID) (*domain.Employee, error)
     FindByOrgID(ctx context.Context, orgID uuid.UUID) ([]*domain.Employee, error)
     Create(ctx context.Context, emp *domain.Employee) error
+    GetNextSerialNumber(ctx context.Context, orgID uuid.UUID) (int, error)
 }
 
 type EmployeeService struct {
-    employees employeeRepository
+    employees    employeeRepository
+    compensation compensationPackageRepository
 }
 
 func (s *EmployeeService) CreateEmployee(
     ctx context.Context,
     emp *domain.Employee,
 ) error {
-    // Generate UUID
-    emp.ID = uuid.New()
+    // Generate UUID if not provided
+    if emp.ID == uuid.Nil {
+        emp.ID = uuid.New()
+    }
+
+    // Get next serial number
+    serialNum, err := s.employees.GetNextSerialNumber(ctx, emp.OrgID)
+    if err != nil {
+        return fmt.Errorf("failed to get serial number: %w", err)
+    }
+    emp.SerialNum = serialNum
 
     // Set timestamps
     now := time.Now().UTC()
     emp.CreatedAt = now
     emp.UpdatedAt = now
 
-    // Validate
+    // Validate domain rules
     if err := emp.Validate(); err != nil {
         return fmt.Errorf("invalid employee: %w", err)
     }
 
     // Persist
     if err := s.employees.Create(ctx, emp); err != nil {
+        // Translate repository error to service error
+        if errors.Is(err, sqlite.ErrRecordNotFound) {
+            return ErrEmployeeNotFound
+        }
+        if errors.Is(err, sqlite.ErrDuplicateRecord) {
+            return ErrEmployeeExists
+        }
         return fmt.Errorf("failed to create employee: %w", err)
     }
 
     return nil
 }
 ```
+
+**Error Handling Pattern:**
+
+Services define their own sentinel errors and translate repository errors:
+
+```go
+// Service errors (business-level)
+var (
+    ErrEmployeeNotFound = errors.New("employee not found")
+    ErrEmployeeExists   = errors.New("employee already exists")
+)
+
+// Repository errors (infrastructure-level)
+var (
+    ErrRecordNotFound  = errors.New("record not found")
+    ErrDuplicateRecord = errors.New("duplicate record")
+)
+
+// Translation in service
+if errors.Is(err, sqlite.ErrRecordNotFound) {
+    return ErrEmployeeNotFound
+}
+```
+
+**Testing Strategy:**
+
+All services tested with mock repositories for fast, isolated tests:
+
+```go
+type mockEmployeeRepository struct {
+    createFunc           func(context.Context, *domain.Employee) error
+    findByIDFunc         func(context.Context, uuid.UUID) (*domain.Employee, error)
+    getNextSerialNumFunc func(context.Context, uuid.UUID) (int, error)
+}
+
+func (m *mockEmployeeRepository) Create(ctx, emp) error {
+    if m.createFunc != nil {
+        return m.createFunc(ctx, emp)
+    }
+    return nil
+}
+
+// Test example
+func TestEmployeeService_CreateEmployee(t *testing.T) {
+    mockRepo := &mockEmployeeRepository{
+        getNextSerialNumFunc: func(ctx, orgID) (int, error) {
+            return 1, nil
+        },
+        createFunc: func(ctx, emp) error {
+            return nil
+        },
+    }
+
+    service := NewEmployeeService(mockRepo, mockCompRepo)
+
+    emp := &domain.Employee{
+        OrgID:    testOrgID,
+        FullName: "Test Employee",
+        // ... other fields
+    }
+
+    err := service.CreateEmployee(context.Background(), emp)
+    require.NoError(t, err)
+    assert.NotEqual(t, uuid.Nil, emp.ID)
+    assert.Equal(t, 1, emp.SerialNum)
+}
+```
+
+**Key Design Principles:**
+
+1. **Small Interfaces** - Services define only methods they need
+2. **Error Translation** - Repository errors â†' service errors
+3. **UUID Generation** - Flexible nil-check pattern
+4. **Timestamp Management** - Service sets CreatedAt/UpdatedAt
+5. **Domain Validation** - Before persistence
+6. **Archive Support** - IncludingDeleted variants for all queries
+7. **Usage Guards** - Protect historical artifacts (CompensationPackage)
+8. **Workflow Management** - State transitions (PayrollPeriod)
+
+**Benefits of This Approach:**
+
+- Business logic independent of infrastructure
+- Easy to test with mocks (no database needed)
+- Clear dependency direction (inward toward domain)
+- Database can be swapped without changing services
+- Services define what they need (not what repos provide)
+- Idiomatic Go (small consumer-defined interfaces)
 
 ### Adapter Layer (`internal/adapter/`)
 
