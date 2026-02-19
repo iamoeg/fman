@@ -53,7 +53,7 @@ func TestEmployeeRepository_Concurrency(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(numGoroutines)
 
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			go func(serialNum int) {
 				defer wg.Done()
 				emp := createTestEmployee(orgID, compPackID, serialNum)

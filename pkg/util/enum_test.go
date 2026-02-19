@@ -31,7 +31,7 @@ func TestEnumMapToString(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{} // Using interface{} to test different map types
+		input    any // Using interface{} to test different map types
 		expected string
 	}{
 		{
@@ -139,7 +139,7 @@ func TestEnumMapToString_Consistency(t *testing.T) {
 
 	// Call multiple times
 	results := make([]string, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		results[i] = EnumMapToString(input)
 	}
 

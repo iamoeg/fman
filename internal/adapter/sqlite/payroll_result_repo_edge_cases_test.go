@@ -53,7 +53,7 @@ func TestPayrollResultRepository_Concurrency(t *testing.T) {
 
 		// Create employees for concurrent payroll results
 		employeeIDs := make([]string, numGoroutines)
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			emp := createTestEmployee(orgID, compID, i+10) // Start from 10 to avoid conflicts
 			err := empRepo.Create(ctx, emp)
 			require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestPayrollResultRepository_Concurrency(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(numGoroutines)
 
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			go func(empIDStr string) {
 				defer wg.Done()
 				result := createTestPayrollResult(periodID, mustParseUUID(empIDStr), compID)
@@ -631,7 +631,7 @@ func TestPayrollResultRepository_QueryPerformance(t *testing.T) {
 
 		// Create 100 employees
 		const numEmployees = 100
-		for i := 0; i < numEmployees; i++ {
+		for i := range numEmployees {
 			emp := createTestEmployee(orgID, compID, i+1000)
 			err := empRepo.Create(ctx, emp)
 			require.NoError(t, err)
@@ -661,7 +661,7 @@ func TestPayrollResultRepository_QueryPerformance(t *testing.T) {
 
 		// Create 12 periods (one year of payroll)
 		const numPeriods = 12
-		for i := 0; i < numPeriods; i++ {
+		for range numPeriods {
 			period := createTestPayrollPeriod(orgID)
 			err := periodRepo.Create(ctx, period)
 			require.NoError(t, err)

@@ -195,7 +195,7 @@ func TestAuditLogRepository_FindRecent(t *testing.T) {
 		ctx := context.Background()
 
 		// Create 5 organizations (5 CREATE audit logs)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestAuditLogRepository_FindRecent(t *testing.T) {
 		ctx := context.Background()
 
 		// Create 10 organizations
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestAuditLogRepository_FindByTable(t *testing.T) {
 		ctx := context.Background()
 
 		// Create 3 organizations
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestAuditLogRepository_FindByTable(t *testing.T) {
 		ctx := context.Background()
 
 		// Create 5 organizations
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)
@@ -426,7 +426,7 @@ func TestAuditLogRepository_FindByAction(t *testing.T) {
 		ctx := context.Background()
 
 		// Create and update 2 organizations
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)
@@ -508,7 +508,7 @@ func TestAuditLogRepository_FindByAction(t *testing.T) {
 		ctx := context.Background()
 
 		// Create 5 organizations (5 CREATE actions)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			org := createTestOrganization()
 			err := orgRepo.Create(ctx, org)
 			require.NoError(t, err)

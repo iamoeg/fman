@@ -125,7 +125,7 @@ func TestAuditLog_Queries(t *testing.T) {
 		ctx := context.Background()
 
 		// Create multiple organizations
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			org := createTestOrganization()
 			err := repo.Create(ctx, org)
 			require.NoError(t, err)
