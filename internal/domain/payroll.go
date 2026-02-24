@@ -307,12 +307,12 @@ type PayrollResult struct {
 
 	// CNSS Contributions (Social Security)
 	// Note: CNSS does NOT include AMO - AMO is separate
-	SocialAllowanceEmployeeContrib     money.Money // Allocations Familiales (employee part)
-	SocialAllowanceEmployerContrib     money.Money // Allocations Familiales (employer part)
+	SocialAllowanceEmployeeContrib     money.Money // Prestations Sociales (employee part)
+	SocialAllowanceEmployerContrib     money.Money // Prestations Sociales (employer part)
 	JobLossCompensationEmployeeContrib money.Money // IPE - Indemnité pour Perte d'Emploi (employee)
 	JobLossCompensationEmployerContrib money.Money // IPE (employer part)
 	TrainingTaxEmployerContrib         money.Money // Taxe de Formation Professionnelle (employer only)
-	FamilyBenefitsEmployerContrib      money.Money // Prestations Familiales (employer only)
+	FamilyBenefitsEmployerContrib      money.Money // Allocations Familiales (employer only)
 	TotalCNSSEmployeeContrib           money.Money // Total CNSS employee (excludes AMO)
 	TotalCNSSEmployerContrib           money.Money // Total CNSS employer (excludes AMO)
 
