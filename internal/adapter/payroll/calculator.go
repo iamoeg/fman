@@ -11,7 +11,9 @@ import (
 	"github.com/iamoeg/bootdev-capstone/pkg/money"
 )
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Constants
+// ============================================================================
 // All rates and thresholds from DOMAIN.md (2026 legislation).
 // Update this section when rates change — never hardcode values in logic.
 
@@ -51,7 +53,7 @@ const (
 	smigMonthlyMAD = 3_422_00 // 3,422.00 MAD in cents
 )
 
-// IR brackets (2026). Applied to annualised net taxable salary.
+// Income tax brackets (2026). Applied to annualized net taxable salary.
 // Formula: annual_ir = (annual_taxable × rate) − deduction
 type incomeTaxBracket struct {
 	upperBound int64 // exclusive upper bound in cents; -1 means no upper bound
@@ -84,7 +86,9 @@ var seniorityTiers = []seniorityTier{
 	{minYears: 25, maxYears: -1, rate: 0.25},
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Public API
+// ============================================================================
 
 // Calculator implements Moroccan payroll calculations for 2026.
 // It satisfies the payrollCalculator interface in application/payroll_service.go.
@@ -250,7 +254,9 @@ func (c *Calculator) Calculate(
 	return result, nil
 }
 
-// ── Private helpers ───────────────────────────────────────────────────────────
+// ============================================================================
+// Private helpers
+// ============================================================================
 
 // cnssEmployeeResult holds the individual CNSS employee contribution components.
 type cnssEmployeeResult struct {
