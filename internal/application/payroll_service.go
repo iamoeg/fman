@@ -141,6 +141,17 @@ type payrollResultRepository interface {
 // SERVICE IMPLEMENTATION
 // ===============================================================================
 
+// payrollCalculator defines the interface for the Moroccan payroll calculation engine.
+// Satisfied by internal/adapter/payroll/morocco.Calculator.
+type payrollCalculator interface {
+	Calculate(
+		ctx context.Context,
+		period *domain.PayrollPeriod,
+		emp *domain.Employee,
+		pkg *domain.EmployeeCompensationPackage,
+	) (*domain.PayrollResult, error)
+}
+
 // PayrollService provides business logic for managing payroll operations.
 // It orchestrates payroll period lifecycle, result generation, and workflow state.
 //
@@ -162,6 +173,7 @@ type PayrollService struct {
 	results      payrollResultRepository
 	employees    employeeRepository
 	compensation compensationPackageRepository
+	calculator   payrollCalculator
 }
 
 // NewPayrollService creates a new PayrollService with the given repositories.
@@ -173,12 +185,14 @@ func NewPayrollService(
 	results payrollResultRepository,
 	employees employeeRepository,
 	compensation compensationPackageRepository,
+	calculator payrollCalculator,
 ) *PayrollService {
 	return &PayrollService{
 		periods:      periods,
 		results:      results,
 		employees:    employees,
 		compensation: compensation,
+		calculator:   calculator,
 	}
 }
 
@@ -718,16 +732,10 @@ func (s *PayrollService) ListPayrollPeriodsIncludingDeleted(
 //  3. Deletes any existing results for the period (if regenerating)
 //  4. For each employee:
 //     - Retrieves their current compensation package
-//     - Calculates their payroll (Phase 1E: actual calculation logic)
+//     - Calculates their payroll using the Moroccan calculation engine
 //     - Creates a payroll result record
-//  5. Commits all results in a single transaction
 //
 // If any step fails, the entire operation is rolled back and no results are created.
-//
-// Phase 1D Implementation:
-// Currently creates stub results with all monetary values set to zero.
-// The actual calculation logic will be implemented in Phase 1E when the
-// Moroccan payroll calculation engine is integrated.
 //
 // Returns:
 //   - ErrPayrollPeriodNotFound if period doesn't exist or is soft-deleted
@@ -783,11 +791,10 @@ func (s *PayrollService) GeneratePayrollResults(
 			return fmt.Errorf("failed to get compensation package for employee %s: %w", emp.ID, err)
 		}
 
-		// Phase 1D: Create stub result with zero values
-		// Phase 1E: This will call actual calculation engine
-		result, err := s.calculatePayrollStub(period, emp, pkg)
+		// Calculate payroll using the Moroccan calculation engine
+		result, err := s.calculator.Calculate(ctx, period, emp, pkg)
 		if err != nil {
-			return fmt.Errorf("failed to calculate payroll for employee %s: %w", emp.ID, err)
+			return fmt.Errorf("%w for employee %s: %v", ErrPayrollCalculationFailed, emp.ID, err)
 		}
 
 		// Create the result
@@ -800,50 +807,6 @@ func (s *PayrollService) GeneratePayrollResults(
 	}
 
 	return nil
-}
-
-// calculatePayrollStub creates a stub payroll result with zero values.
-//
-// This is a placeholder for Phase 1D. In Phase 1E, this will be replaced with
-// actual Moroccan payroll calculation logic that computes:
-//   - Base salary and bonuses
-//   - CNSS contributions (employee and employer)
-//   - AMO contributions (employee and employer)
-//   - Tax calculations (exemptions, taxable amounts, income tax)
-//   - Net salary after all deductions
-//
-// Phase 1D Implementation:
-// Creates a valid PayrollResult with all required fields set, but all monetary
-// values are zero. This allows testing the orchestration logic without having
-// the calculation engine implemented.
-func (s *PayrollService) calculatePayrollStub(
-	period *domain.PayrollPeriod,
-	emp *domain.Employee,
-	pkg *domain.EmployeeCompensationPackage,
-) (*domain.PayrollResult, error) {
-	now := time.Now().UTC()
-
-	// Phase 1D: Stub implementation with zero values
-	// Phase 1E: Replace with actual calculation logic
-	result := &domain.PayrollResult{
-		ID:                    uuid.New(),
-		PayrollPeriodID:       period.ID,
-		EmployeeID:            emp.ID,
-		CompensationPackageID: pkg.ID,
-		Currency:              pkg.Currency,
-		CreatedAt:             now,
-		UpdatedAt:             now,
-		DeletedAt:             nil,
-		// All monetary fields initialized to zero
-		// Phase 1E will populate these with calculated values
-	}
-
-	// Validate the stub result
-	if err := result.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid payroll result: %w", err)
-	}
-
-	return result, nil
 }
 
 // DeletePayrollResults deletes all payroll results for a specific period.

@@ -243,6 +243,33 @@ func (m *mockPayrollResultRepository) FindAllIncludingDeleted(ctx context.Contex
 	return nil, nil
 }
 
+// mockPayrollCalculator implements payrollCalculator interface for testing
+type mockPayrollCalculator struct {
+	calculateFunc func(context.Context, *domain.PayrollPeriod, *domain.Employee, *domain.EmployeeCompensationPackage) (*domain.PayrollResult, error)
+}
+
+func (m *mockPayrollCalculator) Calculate(
+	ctx context.Context,
+	period *domain.PayrollPeriod,
+	emp *domain.Employee,
+	pkg *domain.EmployeeCompensationPackage,
+) (*domain.PayrollResult, error) {
+	if m.calculateFunc != nil {
+		return m.calculateFunc(ctx, period, emp, pkg)
+	}
+	// Default: return a minimal valid result
+	now := time.Now().UTC()
+	return &domain.PayrollResult{
+		ID:                    uuid.New(),
+		PayrollPeriodID:       period.ID,
+		EmployeeID:            emp.ID,
+		CompensationPackageID: pkg.ID,
+		Currency:              pkg.Currency,
+		CreatedAt:             now,
+		UpdatedAt:             now,
+	}, nil
+}
+
 // ===============================================================================
 // TEST HELPERS
 // ===============================================================================
@@ -370,6 +397,7 @@ func TestPayrollService_CreatePayrollPeriod(t *testing.T) {
 				&mockPayrollResultRepository{},
 				&mockEmployeeRepository{},
 				&mockCompensationPackageRepository{},
+				&mockPayrollCalculator{},
 			)
 
 			err := service.CreatePayrollPeriod(context.Background(), tt.period)
@@ -463,6 +491,7 @@ func TestPayrollService_DeletePayrollPeriod(t *testing.T) {
 				&mockPayrollResultRepository{},
 				&mockEmployeeRepository{},
 				&mockCompensationPackageRepository{},
+				&mockPayrollCalculator{},
 			)
 
 			err := service.DeletePayrollPeriod(context.Background(), tt.periodID)
@@ -494,6 +523,7 @@ func TestPayrollService_RestorePayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		err := service.RestorePayrollPeriod(context.Background(), uuid.New())
@@ -514,6 +544,7 @@ func TestPayrollService_RestorePayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		err := service.RestorePayrollPeriod(context.Background(), uuid.New())
@@ -539,6 +570,7 @@ func TestPayrollService_HardDeletePayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		err := service.HardDeletePayrollPeriod(context.Background(), uuid.New())
@@ -559,6 +591,7 @@ func TestPayrollService_HardDeletePayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		err := service.HardDeletePayrollPeriod(context.Background(), uuid.New())
@@ -668,6 +701,7 @@ func TestPayrollService_FinalizePayrollPeriod(t *testing.T) {
 				mockResults,
 				&mockEmployeeRepository{},
 				&mockCompensationPackageRepository{},
+				&mockPayrollCalculator{},
 			)
 
 			err := service.FinalizePayrollPeriod(context.Background(), tt.periodID)
@@ -754,6 +788,7 @@ func TestPayrollService_UnfinalizePayrollPeriod(t *testing.T) {
 				&mockPayrollResultRepository{},
 				&mockEmployeeRepository{},
 				&mockCompensationPackageRepository{},
+				&mockPayrollCalculator{},
 			)
 
 			err := service.UnfinalizePayrollPeriod(context.Background(), tt.periodID)
@@ -791,6 +826,7 @@ func TestPayrollService_GetPayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		period, err := service.GetPayrollPeriod(context.Background(), expectedPeriod.ID)
@@ -812,6 +848,7 @@ func TestPayrollService_GetPayrollPeriod(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		_, err := service.GetPayrollPeriod(context.Background(), uuid.New())
@@ -841,6 +878,7 @@ func TestPayrollService_GetPayrollPeriodIncludingDeleted(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		period, err := service.GetPayrollPeriodIncludingDeleted(context.Background(), expectedPeriod.ID)
@@ -873,6 +911,7 @@ func TestPayrollService_GetPayrollPeriodByOrgYearMonth(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		period, err := service.GetPayrollPeriodByOrgYearMonth(context.Background(), orgID, 2025, 1)
@@ -896,6 +935,7 @@ func TestPayrollService_GetPayrollPeriodByOrgYearMonth(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		_, err := service.GetPayrollPeriodByOrgYearMonth(context.Background(), uuid.New(), 2025, 1)
@@ -930,6 +970,7 @@ func TestPayrollService_ListPayrollPeriodsByOrganization(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		periods, err := service.ListPayrollPeriodsByOrganization(context.Background(), orgID)
@@ -951,6 +992,7 @@ func TestPayrollService_ListPayrollPeriodsByOrganization(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		periods, err := service.ListPayrollPeriodsByOrganization(context.Background(), uuid.New())
@@ -981,6 +1023,7 @@ func TestPayrollService_ListDraftPayrollPeriods(t *testing.T) {
 			&mockPayrollResultRepository{},
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		periods, err := service.ListDraftPayrollPeriods(context.Background())
@@ -1139,6 +1182,7 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 				mockResults,
 				mockEmployees,
 				mockCompPackages,
+				&mockPayrollCalculator{},
 			)
 
 			err := service.GeneratePayrollResults(context.Background(), tt.periodID)
@@ -1235,6 +1279,7 @@ func TestPayrollService_DeletePayrollResults(t *testing.T) {
 				mockResults,
 				&mockEmployeeRepository{},
 				&mockCompensationPackageRepository{},
+				&mockPayrollCalculator{},
 			)
 
 			err := service.DeletePayrollResults(context.Background(), tt.periodID)
@@ -1272,6 +1317,7 @@ func TestPayrollService_GetPayrollResult(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		result, err := service.GetPayrollResult(context.Background(), expectedResult.ID)
@@ -1293,6 +1339,7 @@ func TestPayrollService_GetPayrollResult(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		_, err := service.GetPayrollResult(context.Background(), uuid.New())
@@ -1327,6 +1374,7 @@ func TestPayrollService_ListPayrollResultsByPeriod(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		results, err := service.ListPayrollResultsByPeriod(context.Background(), periodID)
@@ -1348,6 +1396,7 @@ func TestPayrollService_ListPayrollResultsByPeriod(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		results, err := service.ListPayrollResultsByPeriod(context.Background(), uuid.New())
@@ -1382,6 +1431,7 @@ func TestPayrollService_ListPayrollResultsByEmployee(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		results, err := service.ListPayrollResultsByEmployee(context.Background(), employeeID)
@@ -1403,6 +1453,7 @@ func TestPayrollService_ListPayrollResultsByEmployee(t *testing.T) {
 			mockResults,
 			&mockEmployeeRepository{},
 			&mockCompensationPackageRepository{},
+			&mockPayrollCalculator{},
 		)
 
 		results, err := service.ListPayrollResultsByEmployee(context.Background(), uuid.New())
