@@ -1,4 +1,4 @@
-package morocco
+package calculator
 
 import (
 	"context"
