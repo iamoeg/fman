@@ -310,7 +310,7 @@ func TestCompensationPackageRepository_CountEmployeesUsing(t *testing.T) {
 
 		count, err := repo.CountEmployeesUsing(ctx, pkg.ID)
 		require.NoError(t, err)
-		require.Equal(t, 0, count)
+		require.Equal(t, int64(0), count)
 	})
 
 	t.Run("returns count when employees use package", func(t *testing.T) {
@@ -350,7 +350,7 @@ func TestCompensationPackageRepository_CountEmployeesUsing(t *testing.T) {
 
 		count, err := pkgRepo.CountEmployeesUsing(ctx, pkg.ID)
 		require.NoError(t, err)
-		require.Equal(t, 2, count)
+		require.Equal(t, int64(2), count)
 	})
 }
 
@@ -376,7 +376,7 @@ func TestCompensationPackageRepository_CountPayrollResultsUsing(t *testing.T) {
 
 		count, err := repo.CountPayrollResultsUsing(ctx, pkg.ID)
 		require.NoError(t, err)
-		require.Equal(t, 0, count)
+		require.Equal(t, int64(0), count)
 	})
 }
 

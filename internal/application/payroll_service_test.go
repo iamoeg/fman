@@ -145,18 +145,18 @@ func (m *mockPayrollPeriodRepository) FindAllIncludingDeleted(ctx context.Contex
 
 // mockPayrollResultRepository implements payrollResultRepository interface for testing
 type mockPayrollResultRepository struct {
-	createFunc                              func(context.Context, *domain.PayrollResult) error
-	deleteFunc                              func(context.Context, uuid.UUID) error
-	restoreFunc                             func(context.Context, uuid.UUID) error
-	hardDeleteFunc                          func(context.Context, uuid.UUID) error
-	findByIDFunc                            func(context.Context, uuid.UUID) (*domain.PayrollResult, error)
-	findByIDIncludingDeletedFunc            func(context.Context, uuid.UUID) (*domain.PayrollResult, error)
-	findByPayrollPeriodFunc                 func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
-	findByPayrollPeriodIncludingDeletedFunc func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
-	findByEmployeeFunc                      func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
-	findByEmployeeIncludingDeletedFunc      func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
-	findAllFunc                             func(context.Context) ([]*domain.PayrollResult, error)
-	findAllIncludingDeletedFunc             func(context.Context) ([]*domain.PayrollResult, error)
+	createFunc                         func(context.Context, *domain.PayrollResult) error
+	deleteFunc                         func(context.Context, uuid.UUID) error
+	restoreFunc                        func(context.Context, uuid.UUID) error
+	hardDeleteFunc                     func(context.Context, uuid.UUID) error
+	findByIDFunc                       func(context.Context, uuid.UUID) (*domain.PayrollResult, error)
+	findByIDIncludingDeletedFunc       func(context.Context, uuid.UUID) (*domain.PayrollResult, error)
+	findByPeriodFunc                   func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
+	findByPeriodIncludingDeletedFunc   func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
+	findByEmployeeFunc                 func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
+	findByEmployeeIncludingDeletedFunc func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
+	findAllFunc                        func(context.Context) ([]*domain.PayrollResult, error)
+	findAllIncludingDeletedFunc        func(context.Context) ([]*domain.PayrollResult, error)
 }
 
 func (m *mockPayrollResultRepository) Create(ctx context.Context, result *domain.PayrollResult) error {
@@ -201,16 +201,16 @@ func (m *mockPayrollResultRepository) FindByIDIncludingDeleted(ctx context.Conte
 	return nil, sqlite.ErrRecordNotFound
 }
 
-func (m *mockPayrollResultRepository) FindByPayrollPeriod(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
-	if m.findByPayrollPeriodFunc != nil {
-		return m.findByPayrollPeriodFunc(ctx, periodID)
+func (m *mockPayrollResultRepository) FindByPeriod(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+	if m.findByPeriodFunc != nil {
+		return m.findByPeriodFunc(ctx, periodID)
 	}
 	return nil, nil
 }
 
-func (m *mockPayrollResultRepository) FindByPayrollPeriodIncludingDeleted(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
-	if m.findByPayrollPeriodIncludingDeletedFunc != nil {
-		return m.findByPayrollPeriodIncludingDeletedFunc(ctx, periodID)
+func (m *mockPayrollResultRepository) FindByPeriodIncludingDeleted(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+	if m.findByPeriodIncludingDeletedFunc != nil {
+		return m.findByPeriodIncludingDeletedFunc(ctx, periodID)
 	}
 	return nil, nil
 }
@@ -625,7 +625,7 @@ func TestPayrollService_FinalizePayrollPeriod(t *testing.T) {
 						Status: domain.PayrollPeriodStatusDraft,
 					}, nil
 				}
-				mr.findByPayrollPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
 					return []*domain.PayrollResult{
 						{ID: uuid.New()},
 					}, nil
@@ -667,7 +667,7 @@ func TestPayrollService_FinalizePayrollPeriod(t *testing.T) {
 						Status: domain.PayrollPeriodStatusDraft,
 					}, nil
 				}
-				mr.findByPayrollPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
 					return []*domain.PayrollResult{}, nil
 				}
 			},
@@ -1064,7 +1064,7 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					}, nil
 				}
 
-				mr.findByPayrollPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
 					return []*domain.PayrollResult{}, nil
 				}
 
@@ -1124,7 +1124,7 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					createTestPayrollResult(uuid.New(), uuid.New(), compPackID),
 				}
 
-				mr.findByPayrollPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
 					return existingResults, nil
 				}
 
@@ -1219,7 +1219,7 @@ func TestPayrollService_DeletePayrollResults(t *testing.T) {
 					}, nil
 				}
 
-				mr.findByPayrollPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
+				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
 					return []*domain.PayrollResult{
 						{ID: uuid.New()},
 						{ID: uuid.New()},
@@ -1361,7 +1361,7 @@ func TestPayrollService_ListPayrollResultsByPeriod(t *testing.T) {
 		}
 
 		mockResults := &mockPayrollResultRepository{
-			findByPayrollPeriodFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.PayrollResult, error) {
+			findByPeriodFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.PayrollResult, error) {
 				if id == periodID {
 					return expectedResults, nil
 				}
@@ -1386,7 +1386,7 @@ func TestPayrollService_ListPayrollResultsByPeriod(t *testing.T) {
 		t.Parallel()
 
 		mockResults := &mockPayrollResultRepository{
-			findByPayrollPeriodFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.PayrollResult, error) {
+			findByPeriodFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.PayrollResult, error) {
 				return []*domain.PayrollResult{}, nil
 			},
 		}

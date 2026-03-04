@@ -122,25 +122,25 @@ func (r *EmployeeCompensationPackageRepository) FindAllIncludingDeleted(ctx cont
 
 // CountEmployeesUsing returns the number of active employees currently using this compensation package.
 // This count is used to guard Update/Delete operations - packages in use cannot be modified or deleted.
-func (r *EmployeeCompensationPackageRepository) CountEmployeesUsing(ctx context.Context, id uuid.UUID) (int, error) {
+func (r *EmployeeCompensationPackageRepository) CountEmployeesUsing(ctx context.Context, id uuid.UUID) (int64, error) {
 	c, err := r.queries.CountEmployeesUsingCompensationPackage(ctx, id.String())
 	if err != nil {
 		return 0, fmt.Errorf(FmtDBQueryErr, "count employees using compensation package", err)
 	}
 
-	return int(c), nil
+	return c, nil
 }
 
 // CountPayrollResultsUsing returns the number of payroll results that reference this compensation package.
 // This count is used to guard Update/Delete operations - packages referenced by payroll are permanent
 // historical artifacts and cannot be modified or deleted.
-func (r *EmployeeCompensationPackageRepository) CountPayrollResultsUsing(ctx context.Context, id uuid.UUID) (int, error) {
+func (r *EmployeeCompensationPackageRepository) CountPayrollResultsUsing(ctx context.Context, id uuid.UUID) (int64, error) {
 	c, err := r.queries.CountPayrollResultsUsingCompensationPackage(ctx, id.String())
 	if err != nil {
 		return 0, fmt.Errorf(FmtDBQueryErr, "count payroll results using compensation package", err)
 	}
 
-	return int(c), nil
+	return c, nil
 }
 
 // ============================================================================

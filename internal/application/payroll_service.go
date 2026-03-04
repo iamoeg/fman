@@ -23,10 +23,6 @@ type payrollPeriodRepository interface {
 	// Returns ErrDuplicateRecord if org/year/month combination already exists.
 	Create(ctx context.Context, period *domain.PayrollPeriod) error
 
-	// Update modifies an existing payroll period in the database.
-	// Returns ErrRecordNotFound if period doesn't exist or is soft-deleted.
-	Update(ctx context.Context, period *domain.PayrollPeriod) error
-
 	// Delete soft-deletes a payroll period by setting deleted_at timestamp.
 	// Returns ErrRecordNotFound if period doesn't exist or is already deleted.
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -112,13 +108,13 @@ type payrollResultRepository interface {
 	// including soft-deleted results.
 	FindByIDIncludingDeleted(ctx context.Context, id uuid.UUID) (*domain.PayrollResult, error)
 
-	// FindByPayrollPeriod retrieves all payroll results for a specific period.
+	// FindByPeriod retrieves all payroll results for a specific period.
 	// Only returns active (non-deleted) results.
-	FindByPayrollPeriod(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error)
+	FindByPeriod(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error)
 
-	// FindByPayrollPeriodIncludingDeleted retrieves all payroll results for a period,
+	// FindByPeriodIncludingDeleted retrieves all payroll results for a period,
 	// including soft-deleted results.
-	FindByPayrollPeriodIncludingDeleted(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error)
+	FindByPeriodIncludingDeleted(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error)
 
 	// FindByEmployee retrieves all payroll results for an employee.
 	// Only returns active (non-deleted) results.
@@ -433,7 +429,7 @@ func (s *PayrollService) FinalizePayrollPeriod(
 	}
 
 	// 3. Verify period has at least one result
-	results, err := s.results.FindByPayrollPeriod(ctx, id)
+	results, err := s.results.FindByPeriod(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get payroll results: %w", err)
 	}
@@ -773,7 +769,7 @@ func (s *PayrollService) GeneratePayrollResults(
 	}
 
 	// 4. Delete existing results for this period (if regenerating)
-	existingResults, err := s.results.FindByPayrollPeriod(ctx, periodID)
+	existingResults, err := s.results.FindByPeriod(ctx, periodID)
 	if err != nil {
 		return fmt.Errorf("failed to get existing results: %w", err)
 	}
@@ -847,7 +843,7 @@ func (s *PayrollService) DeletePayrollResults(
 	}
 
 	// 3. Get all results for period
-	results, err := s.results.FindByPayrollPeriod(ctx, periodID)
+	results, err := s.results.FindByPeriod(ctx, periodID)
 	if err != nil {
 		return fmt.Errorf("failed to get payroll results: %w", err)
 	}
@@ -939,7 +935,7 @@ func (s *PayrollService) ListPayrollResultsByPeriod(
 	ctx context.Context,
 	periodID uuid.UUID,
 ) ([]*domain.PayrollResult, error) {
-	results, err := s.results.FindByPayrollPeriod(ctx, periodID)
+	results, err := s.results.FindByPeriod(ctx, periodID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list payroll results by period: %w", err)
 	}
@@ -964,7 +960,7 @@ func (s *PayrollService) ListPayrollResultsByPeriodIncludingDeleted(
 	ctx context.Context,
 	periodID uuid.UUID,
 ) ([]*domain.PayrollResult, error) {
-	results, err := s.results.FindByPayrollPeriodIncludingDeleted(ctx, periodID)
+	results, err := s.results.FindByPeriodIncludingDeleted(ctx, periodID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list payroll results by period (including deleted): %w", err)
 	}
