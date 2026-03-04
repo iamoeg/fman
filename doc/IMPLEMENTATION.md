@@ -7,11 +7,11 @@ Phase-by-phase implementation guide for the financial management application.
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Phase 1A - Foundation](#phase-1a---foundation-completed)
-3. [Phase 1B - Domain Models & Tests](#phase-1b---domain-models--tests-completed)
-4. [Phase 1C - Repositories](#phase-1c---repositories-completed)
-5. [Phase 1D - Application Services](#phase-1d---application-services)
-6. [Phase 1E - Payroll Engine](#phase-1e---payroll-engine)
+2. [Phase 1A - Foundation](#phase-1a---foundation--completed)
+3. [Phase 1B - Domain Models & Tests](#phase-1b---domain-models--tests--completed)
+4. [Phase 1C - Repositories](#phase-1c---repositories--completed)
+5. [Phase 1D - Application Services](#phase-1d---application-services--completed)
+6. [Phase 1E - Payroll Engine](#phase-1e---payroll-engine--completed)
 7. [Phase 1F - TUI Implementation](#phase-1f---tui-implementation)
 8. [Phase 1G - Export & Polish](#phase-1g---export--polish)
 9. [Things to Consider](#things-to-consider)
@@ -27,7 +27,7 @@ Development follows an iterative, phased approach:
 - Test as you go
 - Payroll is the priority (Phase 1 focus)
 
-**Current Phase:** 1D - Application Services
+**Current Phase:** 1E - Payroll Engine ✅ Complete
 
 ---
 
@@ -574,7 +574,7 @@ DataDir() string
 - UUID generation (flexible nil-check pattern)
 - Timestamp management (CreatedAt, UpdatedAt)
 - Domain validation before persistence
-- Error translation (repository â†' service errors)
+- Error translation (repository -> service errors)
 - Duplicate detection for business identifiers
 - Archive/restore support
 
@@ -736,7 +736,7 @@ var (
 // Period Lifecycle
 CreatePayrollPeriod(ctx, period) error        // Create DRAFT period
 GeneratePayrollResults(ctx, periodID) error   // Generate results for all employees
-FinalizePayrollPeriod(ctx, periodID) error    // Lock period (DRAFT â†' FINALIZED)
+FinalizePayrollPeriod(ctx, periodID) error    // Lock period (DRAFT -> FINALIZED)
 UnfinalizePayrollPeriod(ctx, periodID) error  // Unlock for corrections
 
 // Validation Rules
@@ -1011,29 +1011,144 @@ When integrating into main application:
 
 ---
 
-## Phase 1E - Payroll Engine
+## Phase 1E - Payroll Engine ✅ COMPLETED
 
 **Duration:** Weeks 7-8  
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ### Goals
 
-- Research exact Moroccan payroll calculation rules
-- Implement payroll calculator adapter
-- Generate monthly payroll periods
-- Create payslip PDF generation
-- Build payroll TUI screens
+- ✅ Research and document exact Moroccan payroll calculation rules
+- ✅ Implement payroll calculator adapter
+- ✅ Integrate calculator with PayrollService
+- ~Payslip PDF generation~ (deferred to Phase 1G)
+- Payroll TUI screens (Phase 1F)
 
-### High-Level Tasks
+### Delivered
 
-1. Research and document exact Moroccan payroll calculation rules
-2. Implement payroll calculator (`internal/adapter/payroll/morocco/`)
-3. Integrate calculator with PayrollService
-4. Implement PDF generation adapter (payslips)
-5. Build TUI screens for payroll workflow
-6. Comprehensive testing of calculations against known examples
+#### 1. Moroccan Payroll Domain Documentation (`DOMAIN.md`) ✅
 
-**Details TBD when Phase 1D is complete.**
+Complete specification of all 2026 Moroccan payroll calculation rules,
+validated against real payslips. Covers:
+
+- CNSS components: Social Allowance (Prestations Sociales),
+  Job Loss Compensation (Indemnité de Perte d'Emploi - IPE),
+  Training Tax, Family Benefits (Allocations Familiales)
+- Health Insurance (Assurance Maladie Obligatoire - AMO) contributions
+- Income Tax (Impôt sur le Revenu - IR) brackets with annualization method
+- Professional expense deduction (rate switch at 78,000 MAD annual gross)
+- Family charge deduction (40 MAD/month per dependent, max 6)
+- Seniority bonus tiers (0%–25%)
+- SMIG minimum wage enforcement
+- Rounding rules (nearest dirham)
+- Two fully worked examples validated against real payslips
+
+#### 2. Moroccan Payroll Calculator (`internal/adapter/payroll/`) ✅
+
+**File:** `calculator.go`
+
+A pure calculation engine with no I/O dependencies. Implements the `payrollCalculator` interface defined in `PayrollService`.
+
+**Calculation order (matches DOMAIN.md):**
+
+1. Base salary
+2. Seniority bonus (from `emp.HireDate` and period date)
+3. Gross salary
+4. CNSS employee contributions (Prestations Sociales + IPE, capped at 6,000 MAD)
+5. AMO employee contribution (no ceiling)
+6. Professional expense deduction (monthly evaluation, 35% or 20% rate, 2,500 MAD cap)
+7. Family charge deduction (from `emp.NumDependents`)
+8. Net taxable salary
+9. IR (annualized progressive brackets, divided by 12)
+10. Net to pay (rounded to nearest dirham)
+11. Employer contributions (CNSS + AMO)
+
+**Key implementation details:**
+
+- All rates defined as named constants — zero magic numbers in logic
+- `completedYears()` uses truncated arithmetic (4 years 11 months = 4)
+- Professional expense rate evaluated monthly using `gross × 12` as annual proxy
+- Only net to pay is rounded; all intermediate values retain full cent precision
+- `capAt()` helper keeps ceiling logic explicit and reusable
+
+```go
+// Public API — satisfies payrollCalculator interface in PayrollService
+type Calculator struct{}
+
+func New() *Calculator
+
+func (c *Calculator) Calculate(
+    ctx context.Context,
+    period *domain.PayrollPeriod,
+    emp *domain.Employee,
+    pkg *domain.EmployeeCompensationPackage,
+) (*domain.PayrollResult, error)
+```
+
+#### 3. Calculator Tests (`calculator_test.go`) ✅
+
+Two test categories:
+
+**Per-step unit tests** — each helper function tested in isolation:
+
+- `TestCompletedYears` — boundary and anniversary edge cases
+- `TestSeniorityRate` — all tier boundaries
+- `TestCalculateSeniorityBonus`
+- `TestCalculateCNSSEmployee` — below/at/above ceiling cases
+- `TestCalculateCNSSEmployer`
+- `TestCalculateAMOEmployee`
+- `TestCalculateProfessionalExpenseDeduction` — rate switch and cap cases
+- `TestCalculateFamilyChargeDeduction` — cap at 6 dependents
+- `TestCalculateIR` — each bracket
+- `TestRoundToNearestDirham`
+
+**Full integration tests** — two complete worked examples from DOMAIN.md:
+
+- `TestCalculate_WorkedExample1`: 10,000 MAD base, 6 years seniority, 2 dependents → net 9,514 MAD
+- `TestCalculate_WorkedExample2`: 20,000 MAD base, 3 years seniority, 0 dependents → net 15,963 MAD
+
+Every field in `PayrollResult` is asserted in the integration tests, making them effective regression guards when rates change.
+
+#### 4. PayrollService Integration ✅
+
+**Changes to `internal/application/payroll_service.go`:**
+
+- Added `payrollCalculator` interface (consumer-defined, Go-idiomatic)
+- Added `calculator payrollCalculator` field to `PayrollService`
+- Updated `NewPayrollService` to accept a `payrollCalculator` as fifth argument
+- Replaced `calculatePayrollStub` with `s.calculator.Calculate` in `GeneratePayrollResults`
+- Removed the stub method entirely
+
+**Changes to `internal/application/payroll_service_test.go`:**
+
+- Added `mockPayrollCalculator` with a sensible default (returns a minimal valid result)
+- Added `&mockPayrollCalculator{}` as fifth argument to all 24 `NewPayrollService` call sites
+- Existing orchestration tests unchanged — they test workflow logic, not calculation correctness
+
+### Key Design Decisions
+
+**Calculator as adapter, not domain:** The calculator lives in `internal/adapter/payroll/`
+because it is a concrete implementation of a rate-specific algorithm.
+When 2027 rates are published, a new package can be added alongside without touching existing code.
+
+**Interface defined by the consumer:** `payrollCalculator` is defined in `payroll_service.go`,
+not in the calculator package. This keeps dependency arrows pointing inward
+and makes the service trivially testable with a mock.
+
+**No validation in calculator:** The calculator trusts its inputs are valid domain objects.
+Validation happens in the domain layer (`emp.Validate()`, `pkg.Validate()`)
+before the service calls the calculator.
+
+**Stub removed entirely:** Rather than leaving dead code,
+the stub was deleted once the real calculator was wired in.
+The `mockPayrollCalculator` in tests serves the same purpose for orchestration testing.
+
+### Lessons Learned
+
+1. **Validate worked examples before coding** — catching the double-counted CNSS component early saved significant debugging time
+2. **Per-step unit tests first** — made the integration test failures immediately traceable to the exact calculation step
+3. **Test assertions expose documentation errors** — the rounding discrepancy in DOMAIN.md was found by a failing test, not a manual review
+4. **Monthly professional expense evaluation** — using `gross × 12` as the annual proxy avoids needing year-to-date state in the calculator, keeping it stateless and easy to test
 
 ---
 
@@ -1135,8 +1250,8 @@ When integrating into main application:
 | 1B - Domain & Tests  | ✅ Complete | Week 2    | 100%       |
 | 1C - Repositories    | ✅ Complete | Weeks 3-4 | 100%       |
 | 1D - App Services    | ✅ Complete | Weeks 5-6 | 100%       |
-| 1E - Payroll Engine  | 📋 Next     | Weeks 7-8 | 0%         |
-| 1F - TUI             | 📋 Planned  | Week 9    | 0%         |
+| 1E - Payroll Engine  | ✅ Complete | Weeks 7-8 | 100%       |
+| 1F - TUI             | 📋 Next     | Week 9    | 0%         |
 | 1G - Export & Polish | 📋 Planned  | Week 10   | 0%         |
 
-**Overall Progress:** Phase 1C Complete (57%)
+**Overall Progress:** Phase 1E Complete (71%)

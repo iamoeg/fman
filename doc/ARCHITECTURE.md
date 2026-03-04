@@ -49,19 +49,22 @@ type employeeRepository interface {
     FindByID(ctx context.Context, id uuid.UUID) (*domain.Employee, error)
 }
 
+type payrollCalculator interface {
+    Calculate(ctx context.Context, period *domain.PayrollPeriod,
+        emp *domain.Employee, pkg *domain.EmployeeCompensationPackage,
+    ) (*domain.PayrollResult, error)
+}
+
 type PayrollService struct {
-    employees employeeRepository  // Small, focused interface
-    calculator PayrollCalculator
+    employees  employeeRepository  // Small, focused interface
+    calculator payrollCalculator   // Satisfied by adapter/payroll/morocco.Calculator
 }
 
-// adapter/sqlite/employee_repo.go
-type EmployeeRepository struct {
-    db      *sql.DB
-    queries *sqldb.Queries
-}
+// adapter/payroll/morocco/calculator.go
+type Calculator struct{}
 
-func (r *EmployeeRepository) FindByID(...) (*domain.Employee, error) {
-    // Implementation - implicitly satisfies employeeRepository interface
+func (c *Calculator) Calculate(...) (*domain.PayrollResult, error) {
+    // Implementation - implicitly satisfies payrollCalculator interface
 }
 ```
 
@@ -201,7 +204,7 @@ func (g GenderEnum) IsSupported() bool {
 
 **Purpose:** Orchestrate business logic, define service interfaces
 
-**Status:** Phase 1D Complete - All 4 core services implemented
+**Status:** Phase 1E Complete - All 4 core services implemented, Moroccan calculator integrated
 
 **Responsibilities:**
 
@@ -211,7 +214,7 @@ func (g GenderEnum) IsSupported() bool {
 - Set timestamps and generate UUIDs
 - Transaction boundaries
 - Domain validation before persistence
-- Error translation (repository â†' service errors)
+- Error translation (repository -> service errors)
 
 **Implemented Services:**
 
@@ -237,10 +240,10 @@ func (g GenderEnum) IsSupported() bool {
 
 4. **PayrollService** - Payroll workflow orchestration
    - Multi-repository coordination (4 repos)
-   - Workflow state management (DRAFT â†" FINALIZED)
+   - Workflow state management (DRAFT -> FINALIZED)
    - Batch payroll generation
    - Period finalization with validation
-   - Stub calculation engine (Phase 1E integration point)
+   - Delegates calculation to `payrollCalculator` interface (satisfied by `adapter/payroll`)
    - 23 methods, ~50 test cases
 
 **Pattern Example:**
@@ -1631,6 +1634,44 @@ RETURNING *;
 - More queries to maintain
 - But: Better than runtime errors from constraint violations
 - And: Makes business logic explicit and testable
+
+---
+
+### 14. Calculation Engine as Versioned Adapter
+
+**Decision:** Implement the payroll calculator as an adapter (`internal/adapter/payroll`)
+with an interface defined by the consumer service, not by the adapter itself.
+
+**Rationale:**
+
+Moroccan payroll rates change yearly. Structuring the calculator as a versioned adapter means:
+
+- Adding a 2027 calculator is a new package alongside `payroll/`, not a modification of existing code
+- `PayrollService` is never touched when rates change
+- Multiple year calculators can coexist if needed for historical recalculation
+
+**Interface defined by the consumer:**
+
+```go
+// In application/payroll_service.go — the consumer owns this interface
+type payrollCalculator interface {
+    Calculate(ctx context.Context,
+        period *domain.PayrollPeriod,
+        emp *domain.Employee,
+        pkg *domain.EmployeeCompensationPackage,
+    ) (*domain.PayrollResult, error)
+}
+```
+
+The `payroll.Calculator` satisfies this interface implicitly. `PayrollService` has no import of the `payroll` package — wiring happens at the composition root (`cmd/tui/main.go`).
+
+**Testing:** `mockPayrollCalculator` in service tests verifies orchestration logic independently of calculation correctness.
+Calculator correctness is verified separately in `calculator_test.go` against worked examples from real payslips.
+
+**Trade-off:** The calculator is stateless and pure — it takes inputs and returns a result.
+This is intentional: it keeps the calculator trivially testable
+and avoids any need for year-to-date accumulation state,
+which would require per-employee per-year storage.
 
 ---
 
