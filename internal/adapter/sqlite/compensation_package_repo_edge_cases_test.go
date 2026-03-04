@@ -11,6 +11,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/iamoeg/bootdev-capstone/db/migration"
 	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
 	"github.com/iamoeg/bootdev-capstone/pkg/money"
 )
@@ -38,7 +39,8 @@ func TestCompensationPackageRepository_Concurrency(t *testing.T) {
 		// Run migrations
 		err = goose.SetDialect("sqlite3")
 		require.NoError(t, err)
-		err = goose.Up(db, "../../../db/migration")
+		goose.SetBaseFS(migration.FS)
+		err = goose.Up(db, ".")
 		require.NoError(t, err)
 
 		repo := sqlite.NewCompensationPackageRepository(db)

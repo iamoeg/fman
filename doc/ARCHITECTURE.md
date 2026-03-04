@@ -1694,6 +1694,23 @@ _, err = db.Exec("PRAGMA foreign_keys = ON")  // CRITICAL
 
 **`:memory:` for Tests:**
 
+**Embedded Migrations:**
+
+Migrations are embedded at compile time using `//go:embed`:
+
+```go
+// db/migration/embed.go
+package migration
+
+import "embed"
+
+//go:embed *.sql
+var FS embed.FS
+```
+
+Use `goose.SetBaseFS(migration.FS)` before calling `goose.Up(db, ".")`.
+This applies to both production startup and `setupTestDB` in repository tests.
+
 ```go
 // In-memory database - perfect for fast, isolated tests
 db, err := sql.Open("sqlite", ":memory:")

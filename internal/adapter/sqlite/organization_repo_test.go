@@ -13,6 +13,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/iamoeg/bootdev-capstone/db/migration"
 	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
 	"github.com/iamoeg/bootdev-capstone/internal/domain"
 )
@@ -37,7 +38,8 @@ func setupTestDB(t *testing.T) *sql.DB {
 	require.NoError(t, err)
 
 	// Run migrations
-	err = goose.Up(db, "../../../db/migration")
+	goose.SetBaseFS(migration.FS)
+	err = goose.Up(db, ".")
 	require.NoError(t, err)
 
 	return db

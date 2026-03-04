@@ -49,13 +49,14 @@ Development follows an iterative, phased approach:
 - [x] Directory structure created (hexagonal architecture, Go-idiomatic)
 - [x] Database schema designed (5 core tables)
 - [x] SQL migration created and tested (`db/migration/00001_initial_schema.sql`)
-- [x] goose migration tool integrated
+- [x] goose migration tool integrated (migrations embedded via embed.FS for distribution portability)
 - [x] Basic Bubble Tea TUI skeleton running
 
 ### Key Decisions
 
 - **Database:** SQLite with TEXT UUIDs and timestamps
 - **Migration tool:** goose
+- **Migration embedding:** `//go:embed` via `db/migration/embed.go` for distribution portability
 - **Money representation:** Integer cents
 - **Soft deletes:** `deleted_at` on all tables
 - **Foreign keys:** CASCADE for aggregates, RESTRICT for historical artifacts
