@@ -70,10 +70,10 @@ func main() {
 
 	// 6. Wire the App container.
 	app := &tui.App{
-		Organizations: orgSvc,
-		Employees:     empSvc,
-		Compensation:  compSvc,
-		Payroll:       payrollSvc,
+		OrganizationService: orgSvc,
+		EmployeeService:     empSvc,
+		CompensationService: compSvc,
+		PayrollService:      payrollSvc,
 	}
 
 	// 7. Start the TUI.
