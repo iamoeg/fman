@@ -1,59 +1,84 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/iamoeg/bootdev-capstone/db/migration"
+	calculator "github.com/iamoeg/bootdev-capstone/internal/adapter/payroll"
+	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
+	"github.com/iamoeg/bootdev-capstone/internal/application"
+	"github.com/iamoeg/bootdev-capstone/pkg/config"
+	"github.com/iamoeg/bootdev-capstone/ui/tui"
 )
 
 func main() {
-	// Set up logging to `debug.log` file
+	// Debug logging — set DEBUG=1 to enable.
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
-			log.Fatal("Fatal error:", err)
+			log.Fatal("fatal: could not open debug log:", err)
 		}
 		defer f.Close()
 	}
 
-	// Set up and run bubbletea program
-	p := tea.NewProgram(initialModel())
+	// 1. Load (or create) config.
+	cfg, err := config.LoadOrCreate("")
+	if err != nil {
+		log.Fatal("fatal: could not load config:", err)
+	}
+
+	// 2. Resolve database path and open SQLite.
+	dbPath, err := cfg.ResolveDatabasePath()
+	if err != nil {
+		log.Fatal("fatal: could not resolve database path:", err)
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		log.Fatal("fatal: could not open database:", err)
+	}
+	defer db.Close()
+
+	// CRITICAL: enable foreign key enforcement on every connection.
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		log.Fatal("fatal: could not enable foreign keys:", err)
+	}
+
+	// 3. Run migrations.
+	if err := migration.RunMigrations(db); err != nil {
+		log.Fatal("fatal: could not run migrations:", err)
+	}
+
+	// 4. Build repositories.
+	orgRepo := sqlite.NewOrganizationRepository(db)
+	empRepo := sqlite.NewEmployeeRepository(db)
+	compRepo := sqlite.NewCompensationPackageRepository(db)
+	periodRepo := sqlite.NewPayrollPeriodRepository(db)
+	resultRepo := sqlite.NewPayrollResultRepository(db)
+
+	// 5. Build services.
+	orgSvc := application.NewOrganizationService(orgRepo)
+	empSvc := application.NewEmployeeService(empRepo)
+	compSvc := application.NewCompensationPackageService(compRepo)
+	calc := calculator.New()
+	payrollSvc := application.NewPayrollService(periodRepo, resultRepo, empRepo, compRepo, calc)
+
+	// 6. Wire the App container.
+	app := &tui.App{
+		Organizations: orgSvc,
+		Employees:     empSvc,
+		Compensation:  compSvc,
+		Payroll:       payrollSvc,
+	}
+
+	// 7. Start the TUI.
+	p := tea.NewProgram(tui.NewModel(app), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		log.Fatal("Sorry, an error occurred:", err)
+		log.Fatal("fatal: TUI error:", err)
 	}
-}
-
-type model struct {
-	welcomeMsg string
-}
-
-func initialModel() model {
-	return model{
-		welcomeMsg: "Hello world!",
-	}
-}
-
-func (m model) Init() tea.Cmd {
-	return nil
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		{
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			}
-		}
-	}
-
-	return m, nil
-}
-
-func (m model) View() string {
-	s := m.welcomeMsg
-	s += "\n\n\nPress `q` or `ctrl+c` to quit.\n"
-	return s
 }
