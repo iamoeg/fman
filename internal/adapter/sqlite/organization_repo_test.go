@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iamoeg/bootdev-capstone/db/migration"
@@ -33,13 +32,8 @@ func setupTestDB(t *testing.T) *sql.DB {
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t, err)
 
-	// Set goose dialect
-	err = goose.SetDialect("sqlite3")
-	require.NoError(t, err)
-
 	// Run migrations
-	goose.SetBaseFS(migration.FS)
-	err = goose.Up(db, ".")
+	err = migration.RunMigrations(db)
 	require.NoError(t, err)
 
 	return db

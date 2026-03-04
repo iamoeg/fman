@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iamoeg/bootdev-capstone/db/migration"
@@ -38,10 +37,7 @@ func TestPayrollResultRepository_Concurrency(t *testing.T) {
 		require.NoError(t, err)
 
 		// Run migrations
-		err = goose.SetDialect("sqlite3")
-		require.NoError(t, err)
-		goose.SetBaseFS(migration.FS)
-		err = goose.Up(db, ".")
+		err = migration.RunMigrations(db)
 		require.NoError(t, err)
 
 		// Setup test data
