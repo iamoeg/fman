@@ -16,11 +16,19 @@ var (
 )
 
 // renderFooter renders a single-line help bar from a list of key bindings.
-// Always appends the global quit binding at the end.
-func renderFooter(width int, bindings []key.Binding) string {
-	all := make([]key.Binding, len(bindings), len(bindings)+2)
+// When overlay is false, the global tab and quit bindings are appended so the
+// user is reminded they are always available. When overlay is true they are
+// suppressed because the active section owns those keys.
+func renderFooter(width int, bindings []key.Binding, overlay bool) string {
+	extra := 0
+	if !overlay {
+		extra = 2
+	}
+	all := make([]key.Binding, len(bindings), len(bindings)+extra)
 	copy(all, bindings)
-	all = append(all, globalKeys.SwitchPane, globalKeys.Quit)
+	if !overlay {
+		all = append(all, globalKeys.SwitchPane, globalKeys.Quit)
+	}
 
 	parts := make([]string, 0, len(all))
 	for _, b := range all {

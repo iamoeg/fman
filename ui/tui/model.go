@@ -183,12 +183,14 @@ func (m Model) View() string {
 
 	// Footer
 	var bindings []key.Binding
+	overlay := false
 	if m.focus == focusSidebar {
 		bindings = m.sidebar.shortHelp()
 	} else {
+		overlay = m.sections[m.active].IsOverlay()
 		bindings = m.sections[m.active].ShortHelp()
 	}
-	footer := renderFooter(m.width, bindings)
+	footer := renderFooter(m.width, bindings, overlay)
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
 }
