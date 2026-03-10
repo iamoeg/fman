@@ -26,6 +26,10 @@ type sectionModel interface {
 	Update(msg tea.Msg) (sectionModel, tea.Cmd)
 	View(width, height int) string
 	ShortHelp() []key.Binding
+	// IsCapturingInput returns true when the section has a text input focused.
+	// The root model skips global key bindings (q, tab, esc) in that state
+	// so the section receives every keystroke uninterrupted.
+	IsCapturingInput() bool
 }
 
 // Model is the root Bubble Tea model. It owns layout, focus, and routing.
@@ -71,20 +75,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Global bindings checked first.
-		switch {
-		case key.Matches(msg, globalKeys.Quit):
-			return m, tea.Quit
+		// Global bindings are skipped when the active section has a text input
+		// focused — the section must receive every keystroke uninterrupted.
+		capturing := m.focus == focusMain && m.sections[m.active].IsCapturingInput()
+		if !capturing {
+			switch {
+			case key.Matches(msg, globalKeys.Quit):
+				return m, tea.Quit
 
-		case key.Matches(msg, globalKeys.SwitchPane):
-			if m.focus == focusSidebar {
-				m.focus = focusMain
-				m.sidebar.focused = false
-			} else {
-				m.focus = focusSidebar
-				m.sidebar.focused = true
+			case key.Matches(msg, globalKeys.SwitchPane):
+				if m.focus == focusSidebar {
+					m.focus = focusMain
+					m.sidebar.focused = false
+				} else {
+					m.focus = focusSidebar
+					m.sidebar.focused = true
+				}
+				return m, nil
 			}
-			return m, nil
 		}
 
 		// Route to focused pane.
@@ -210,6 +218,10 @@ func newPlaceholderSection(label string) sectionModel {
 
 func (p *placeholderSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 	return p, nil
+}
+
+func (p *placeholderSection) IsCapturingInput() bool {
+	return false
 }
 
 func (p *placeholderSection) View(width, height int) string {
