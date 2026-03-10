@@ -1,18 +1,17 @@
 # System Architecture
 
-This document describes the architecture of `finmgmt`,
-including structural patterns, design decisions, and implementation guidelines.
+This document describes the architecture of `finmgmt`:
+structural patterns, layer responsibilities, and the rationale behind key decisions.
 
 ---
 
 ## Table of Contents
 
 1. [Architectural Pattern](#architectural-pattern)
-2. [Directory Structure](#directory-structure)
-3. [Layer Responsibilities](#layer-responsibilities)
-4. [Key Design Decisions](#key-design-decisions)
-5. [Technical Guidelines](#technical-guidelines)
-6. [Testing Strategy](#testing-strategy)
+2. [Layer Responsibilities](#layer-responsibilities)
+3. [Key Design Decisions](#key-design-decisions)
+4. [Common Pitfalls](#common-pitfalls)
+5. [Lessons Learned](#lessons-learned)
 
 ---
 
@@ -40,104 +39,7 @@ we follow **Go idioms**:
 - Adapters implicitly satisfy these interfaces
 - "Accept interfaces, return structs"
 
-### Example
-
-```go
-// application/payroll_service.go
-type employeeRepository interface {
-    FindByOrgID(ctx context.Context, orgID uuid.UUID) ([]*domain.Employee, error)
-    FindByID(ctx context.Context, id uuid.UUID) (*domain.Employee, error)
-}
-
-type payrollCalculator interface {
-    Calculate(ctx context.Context, period *domain.PayrollPeriod,
-        emp *domain.Employee, pkg *domain.EmployeeCompensationPackage,
-    ) (*domain.PayrollResult, error)
-}
-
-type PayrollService struct {
-    employees  employeeRepository  // Small, focused interface
-    calculator payrollCalculator   // Satisfied by adapter/payroll/morocco.Calculator
-}
-
-// adapter/payroll/morocco/calculator.go
-type Calculator struct{}
-
-func (c *Calculator) Calculate(...) (*domain.PayrollResult, error) {
-    // Implementation - implicitly satisfies payrollCalculator interface
-}
-```
-
-**Benefits:**
-
-- Business logic is completely independent of UI/database
-- Easy to test (mock only what you use)
-- Can swap TUI for API without changing business logic
-- Idiomatic Go - small interfaces defined by consumers
-- Clear separation of concerns
-
 **The dependency arrows point inward:** Adapters → Application → Domain
-
----
-
-## Directory Structure
-
-```text
-finmgmt/
-├── cmd/
-│   ├── tui/              # TUI application entry point
-│   └── api/              # Future: API server
-├── db/
-│   ├── migration/        # Database migrations (goose)
-│   └── query/            # SQL queries for sqlc
-├── internal/
-│   ├── domain/           # Pure business entities (no dependencies)
-│   ├── application/      # Services (define their own interfaces inline)
-│   └── adapter/          # Concrete implementations
-│       ├── sqlite/       # SQLite repository implementations
-│       │   └── sqldb/    # sqlc-generated code
-│       ├── payroll/      # Moroccan calculation engine
-│       └── export/       # JSON/XML exporters
-├── pkg/
-│   ├── money/            # Money type (avoid float precision issues)
-│   └── util/             # Shared utilities (enum helpers, etc.)
-└── ui/
-    └── tui/              # TUI-specific code
-```
-
-### Why This Structure?
-
-**`db/` for SQL, `internal/` for Go:**
-
-- SQL files (migrations, queries) aren't Go packages
-- Easier to find and maintain
-- Cleaner tool configuration (goose, sqlc)
-
-**`adapter` not `infrastructure`:**
-
-- Avoids confusion with DevOps infrastructure
-- Correct hexagonal architecture terminology
-- Clear intent: adapts external technologies to our interfaces
-
-**No `ports/` package:**
-
-- Go idiom: consumers define interfaces
-- Services define small, focused interfaces for what they need
-- Less boilerplate, easier to test
-- Still maintains clean architecture (dependency direction is what matters)
-
-**`pkg/` for reusable utilities:**
-
-- Money type is used across all layers
-- Utility functions (enum helpers) are shared
-- Can be imported by other projects if needed
-
-**Singular names:**
-
-- `migration` not `migrations`
-- `adapter` not `adapters`
-- `model` not `models`
-- Consistent convention
 
 ---
 
@@ -151,245 +53,35 @@ finmgmt/
 
 - ✅ Pure Go structs
 - ✅ Validation methods
-- ✅ Business logic
-- ✅ Enums (with validation)
-- ✅ Helper methods (e.g., TotalDueToCNSS)
-- ✅ Dependencies: uuid, time, pkg/money
+- ✅ Business logic and enums
+- ✅ Helper methods (e.g., `TotalDueToCNSS`)
+- ✅ Dependencies: `uuid`, `time`, `pkg/money`
 
 **Not Allowed:**
 
-- ❌ Database tags
-- ❌ External dependencies (except uuid, time, pkg/money)
-- ❌ Framework code
-- ❌ I/O operations
-
-**Example:**
-
-```go
-type Employee struct {
-    ID             uuid.UUID
-    OrgID          uuid.UUID
-    FullName       string
-    CINNum         string
-    Gender         GenderEnum
-    MaritalStatus  MaritalStatusEnum
-    CompensationID uuid.UUID
-    // ...
-}
-
-func (e *Employee) Validate() error {
-    if e.FullName == "" {
-        return errors.New("full_name is required")
-    }
-    if !e.Gender.IsSupported() {
-        return fmt.Errorf("gender not supported: must be one of %v", SupportedGendersStr)
-    }
-    return nil
-}
-
-type GenderEnum string
-
-const (
-    GenderMale   GenderEnum = "MALE"
-    GenderFemale GenderEnum = "FEMALE"
-)
-
-func (g GenderEnum) IsSupported() bool {
-    _, ok := supportedGenders[g]
-    return ok
-}
-```
+- ❌ Database tags or external dependencies
+- ❌ Framework code or I/O operations
 
 ### Application Layer (`internal/application/`)
 
 **Purpose:** Orchestrate business logic, define service interfaces
 
-**Status:** Phase 1E Complete - All 4 core services implemented, Moroccan calculator integrated
-
 **Responsibilities:**
 
 - Define small, focused interfaces for dependencies
-- Coordinate domain objects
-- Implement use cases
+- Coordinate domain objects and implement use cases
 - Set timestamps and generate UUIDs
-- Transaction boundaries
-- Domain validation before persistence
-- Error translation (repository -> service errors)
+- Manage transaction boundaries
+- Validate domain rules before persistence
+- Translate repository errors to service-level errors
 
 **Implemented Services:**
 
-1. **OrganizationService** - Organization management
-   - CRUD operations with soft deletes
-   - UUID generation and timestamp management
-   - Duplicate detection for business identifiers
-   - Archive/restore support
-   - 9 methods, ~80 test cases
-
-2. **EmployeeService** - Employee management
-   - Per-organization serial number generation
-   - Multi-tenant isolation
-   - Compensation package relationship
-   - Age and hire date validation
-   - 11 methods, ~90 test cases
-
-3. **CompensationPackageService** - Compensation package management
-   - Historical artifact protection
-   - Usage guards (cannot modify if in use)
-   - SMIG validation
-   - 9 methods, ~85 test cases
-
-4. **PayrollService** - Payroll workflow orchestration
-   - Multi-repository coordination (4 repos)
-   - Workflow state management (DRAFT -> FINALIZED)
-   - Batch payroll generation
-   - Period finalization with validation
-   - Delegates calculation to `payrollCalculator` interface (satisfied by `adapter/payroll`)
-   - 23 methods, ~50 test cases
-
-**Pattern Example:**
-
-```go
-// Service defines interface inline
-type employeeRepository interface {
-    FindByID(ctx context.Context, id uuid.UUID) (*domain.Employee, error)
-    FindByOrgID(ctx context.Context, orgID uuid.UUID) ([]*domain.Employee, error)
-    Create(ctx context.Context, emp *domain.Employee) error
-    GetNextSerialNumber(ctx context.Context, orgID uuid.UUID) (int, error)
-}
-
-type EmployeeService struct {
-    employees    employeeRepository
-    compensation compensationPackageRepository
-}
-
-func (s *EmployeeService) CreateEmployee(
-    ctx context.Context,
-    emp *domain.Employee,
-) error {
-    // Generate UUID if not provided
-    if emp.ID == uuid.Nil {
-        emp.ID = uuid.New()
-    }
-
-    // Get next serial number
-    serialNum, err := s.employees.GetNextSerialNumber(ctx, emp.OrgID)
-    if err != nil {
-        return fmt.Errorf("failed to get serial number: %w", err)
-    }
-    emp.SerialNum = serialNum
-
-    // Set timestamps
-    now := time.Now().UTC()
-    emp.CreatedAt = now
-    emp.UpdatedAt = now
-
-    // Validate domain rules
-    if err := emp.Validate(); err != nil {
-        return fmt.Errorf("invalid employee: %w", err)
-    }
-
-    // Persist
-    if err := s.employees.Create(ctx, emp); err != nil {
-        // Translate repository error to service error
-        if errors.Is(err, sqlite.ErrRecordNotFound) {
-            return ErrEmployeeNotFound
-        }
-        if errors.Is(err, sqlite.ErrDuplicateRecord) {
-            return ErrEmployeeExists
-        }
-        return fmt.Errorf("failed to create employee: %w", err)
-    }
-
-    return nil
-}
-```
-
-**Error Handling Pattern:**
-
-Services define their own sentinel errors and translate repository errors:
-
-```go
-// Service errors (business-level)
-var (
-    ErrEmployeeNotFound = errors.New("employee not found")
-    ErrEmployeeExists   = errors.New("employee already exists")
-)
-
-// Repository errors (infrastructure-level)
-var (
-    ErrRecordNotFound  = errors.New("record not found")
-    ErrDuplicateRecord = errors.New("duplicate record")
-)
-
-// Translation in service
-if errors.Is(err, sqlite.ErrRecordNotFound) {
-    return ErrEmployeeNotFound
-}
-```
-
-**Testing Strategy:**
-
-All services tested with mock repositories for fast, isolated tests:
-
-```go
-type mockEmployeeRepository struct {
-    createFunc           func(context.Context, *domain.Employee) error
-    findByIDFunc         func(context.Context, uuid.UUID) (*domain.Employee, error)
-    getNextSerialNumFunc func(context.Context, uuid.UUID) (int, error)
-}
-
-func (m *mockEmployeeRepository) Create(ctx, emp) error {
-    if m.createFunc != nil {
-        return m.createFunc(ctx, emp)
-    }
-    return nil
-}
-
-// Test example
-func TestEmployeeService_CreateEmployee(t *testing.T) {
-    mockRepo := &mockEmployeeRepository{
-        getNextSerialNumFunc: func(ctx, orgID) (int, error) {
-            return 1, nil
-        },
-        createFunc: func(ctx, emp) error {
-            return nil
-        },
-    }
-
-    service := NewEmployeeService(mockRepo, mockCompRepo)
-
-    emp := &domain.Employee{
-        OrgID:    testOrgID,
-        FullName: "Test Employee",
-        // ... other fields
-    }
-
-    err := service.CreateEmployee(context.Background(), emp)
-    require.NoError(t, err)
-    assert.NotEqual(t, uuid.Nil, emp.ID)
-    assert.Equal(t, 1, emp.SerialNum)
-}
-```
-
-**Key Design Principles:**
-
-1. **Small Interfaces** - Services define only methods they need
-2. **Error Translation** - Repository errors â†' service errors
-3. **UUID Generation** - Flexible nil-check pattern
-4. **Timestamp Management** - Service sets CreatedAt/UpdatedAt
-5. **Domain Validation** - Before persistence
-6. **Archive Support** - IncludingDeleted variants for all queries
-7. **Usage Guards** - Protect historical artifacts (CompensationPackage)
-8. **Workflow Management** - State transitions (PayrollPeriod)
-
-**Benefits of This Approach:**
-
-- Business logic independent of infrastructure
-- Easy to test with mocks (no database needed)
-- Clear dependency direction (inward toward domain)
-- Database can be swapped without changing services
-- Services define what they need (not what repos provide)
-- Idiomatic Go (small consumer-defined interfaces)
+1. **OrganizationService** — CRUD, soft deletes, duplicate detection for business identifiers
+2. **EmployeeService** — Per-organization serial number generation, multi-tenant isolation, compensation relationship
+3. **CompensationPackageService** — Historical artifact protection, usage guards, SMIG validation
+4. **PayrollService** — Multi-repository coordination, workflow state management (DRAFT → FINALIZED),
+   batch payroll generation; delegates calculation to a `payrollCalculator` interface
 
 ### Adapter Layer (`internal/adapter/`)
 
@@ -397,1598 +89,192 @@ func TestEmployeeService_CreateEmployee(t *testing.T) {
 
 **Responsibilities:**
 
-- Implement repository interfaces (implicitly)
+- Implement repository interfaces (implicitly via structural typing)
 - Database operations
-- External service integrations
-- File I/O
-- PDF generation
+- External service integrations and file I/O
 
-**Key Point:** Adapters don't declare "implements"
--- they just provide the methods that satisfy the interfaces
-defined in application services.
-
-**Example:**
-
-```go
-// adapter/sqlite/employee_repo.go
-type EmployeeRepository struct {
-    db      *sql.DB
-    queries *sqldb.Queries
-}
-
-// This method implicitly satisfies the employeeRepository interface
-// defined in application/employee_service.go
-func (r *EmployeeRepository) FindByID(
-    ctx context.Context,
-    id uuid.UUID,
-) (*domain.Employee, error) {
-    row, err := r.queries.GetEmployee(ctx, id.String())
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrNotFound
-        }
-        return nil, fmt.Errorf("failed to get employee: %w", err)
-    }
-
-    // Convert sqlc type to domain type
-    return rowToEmployee(row)
-}
-
-// Helper: Convert sqlc row to domain model
-func rowToEmployee(row sqldb.Employee) (*domain.Employee, error) {
-    id, err := uuid.Parse(row.ID)
-    if err != nil {
-        return nil, fmt.Errorf("invalid UUID: %w", err)
-    }
-
-    birthDate, err := time.Parse(time.RFC3339, row.BirthDate)
-    if err != nil {
-        return nil, fmt.Errorf("invalid birth_date: %w", err)
-    }
-
-    return &domain.Employee{
-        ID:        id,
-        FullName:  row.FullName,
-        BirthDate: birthDate,
-        // ... convert all fields
-    }, nil
-}
-```
+**Key Point:** Adapters don't declare "implements" — they just provide the methods
+that satisfy the interfaces defined by application services.
 
 ### UI Layer (`ui/tui/`)
 
 **Purpose:** User interface
 
-**Responsibilities:**
+**Allowed:**
 
-- Display data
-- Handle user input
-- Call application services
-- Manage UI state
+- ✅ Display data, handle user input, call application services, manage UI state
 
 **Not Allowed:**
 
-- ❌ Business logic
-- ❌ Direct repository access
-- ❌ Database operations
-
----
-
-## Repository Layer Implementation
-
-### Overview
-
-The repository layer has been fully implemented following Go-idiomatic
-hexagonal architecture principles.
-All repositories implicitly satisfy interfaces defined by application services
-through structural typing.
-
-**Location:** `internal/adapter/sqlite/`
-
-**Implemented Repositories:**
-
-- `OrganizationRepository` - Organization data persistence
-- `EmployeeRepository` - Employee data with serial number management
-- `EmployeeCompensationPackageRepository` - Compensation packages with usage guards
-- `PayrollPeriodRepository` - Payroll periods with workflow methods
-- `PayrollResultRepository` - Immutable payroll calculation results
-- `AuditLogRepository` - Read-only audit trail queries
-
-### Common Repository Pattern
-
-All repositories follow a consistent structure:
-
-```go
-// Repository struct with dependencies
-type EntityRepository struct {
-    db      *sql.DB
-    queries *sqldb.Queries
-}
-
-// Constructor
-func NewEntityRepository(db *sql.DB) *EntityRepository {
-    return &EntityRepository{
-        db:      db,
-        queries: sqldb.New(db),
-    }
-}
-
-// Transaction support
-func (r *EntityRepository) WithTx(tx *sql.Tx) *EntityRepository {
-    return &EntityRepository{
-        db:      r.db,
-        queries: r.queries.WithTx(tx),
-    }
-}
-
-// Query methods (read operations)
-func (r *EntityRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Entity, error) {
-    row, err := r.queries.GetEntity(ctx, id.String())
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrRecordNotFound
-        }
-        return nil, fmt.Errorf(FmtDBQueryErr, "find by id", err)
-    }
-
-    entity, err := rowToEntity(row)
-    if err != nil {
-        return nil, err
-    }
-
-    // Filter soft-deleted records
-    if entity.DeletedAt != nil {
-        return nil, ErrRecordNotFound
-    }
-
-    return entity, nil
-}
-
-// Mutation methods (write operations with transactions and audit logging)
-func (r *EntityRepository) Create(ctx context.Context, entity *domain.Entity) error {
-    // Start transaction
-    tx, err := r.db.BeginTx(ctx, nil)
-    if err != nil {
-        return fmt.Errorf("failed to begin transaction: %w", err)
-    }
-    defer tx.Rollback()
-
-    qtx := r.queries.WithTx(tx)
-
-    // Create entity
-    params, err := entityToCreateParams(entity)
-    if err != nil {
-        return err
-    }
-
-    row, err := qtx.CreateEntity(ctx, params)
-    if err != nil {
-        return fmt.Errorf(FmtDBQueryErr, "create", err)
-    }
-
-    // Convert back to domain (to get any DB-generated values)
-    created, err := rowToEntity(row)
-    if err != nil {
-        return err
-    }
-
-    // Create audit log
-    err = createAuditLog(ctx, qtx, TableNameEntity, created.ID, DBActionCreate, nil, created)
-    if err != nil {
-        return fmt.Errorf("failed to create audit log: %w", err)
-    }
-
-    // Commit transaction
-    if err := tx.Commit(); err != nil {
-        return fmt.Errorf("failed to commit transaction: %w", err)
-    }
-
-    return nil
-}
-```
-
-### Repository-Specific Patterns
-
-#### 1. OrganizationRepository
-
-**Characteristics:**
-
-- Simplest repository - no complex dependencies
-- Serves as the base pattern for all other repositories
-- All fields can be updated (no immutable fields)
-
-**Unique Methods:** None - follows base CRUD pattern exactly
-
-#### 2. EmployeeRepository
-
-**Characteristics:**
-
-- Multi-tenant with organization-scoped serial numbers
-- Immutable fields: `org_id`, `serial_num`
-- Foreign keys: `org_id` (CASCADE), `compensation_package_id` (RESTRICT)
-
-**Unique Methods:**
-
-```go
-// GetNextSerialNumber returns the next available serial number for an organization
-func (r *EmployeeRepository) GetNextSerialNumber(
-    ctx context.Context,
-    orgID uuid.UUID,
-) (int, error) {
-    sn, err := r.queries.GetNextSerialNumber(ctx, orgID.String())
-    if err != nil {
-        return 0, fmt.Errorf(FmtDBQueryErr, "get next serial number", err)
-    }
-    return int(sn), nil
-}
-
-// FindByOrgAndSerialNum finds an employee by organization and serial number
-func (r *EmployeeRepository) FindByOrgAndSerialNum(
-    ctx context.Context,
-    orgID uuid.UUID,
-    serialNum int,
-) (*domain.Employee, error) {
-    // ... implementation with soft-delete filtering
-}
-```
-
-**Usage Pattern:**
-
-```go
-// Service layer generates serial number
-serialNum, err := empRepo.GetNextSerialNumber(ctx, orgID)
-employee.SerialNum = serialNum
-err = empRepo.Create(ctx, employee)
-```
-
-#### 3. EmployeeCompensationPackageRepository
-
-**Characteristics:**
-
-- Historical artifact protection
-- Cannot Update/Delete if referenced by employees or payroll results
-- Usage guard pattern
-
-**Unique Methods:**
-
-```go
-// CountEmployeesUsing returns count of employees using this package
-func (r *EmployeeCompensationPackageRepository) CountEmployeesUsing(
-    ctx context.Context,
-    pkgID uuid.UUID,
-) (int64, error) {
-    count, err := r.queries.CountEmployeesUsingCompensationPackage(ctx, pkgID.String())
-    if err != nil {
-        return 0, fmt.Errorf(FmtDBQueryErr, "count employees using", err)
-    }
-    return count, nil
-}
-
-// CountPayrollResultsUsing returns count of payroll results using this package
-func (r *EmployeeCompensationPackageRepository) CountPayrollResultsUsing(
-    ctx context.Context,
-    pkgID uuid.UUID,
-) (int64, error) {
-    count, err := r.queries.CountPayrollResultsUsingCompensationPackage(ctx, pkgID.String())
-    if err != nil {
-        return 0, fmt.Errorf(FmtDBQueryErr, "count payroll results using", err)
-    }
-    return count, nil
-}
-
-// checkNotInUse verifies package is not referenced before allowing modifications
-func (r *EmployeeCompensationPackageRepository) checkNotInUse(
-    ctx context.Context,
-    qtx *sqldb.Queries,
-    id uuid.UUID,
-) error {
-    empCount, err := qtx.CountEmployeesUsingCompensationPackage(ctx, id.String())
-    if err != nil {
-        return fmt.Errorf(FmtDBQueryErr, "count employees using", err)
-    }
-    if empCount > 0 {
-        return ErrCompensationPackageInUse
-    }
-
-    resultCount, err := qtx.CountPayrollResultsUsingCompensationPackage(ctx, id.String())
-    if err != nil {
-        return fmt.Errorf(FmtDBQueryErr, "count payroll results using", err)
-    }
-    if resultCount > 0 {
-        return ErrCompensationPackageInUse
-    }
-
-    return nil
-}
-```
-
-**Update/Delete Pattern:**
-
-```go
-func (r *EmployeeCompensationPackageRepository) Update(...) error {
-    tx, _ := r.db.BeginTx(ctx, nil)
-    defer tx.Rollback()
-
-    qtx := r.queries.WithTx(tx)
-
-    // Check usage before allowing update
-    if err := r.checkNotInUse(ctx, qtx, pkg.ID); err != nil {
-        return err
-    }
-
-    // Proceed with update...
-}
-```
-
-#### 4. PayrollPeriodRepository
-
-**Characteristics:**
-
-- Workflow-based state management
-- Explicit methods for status transitions
-- Immutable fields: `org_id`, `year`, `month`
-- UNIQUE constraint on (org_id, year, month)
-
-**Unique Methods:**
-
-```go
-// Finalize transitions a payroll period from DRAFT to FINALIZED
-func (r *PayrollPeriodRepository) Finalize(
-    ctx context.Context,
-    id uuid.UUID,
-) error {
-    tx, _ := r.db.BeginTx(ctx, nil)
-    defer tx.Rollback()
-
-    qtx := r.queries.WithTx(tx)
-
-    // Get current state
-    old, err := qtx.GetPayrollPeriod(ctx, id.String())
-    if err != nil {
-        return fmt.Errorf(FmtDBQueryErr, "get period", err)
-    }
-
-    // Use explicit finalization query
-    now := time.Now().UTC().Format(DBTimeFormat)
-    updated, err := qtx.FinalizePayrollPeriod(ctx, sqldb.FinalizePayrollPeriodParams{
-        FinalizedAt: sql.NullString{String: now, Valid: true},
-        UpdatedAt:   now,
-        ID:          id.String(),
-    })
-    if err != nil {
-        return fmt.Errorf(FmtDBQueryErr, "finalize period", err)
-    }
-
-    // Create audit log
-    periodOld, _ := rowToPayrollPeriod(old)
-    periodUpdated, _ := rowToPayrollPeriod(updated)
-    createAuditLog(ctx, qtx, TableNamePayrollPeriod, periodUpdated.ID, DBActionUpdate, periodOld, periodUpdated)
-
-    return tx.Commit()
-}
-
-// Unfinalize transitions a payroll period from FINALIZED back to DRAFT
-// Used for error correction
-func (r *PayrollPeriodRepository) Unfinalize(ctx context.Context, id uuid.UUID) error {
-    // Similar pattern using UnfinalizePayrollPeriod query
-}
-
-// FindByOrgYearMonth finds a payroll period by organization, year, and month
-func (r *PayrollPeriodRepository) FindByOrgYearMonth(
-    ctx context.Context,
-    orgID uuid.UUID,
-    year, month int,
-) (*domain.PayrollPeriod, error) {
-    // ... implementation
-}
-
-// FindAllDraft returns all draft (unfinalized) payroll periods
-func (r *PayrollPeriodRepository) FindAllDraft(ctx context.Context) ([]*domain.PayrollPeriod, error) {
-    // ... implementation
-}
-```
-
-**Why Explicit Workflow Methods:**
-
-- Enforces business rules at SQL level (WHERE status = 'DRAFT')
-- Prevents accidental status changes
-- Self-documenting code
-- Type-safe with sqlc-generated functions
-
-#### 5. PayrollResultRepository
-
-**Characteristics:**
-
-- **No Update method** - completely immutable
-- Most complex domain model (20+ money fields)
-- UNIQUE constraint on (payroll_period_id, employee_id)
-- Money field conversions (int64 ↔ Money)
-
-**Key Differences:**
-
-```go
-// PayrollResultRepository DOES NOT HAVE:
-func (r *PayrollResultRepository) Update(...) error  // ❌ Does not exist!
-
-// If correction needed: Delete and recreate
-func CorrectPayrollResult(ctx, periodID uuid.UUID) error {
-    // Delete entire period's results
-    results, _ := repo.FindByPayrollPeriod(ctx, periodID)
-    for _, result := range results {
-        repo.Delete(ctx, result.ID)
-    }
-
-    // Regenerate from scratch
-    service.GeneratePayroll(ctx, periodID)
-}
-```
-
-**Money Field Conversions:**
-
-```go
-func rowToPayrollResult(row sqldb.PayrollResult) (*domain.PayrollResult, error) {
-    return &domain.PayrollResult{
-        // Convert int64 cents to Money
-        BaseSalary: money.FromCents(row.BaseSalaryCents),
-        SeniorityBonus: money.FromCents(row.SeniorityBonusCents),
-        GrossSalary: money.FromCents(row.GrossSalaryCents),
-        // ... 20+ more money fields
-    }, nil
-}
-
-func payrollResultToCreateParams(res *domain.PayrollResult) sqldb.CreatePayrollResultParams {
-    return sqldb.CreatePayrollResultParams{
-        // Convert Money to int64 cents
-        BaseSalaryCents: res.BaseSalary.Cents(),
-        SeniorityBonusCents: res.SeniorityBonus.Cents(),
-        GrossSalaryCents: res.GrossSalary.Cents(),
-        // ... 20+ more money fields
-    }
-}
-```
-
-#### 6. AuditLogRepository
-
-**Characteristics:**
-
-- **Read-only** - no Create/Update/Delete methods exposed
-- Audit logs created automatically via `createAuditLog()` helper
-- Infrastructure concern, not domain entity
-- All queries return results in DESC order (most recent first)
-
-**Unique Approach:**
-
-```go
-// ❌ AuditLogRepository DOES NOT HAVE:
-func (r *AuditLogRepository) Create(...) error  // Does not exist!
-func (r *AuditLogRepository) Update(...) error  // Does not exist!
-func (r *AuditLogRepository) Delete(...) error  // Does not exist!
-
-// ✅ AuditLogRepository ONLY HAS query methods:
-func (r *AuditLogRepository) FindForRecord(...) ([]*AuditLog, error)
-func (r *AuditLogRepository) FindRecent(...) ([]*AuditLog, error)
-func (r *AuditLogRepository) FindByTable(...) ([]*AuditLog, error)
-func (r *AuditLogRepository) FindByAction(...) ([]*AuditLog, error)
-```
-
-**Audit logs are created in other repositories:**
-
-```go
-// In OrganizationRepository.Create()
-tx, _ := r.db.BeginTx(ctx, nil)
-qtx := r.queries.WithTx(tx)
-
-// Create organization
-org, _ := qtx.CreateOrganization(ctx, params)
-
-// Create audit log (same transaction)
-createAuditLog(ctx, qtx, "organization", org.ID, "CREATE", nil, org)
-
-tx.Commit()
-```
-
-### Utility Functions
-
-#### Audit Logging Helper (`util.go`)
-
-```go
-// DBActionEnum represents types of database actions for audit logging
-type DBActionEnum string
-
-const (
-    DBActionCreate     DBActionEnum = "CREATE"
-    DBActionUpdate     DBActionEnum = "UPDATE"
-    DBActionDelete     DBActionEnum = "DELETE"
-    DBActionRestore    DBActionEnum = "RESTORE"
-    DBActionHardDelete DBActionEnum = "HARD_DELETE"
-)
-
-// createAuditLog creates an audit log entry for a database mutation
-func createAuditLog(
-    ctx context.Context,
-    qtx *sqldb.Queries,
-    tableName string,
-    recordID uuid.UUID,
-    action DBActionEnum,
-    before, after interface{},
-) error {
-    var beforeJSON, afterJSON string
-
-    // Serialize before state
-    if before != nil {
-        b, _ := json.Marshal(before)
-        beforeJSON = string(b)
-    }
-
-    // Serialize after state
-    if after != nil {
-        b, _ := json.Marshal(after)
-        afterJSON = string(b)
-    } else {
-        // HARD_DELETE: after is nil, but SQL expects valid JSON
-        afterJSON = "null"
-    }
-
-    params := sqldb.CreateAuditLogParams{
-        ID:        uuid.New().String(),
-        TableName: tableName,
-        RecordID:  recordID.String(),
-        Action:    string(action),
-        Before:    sql.NullString{String: beforeJSON, Valid: beforeJSON != ""},
-        After:     afterJSON,
-        Timestamp: time.Now().UTC().Format(DBTimeFormat),
-    }
-
-    return qtx.CreateAuditLog(ctx, params)
-}
-```
-
-#### NULL Handling Helpers
-
-```go
-// stringToNullString converts empty string to SQL NULL
-func stringToNullString(s string) sql.NullString {
-    if s == "" {
-        return sql.NullString{Valid: false}
-    }
-    return sql.NullString{String: s, Valid: true}
-}
-
-// nullStringToString converts SQL NULL to empty string
-func nullStringToString(ns sql.NullString) string {
-    if !ns.Valid {
-        return ""
-    }
-    return ns.String
-}
-```
-
-### Error Handling
-
-#### Sentinel Errors
-
-```go
-var (
-    // ErrRecordNotFound is returned when a record is not found in the database
-    ErrRecordNotFound = errors.New("record not found")
-
-    // ErrCompensationPackageInUse is returned when attempting to modify/delete
-    // a compensation package that is currently referenced by employees or payroll results
-    ErrCompensationPackageInUse = errors.New("compensation package is in use and cannot be modified")
-)
-```
-
-#### Error Message Formats
-
-```go
-const (
-    // FmtDBQueryErr is the format string for database query errors
-    FmtDBQueryErr = "database query error (%s): %w"
-)
-```
-
-#### Usage Pattern
-
-```go
-func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Entity, error) {
-    row, err := r.queries.GetEntity(ctx, id.String())
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrRecordNotFound  // Sentinel error for programmatic handling
-        }
-        return nil, fmt.Errorf(FmtDBQueryErr, "find by id", err)  // Wrapped with context
-    }
-    // ...
-}
-```
-
-### Testing Strategy
-
-#### Test Database Setup
-
-Every test uses a fresh in-memory SQLite database:
-
-```go
-func setupTestDB(t *testing.T) *sql.DB {
-    t.Helper()
-
-    // Set SQLite dialect for goose
-    goose.SetDialect("sqlite3")
-
-    // Create in-memory database
-    db, err := sql.Open("sqlite", ":memory:")
-    require.NoError(t, err)
-
-    // Enable foreign keys (CRITICAL for SQLite)
-    _, err = db.Exec("PRAGMA foreign_keys = ON")
-    require.NoError(t, err)
-
-    // Run migrations
-    err = goose.Up(db, "../../../../db/migration")
-    require.NoError(t, err)
-
-    return db
-}
-```
-
-#### Test Data Generation
-
-Use atomic counters to generate unique test data:
-
-```go
-var orgCounter int64
-var empCounter int64
-
-func createTestOrganization() *domain.Organization {
-    counter := atomic.AddInt64(&orgCounter, 1)
-    return &domain.Organization{
-        ID:         uuid.New(),
-        Name:       fmt.Sprintf("Test Organization %d", counter),
-        LegalForm:  domain.LegalFormSARL,
-        ICENum:     fmt.Sprintf("%015d", counter),  // Unique ICE number
-        IFNum:      fmt.Sprintf("%08d", counter),   // Unique IF number
-        RCNum:      fmt.Sprintf("%06d", counter),   // Unique RC number
-        CreatedAt:  time.Now().UTC(),
-        UpdatedAt:  time.Now().UTC(),
-    }
-}
-
-func createTestEmployee(orgID, compPackID uuid.UUID, serialNum int) *domain.Employee {
-    counter := atomic.AddInt64(&empCounter, 1)
-    return &domain.Employee{
-        ID:                    uuid.New(),
-        OrgID:                 orgID,
-        SerialNum:             serialNum,
-        FullName:              fmt.Sprintf("Employee %d", counter),
-        CINNum:                fmt.Sprintf("AA%06d", counter),  // Unique CIN
-        CNSSNum:               fmt.Sprintf("%09d", counter),    // Unique CNSS
-        CompensationPackageID: compPackID,
-        // ... other fields
-    }
-}
-```
-
-#### Test Isolation Pattern
-
-Each test subtest gets its own database:
-
-```go
-func TestEmployeeRepository_CRUD(t *testing.T) {
-    tests := []struct {
-        name string
-        test func(*testing.T)
-    }{
-        {"creates employee successfully", testCreateEmployee},
-        {"finds employee by ID", testFindEmployee},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            t.Parallel()  // Run subtests in parallel
-
-            // Each subtest gets fresh database
-            db := setupTestDB(t)
-            defer db.Close()
-
-            // Run the test
-            tt.test(t)
-        })
-    }
-}
-```
-
-#### Timestamp Comparison
-
-Always normalize timestamps before comparison:
-
-```go
-// Store time before operation
-before := time.Now().UTC().Truncate(time.Second)
-
-// Perform operation
-repo.Create(ctx, entity)
-
-// Find created entity
-found, _ := repo.FindByID(ctx, entity.ID)
-
-// Compare with normalization
-assert.Equal(t,
-    before,
-    found.CreatedAt.UTC().Truncate(time.Second),
-)
-```
-
-### Testing Statistics
-
-Total test coverage across all repositories:
-
-| Repository           | Test Cases | Coverage |
-| -------------------- | ---------- | -------- |
-| Organization         | ~40        | ~95%     |
-| Employee             | ~50        | ~95%     |
-| Compensation Package | ~45        | ~95%     |
-| Payroll Period       | ~60        | ~95%     |
-| Payroll Result       | ~40        | ~95%     |
-| Audit Log            | ~25        | ~90%     |
-| **TOTAL**            | **~260**   | **~94%** |
-
-### Common Pitfalls & Solutions
-
-#### 1. Forgetting `defer tx.Rollback()`
-
-**Problem:** Transaction leaks if commit fails
-
-**Solution:**
-
-```go
-tx, _ := r.db.BeginTx(ctx, nil)
-defer tx.Rollback()  // ✅ Always defer immediately!
-
-// ... operations
-
-tx.Commit()  // Rollback becomes no-op after commit
-```
-
-#### 2. Using `r.queries` Instead of `qtx` in Transactions
-
-**Problem:** Operations not part of transaction
-
-**Solution:**
-
-```go
-tx, _ := r.db.BeginTx(ctx, nil)
-defer tx.Rollback()
-
-qtx := r.queries.WithTx(tx)  // ✅ Get transaction-aware queries
-
-// ❌ WRONG: r.queries.CreateEntity(...)
-// ✅ RIGHT: qtx.CreateEntity(...)
-```
-
-#### 3. Forgetting Soft-Delete Filtering
-
-**Problem:** Primitive queries return soft-deleted records
-
-**Solution:**
-
-```go
-func (r *Repo) FindByID(ctx, id) (*Entity, error) {
-    row, _ := r.queries.GetEntity(ctx, id)
-    entity, _ := rowToEntity(row)
-
-    // ✅ Always check for soft delete
-    if entity.DeletedAt != nil {
-        return nil, ErrRecordNotFound
-    }
-
-    return entity, nil
-}
-```
-
-#### 4. Not Using Atomic Counters in Tests
-
-**Problem:** UNIQUE constraint violations in parallel tests
-
-**Solution:**
-
-```go
-// ❌ WRONG: Same value every time
-return &Organization{ICENum: "123456789"}
-
-// ✅ RIGHT: Atomic counter ensures uniqueness
-counter := atomic.AddInt64(&orgCounter, 1)
-return &Organization{ICENum: fmt.Sprintf("%015d", counter)}
-```
-
-#### 5. Timestamp Comparison Failures
-
-**Problem:** Timezone and precision differences
-
-**Solution:**
-
-```go
-// ❌ WRONG: Different timezones or precision
-assert.Equal(t, expected, found.CreatedAt)
-
-// ✅ RIGHT: Normalize both
-assert.Equal(t,
-    expected.UTC().Truncate(time.Second),
-    found.CreatedAt.UTC().Truncate(time.Second),
-)
-```
+- ❌ Business logic, direct repository access, database operations
 
 ---
 
 ## Key Design Decisions
 
-### 1. Money as Integer Cents with Error Handling
+### 1. Money as Integer Cents
 
 **Decision:** Store all monetary values as integers (cents/smallest unit)
-and return errors from operations
+and return errors from arithmetic operations.
 
-**Rationale:**
+**Rationale:** Floating-point arithmetic is imprecise for financial calculations
+(`0.1 + 0.2 = 0.30000000000000004`). Integer cents guarantee exact results.
+Operations that can fail (overflow, division by zero) return explicit errors
+rather than silently producing wrong values.
 
-- Floating-point arithmetic is imprecise for financial calculations
-- Example: `0.1 + 0.2 = 0.30000000000000004` in float64
-- Integers guarantee exact calculations
-- Operations can fail (overflow, division by zero, NaN/Inf)
-- Explicit error handling prevents silent failures
+### 2. Calculated Fields in Payroll Results
 
-**Implementation:**
+**Decision:** Store all calculated values in `payroll_result`, not just base values.
 
-```go
-// pkg/money/money.go
-type Money struct {
-    cents int64
-}
+**Rationale:** Payroll is a legal document. Tax laws and calculation logic change over time.
+Storing the result of each calculation proves what was actually paid, not what would be
+calculated today. Also eliminates recomputation for reports.
 
-func FromCents(cents int64) Money {
-    return Money{cents: cents}
-}
-
-func FromMAD(mad float64) (Money, error) {
-    if math.IsNaN(mad) || math.IsInf(mad, 0) {
-        return Money{}, ErrInvalidValue
-    }
-
-    madCents := mad * 100
-    if madCents > float64(math.MaxInt64) || madCents < float64(math.MinInt64) {
-        return Money{}, fmt.Errorf("%w: %f MAD is too large", ErrOverflow, mad)
-    }
-
-    return Money{cents: int64(math.Round(madCents))}, nil
-}
-
-func (m Money) Add(other Money) (Money, error) {
-    // Check for overflow
-    if other.cents > 0 && m.cents > math.MaxInt64-other.cents {
-        return Money{}, fmt.Errorf("%w: %v + %v", ErrOverflow, m, other)
-    }
-    if other.cents < 0 && m.cents < math.MinInt64-other.cents {
-        return Money{}, fmt.Errorf("%w: %v + %v", ErrOverflow, m, other)
-    }
-
-    return Money{cents: m.cents + other.cents}, nil
-}
-
-func (m Money) Divide(divisor float64) (Money, error) {
-    if divisor == 0.0 {
-        return Money{}, ErrDivByZero
-    }
-    if math.IsNaN(divisor) || math.IsInf(divisor, 0) {
-        return Money{}, ErrInvalidValue
-    }
-
-    result := float64(m.cents) / divisor
-    if result > float64(math.MaxInt64) || result < float64(math.MinInt64) {
-        return Money{}, fmt.Errorf("%w: %v / %f", ErrOverflow, m, divisor)
-    }
-
-    return Money{cents: int64(math.Round(result))}, nil
-}
-```
-
-**Benefits:**
-
-- Exact precision for all financial calculations
-- Protection against arithmetic errors
-- Clear error handling
-- Type safety
-
-### 2. Calculated Fields in Payroll
-
-**Decision:** Store all calculated values in `payroll_result` table,
-not just base values
-
-**Rationale:**
-
-- Payroll is a legal document requiring historical accuracy
-- Tax laws and calculation logic change over time
-- Need to prove what was actually paid, not what would be calculated today
-- Performance: Reports don't need to recalculate
-- Compliance: Immutable audit trail
-
-**Trade-off:** Some data redundancy, but financial/legal requirements justify it
+**Trade-off:** Some data redundancy, but financial/legal requirements justify it.
 
 ### 3. Comprehensive Domain Validation
 
-**Decision:** Validate all business rules in domain layer with detailed error messages
+**Decision:** Validate all business rules in the domain layer with detailed error messages.
 
-**Implementation:**
-
-Every domain entity has:
-
-- Main `Validate()` method that calls individual validators
-- Individual `ValidateX()` methods for each field/rule
-- Sentinel errors for each validation failure
-- Clear, descriptive error messages
-
-**Example:**
-
-```go
-func (e *Employee) Validate() error {
-    if err := e.ValidateID(); err != nil {
-        return err
-    }
-    if err := e.ValidateFullName(); err != nil {
-        return err
-    }
-    if err := e.ValidateBirthDate(); err != nil {
-        return err
-    }
-    // ... all validations
-    return nil
-}
-
-func (e *Employee) ValidateBirthDate() error {
-    now := time.Now().UTC()
-    minBirthDate := now.AddDate(-MaxWorkLegalAge, 0, 0)
-    maxBirthDate := now.AddDate(-MinWorkLegalAge, 0, 0)
-    if e.BirthDate.Before(minBirthDate) || e.BirthDate.After(maxBirthDate) {
-        return fmt.Errorf(
-            "%w: employee's age must be between %v and %v years",
-            ErrInvalidEmployeeBirthDate,
-            MinWorkLegalAge,
-            MaxWorkLegalAge,
-        )
-    }
-    return nil
-}
-```
-
-**Benefits:**
-
-- Catch errors early (before database)
-- Easy to test (no dependencies)
-- Clear error messages for debugging
-- Business rules documented in code
+**Rationale:** Every domain entity has a `Validate()` method with per-field sentinel errors.
+This catches errors before the database, is trivially testable (no dependencies),
+and documents business rules in the code itself.
 
 ### 4. CNSS and AMO Separation
 
-**Decision:** Keep CNSS and AMO contributions separate in calculations,
-provide helpers for combined totals
+**Decision:** Keep CNSS and AMO contributions as distinct fields; provide helpers for combined totals.
 
-**Rationale:**
-
-- CNSS (social security) and AMO (health insurance) are legally distinct
-- In practice, AMO is collected by CNSS
-- Separation allows for:
-  - Accurate reporting
-  - Future changes in collection
-  - Clear audit trail
-
-**Implementation:**
-
-```go
-type PayrollResult struct {
-    // CNSS (excludes AMO)
-    TotalCNSSEmployeeContrib money.Money
-    TotalCNSSEmployerContrib money.Money
-
-    // AMO (separate)
-    AMOEmployeeContrib money.Money
-    AMOEmployerContrib money.Money
-}
-
-// Helper: Total actually paid to CNSS (includes AMO)
-func (pr *PayrollResult) TotalDueToCNSS() (money.Money, error) {
-    total, _ := pr.TotalCNSSEmployeeContrib.Add(pr.TotalCNSSEmployerContrib)
-    total, _ = total.Add(pr.AMOEmployeeContrib)
-    total, _ = total.Add(pr.AMOEmployerContrib)
-    return total, nil
-}
-```
+**Rationale:** CNSS (social security) and AMO (health insurance) are legally distinct entities,
+even though AMO is collected by CNSS in practice. Separation enables accurate reporting and
+a clear audit trail. `TotalDueToCNSS()` is a helper that combines them where needed.
 
 ### 5. Soft Deletes
 
-**Decision:** Never hard-delete financial data; use `deleted_at` timestamps
+**Decision:** Never hard-delete financial data; use `deleted_at` timestamps instead.
 
-**Rationale:**
-
-- Financial data must be retained for legal/audit purposes
-- Ability to "un-delete" if mistake
-- Maintains referential integrity
-- Queries filter on `deleted_at IS NULL`
+**Rationale:** Financial data must be retained for legal and audit purposes.
+Soft deletes allow recovery from mistakes and maintain referential integrity.
+All queries filter on `deleted_at IS NULL` for active records.
 
 ### 6. Foreign Key Strategies
 
-**CASCADE** - Delete children when parent deleted:
+**CASCADE** — delete children when parent is deleted:
 
 - `employee.org_id` → organization
 - `payroll_period.org_id` → organization
 - `payroll_result.payroll_period_id` → payroll_period
 - `payroll_result.employee_id` → employee
 
-**RESTRICT** - Cannot delete if children exist:
+**RESTRICT** — cannot delete if children exist:
 
 - `employee.compensation_package_id` → employee_compensation_package
 - `payroll_result.compensation_package_id` → employee_compensation_package
 
-**Rationale:** Compensation packages are historical artifacts.
-Once referenced by payroll, they're part of the permanent record.
+**Rationale:** Compensation packages are historical artifacts. Once referenced by
+a payroll result, they are part of the permanent legal record and cannot be deleted.
 
 ### 7. Payroll Immutability
 
-**Decision:** Once finalized, payroll results cannot be modified
+**Decision:** Once a payroll period is finalized, its results cannot be modified.
 
-**Implementation:**
+**Implementation:** Status transitions: DRAFT → FINALIZED. No UPDATE query exists
+for `payroll_result`. If a correction is needed, delete the entire period and regenerate.
 
-- Status field: DRAFT → FINALIZED
-- No UPDATE operations on finalized records
-- If error found: DELETE entire period and regenerate
-
-**Rationale:**
-
-- Ensures data integrity
-- Matches legal/accounting practices
-- Simplifies audit trail
+**Rationale:** Matches legal/accounting practices and simplifies the audit trail.
 
 ### 8. sqlc Over ORMs
 
-**Decision:** Use sqlc for database access, not GORM or other ORMs
+**Decision:** Use sqlc for database access, not GORM or similar ORMs.
 
-**Rationale:**
-
-- **Full SQL control:** Write exact queries needed
-- **Type safety:** Compile-time checks, no runtime surprises
-- **No magic:** Generated code is readable and debuggable
-- **Performance:** No hidden N+1 queries or lazy loading issues
-
-**Trade-off:** More initial setup, but better long-term maintainability
+**Rationale:** Full SQL control, compile-time type safety, no hidden N+1 queries,
+and generated code that is readable and debuggable. The trade-off is more initial
+setup, which is justified by long-term maintainability.
 
 ### 9. Employee Serial Numbers
 
-**Decision:** Generate in application code, not database auto-increment
+**Decision:** Generate serial numbers in application code, not via database auto-increment.
 
-**Rationale:**
+**Rationale:** SQLite auto-increment is global. We need per-organization numbering
+(Employee #1 in each org). Logic: `MAX(serial_num) + 1` scoped to `org_id`.
+The database unique constraint on `(org_id, serial_num)` catches any race conditions.
 
-- SQLite auto-increment is global, not per-organization
-- Need per-organization numbering (Employee #1 in each org)
-- Logic: `SELECT MAX(serial_num) FROM employee WHERE org_id = ? + 1`
-- Database unique constraint catches race conditions
+### 10. Enum Pattern
 
-### 10. Enum Pattern with String Helper
+**Decision:** Use typed string constants with a map for O(1) validation and pre-computed
+error strings.
 
-**Decision:** Use map-based enums with pre-computed string representations
+**Rationale:** Avoids linear scans for validation, produces clean error messages,
+and is easy to extend. All enums follow the same pattern for consistency.
 
-**Implementation:**
+### 11. Primitive SQL Queries, Filtering at Repository Level
 
-```go
-type GenderEnum string
+**Decision:** SQL queries in `db/query/` are primitive (no built-in soft-delete filtering).
+Repository methods choose which query variant to use.
 
-const (
-    GenderMale   GenderEnum = "MALE"
-    GenderFemale GenderEnum = "FEMALE"
-)
-
-var supportedGenders = map[GenderEnum]struct{}{
-    GenderMale:   {},
-    GenderFemale: {},
-}
-
-// Pre-computed string for error messages
-var SupportedGendersStr = util.EnumMapToString(supportedGenders)
-
-func (g GenderEnum) IsSupported() bool {
-    _, ok := supportedGenders[g]
-    return ok
-}
-```
-
-**Benefits:**
-
-- O(1) validation
-- Clean error messages
-- Easy to extend
-- Type-safe
-
-### 11. SQL Query Organization and Patterns
-
-**Decision:** Use sqlc with primitive, low-level queries; filtering happens at repository level
-
-**Rationale:**
-
-**For Primitives:**
-
-- Users need access to archived (soft-deleted) data
-- Repository layer provides the right abstraction level for filtering
-- Maximum flexibility without sacrificing safety
-- Clear separation: SQL queries are data access, repositories are business logic
-
-**Against Safe-By-Default:**
-
-- Would need duplicate queries (e.g., `GetOrganization`, `GetOrganizationIncludingDeleted`)
-- Less flexible for features like archive views
-- Repository layer is the right place for this logic anyway
-
-**Implementation Pattern:**
-
-```sql
--- Primitive query - no filtering
--- name: GetOrganization :one
-SELECT * FROM organization WHERE id = ?;
-
--- Repository chooses when to filter
-func (r *OrgRepo) FindByID(ctx, id) (*Org, error) {
-    org, err := r.queries.GetOrganization(ctx, id.String())
-    if err != nil {
-        return nil, err
-    }
-
-    // Filter at repository level
-    if org.DeletedAt != nil {
-        return nil, ErrNotFound
-    }
-
-    return toDomain(org), nil
-}
-
-func (r *OrgRepo) FindByIDIncludingDeleted(ctx, id) (*Org, error) {
-    org, err := r.queries.GetOrganization(ctx, id.String())
-    // No filtering - return as-is
-    return toDomain(org), err
-}
-```
-
-**Benefits:**
-
-- Single source of truth (one query, multiple uses)
-- Explicit about what you're getting
-- Easy to add new filtered variants
-- Repository tests verify filtering logic
+**Rationale:** Some features (archive views, admin tools) legitimately need access to
+soft-deleted records. The repository is the right abstraction layer for this filtering,
+not SQL. A single query serves multiple repository methods.
 
 ### 12. Immutable Field Protection
 
-**Decision:** Exclude certain fields from UPDATE queries to prevent accidental changes
+**Decision:** Exclude certain fields from UPDATE queries entirely.
 
-**Fields Protected:**
+**Fields protected:**
 
-- Employee: `org_id`, `serial_num` - These define identity
-- Payroll Period: `org_id`, `year`, `month` - These define the period
-- Payroll Result: No UPDATE query at all - completely immutable
+- Employee: `org_id`, `serial_num` — define identity
+- Payroll Period: `org_id`, `year`, `month` — define the period
+- Payroll Result: no UPDATE query at all
 
-**Rationale:**
-
-**Employee Serial Numbers:**
-
-- Like employee ID badges - never change
-- Generated by application: `SELECT MAX(serial_num) + 1`
-- Unique per organization
-- Changing would break audit trail and references
-
-**Payroll Period Identity:**
-
-- Moving a period between orgs or changing its date makes no business sense
-- Would violate UNIQUE constraint: `(org_id, year, month)`
-- If wrong, DELETE and recreate
-
-**Payroll Results:**
-
-- Historical financial records must be immutable
-- Legal requirement for audit trail
-- If error: DELETE entire period and regenerate
-- No UPDATE query exists - impossible to modify by accident
-
-**Alternative Considered:** Allow updates but validate in repository
-**Rejected:** SQL-level protection is stronger and more explicit
+**Rationale:** SQL-level protection is stronger than application-level guards.
+Changing `serial_num` or moving a payroll period between orgs makes no business sense
+and would corrupt the audit trail. If wrong: delete and recreate.
 
 ### 13. Explicit Workflow Queries
 
-**Decision:** Create dedicated queries for state transitions instead of generic UPDATEs
+**Decision:** Dedicated queries for state transitions instead of generic UPDATEs.
 
-**Example - Payroll Period Finalization:**
+**Example:** `FinalizePayrollPeriod` sets `status = 'FINALIZED'` and `finalized_at`
+in a single query with `WHERE status = 'DRAFT'`. A generic `UPDATE` could accidentally
+finalize an already-finalized period or clear `finalized_at`.
 
-```sql
--- Instead of generic UPDATE that can do anything:
-UPDATE payroll_period SET status = ?, finalized_at = ? WHERE id = ?;
-
--- Use explicit workflow queries:
--- name: FinalizePayrollPeriod :one
-UPDATE payroll_period
-SET status = 'FINALIZED', finalized_at = ?, updated_at = ?
-WHERE id = ? AND status = 'DRAFT' AND deleted_at IS NULL
-RETURNING *;
-
--- name: UnfinalizePayrollPeriod :one
-UPDATE payroll_period
-SET status = 'DRAFT', finalized_at = NULL, updated_at = ?
-WHERE id = ? AND status = 'FINALIZED' AND deleted_at IS NULL
-RETURNING *;
-```
-
-**Benefits:**
-
-1. **Cannot finalize twice** - WHERE clause prevents it
-2. **Cannot skip states** - Must be DRAFT to finalize
-3. **Enforces CHECK constraint** - finalized_at set/cleared correctly
-4. **Self-documenting** - Query name describes business operation
-5. **Type-safe** - sqlc generates specific functions
-
-**Applied To:**
-
-- Payroll period status workflow
-- (Future: Employee status changes, if needed)
-
-**Trade-off:**
-
-- More queries to maintain
-- But: Better than runtime errors from constraint violations
-- And: Makes business logic explicit and testable
-
----
+**Rationale:** Workflow queries enforce business rules at the SQL level, are
+self-documenting, and generate type-safe sqlc functions.
 
 ### 14. Calculation Engine as Versioned Adapter
 
-**Decision:** Implement the payroll calculator as an adapter (`internal/adapter/payroll`)
-with an interface defined by the consumer service, not by the adapter itself.
+**Decision:** Implement the payroll calculator as a versioned adapter package
+(`internal/adapter/payroll/`) with an interface defined by `PayrollService`,
+not by the calculator itself.
 
-**Rationale:**
+**Rationale:** Moroccan payroll rates change yearly. A new year's calculator is
+a new package alongside the existing one, not a modification. `PayrollService`
+never needs to change when rates change. The composition root (`cmd/tui/main.go`)
+wires the correct version together.
 
-Moroccan payroll rates change yearly. Structuring the calculator as a versioned adapter means:
-
-- Adding a 2027 calculator is a new package alongside `payroll/`, not a modification of existing code
-- `PayrollService` is never touched when rates change
-- Multiple year calculators can coexist if needed for historical recalculation
-
-**Interface defined by the consumer:**
-
-```go
-// In application/payroll_service.go — the consumer owns this interface
-type payrollCalculator interface {
-    Calculate(ctx context.Context,
-        period *domain.PayrollPeriod,
-        emp *domain.Employee,
-        pkg *domain.EmployeeCompensationPackage,
-    ) (*domain.PayrollResult, error)
-}
-```
-
-The `payroll.Calculator` satisfies this interface implicitly. `PayrollService` has no import of the `payroll` package — wiring happens at the composition root (`cmd/tui/main.go`).
-
-**Testing:** `mockPayrollCalculator` in service tests verifies orchestration logic independently of calculation correctness.
-Calculator correctness is verified separately in `calculator_test.go` against worked examples from real payslips.
-
-**Trade-off:** The calculator is stateless and pure — it takes inputs and returns a result.
-This is intentional: it keeps the calculator trivially testable
-and avoids any need for year-to-date accumulation state,
-which would require per-employee per-year storage.
+The calculator is intentionally stateless and pure: inputs in, result out.
+This makes it trivially testable and avoids any need for year-to-date accumulation state.
 
 ---
 
-## Technical Guidelines
+## Common Pitfalls
 
-### SQLite Specifics
+1. **Forgetting `defer tx.Rollback()`** — always defer immediately after `BeginTx`;
+   it becomes a no-op after a successful commit.
 
-**Foreign Keys Must Be Enabled:**
+2. **Using `r.queries` instead of `qtx` inside a transaction** — operations outside `qtx`
+   are not part of the transaction and will not roll back on failure.
 
-```go
-db, err := sql.Open("sqlite", dbPath)
-_, err = db.Exec("PRAGMA foreign_keys = ON")  // CRITICAL
-```
+3. **Missing soft-delete filter** — `db/query/` queries are primitive; repositories
+   must check `DeletedAt != nil` and return `ErrRecordNotFound` accordingly.
 
-**No Native UUID or Timestamp Types:**
+4. **Non-atomic test data counters** — use `atomic.AddInt64` for unique field values
+   in parallel tests to avoid `UNIQUE` constraint violations.
 
-- UUIDs: Store as TEXT, convert with `uuid.String()` / `uuid.Parse()`
-- Timestamps: Store as TEXT in RFC3339,
-  convert with `time.Format()` / `time.Parse()`
+5. **Timestamp comparison failures** — always normalize with `.UTC().Truncate(time.Second)`
+   before comparing; storage precision and timezone can differ.
 
-**`:memory:` for Tests:**
-
-**Embedded Migrations:**
-
-Migrations are embedded at compile time using `//go:embed`:
-
-```go
-// db/migration/embed.go
-package migration
-
-import "embed"
-
-//go:embed *.sql
-var FS embed.FS
-```
-
-Use `goose.SetBaseFS(migration.FS)` before calling `goose.Up(db, ".")`.
-This applies to both production startup and `setupTestDB` in repository tests.
-
-```go
-// In-memory database - perfect for fast, isolated tests
-db, err := sql.Open("sqlite", ":memory:")
-```
-
-### sqlc Workflow
-
-**Write SQL queries with special comments:**
-
-```sql
--- name: GetOrganization :one
-SELECT * FROM organization WHERE id = ? AND deleted_at IS NULL LIMIT 1;
-
--- name: ListOrganizations :many
-SELECT * FROM organization WHERE deleted_at IS NULL ORDER BY name;
-
--- name: CreateOrganization :exec
-INSERT INTO organization (id, name, legal_form, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
-```
-
-**Generate type-safe Go code:**
-
-```bash
-sqlc generate
-```
-
-**Use in repositories:**
-
-```go
-func (r *OrgRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.Organization, error) {
-    row, err := r.queries.GetOrganization(ctx, id.String())
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrNotFound
-        }
-        return nil, fmt.Errorf("failed to get organization: %w", err)
-    }
-
-    return rowToOrganization(row)
-}
-```
-
-### Error Handling
-
-**Define sentinel errors:**
-
-```go
-var (
-    ErrNotFound  = errors.New("record not found")
-    ErrDuplicate = errors.New("duplicate record")
-)
-```
-
-**Wrap with context:**
-
-```go
-if err != nil {
-    return fmt.Errorf("failed to create organization: %w", err)
-}
-```
-
-**Check with `errors.Is()`:**
-
-```go
-if errors.Is(err, ErrNotFound) {
-    // Handle not found
-}
-```
-
-### sqlc Query Patterns
-
-**Consistent Annotations:**
-
-Every query must have a name and type annotation:
-
-```sql
--- name: QueryName :type
-```
-
-**Types:**
-
-- `:one` - Single row (sql.ErrNoRows if not found)
-- `:many` - Multiple rows (empty slice if none)
-- `:exec` - No rows returned
-
-**RETURNING Clause:**
-
-- `:one` queries that mutate data (INSERT, UPDATE) must include `RETURNING *`
-- `:exec` queries should NOT have RETURNING (they discard results anyway)
-- Allows retrieving auto-generated/computed values
-
-**Example:**
-
-```sql
--- name: CreateOrganization :one
-INSERT INTO organization(...) VALUES (...) RETURNING *;
-
--- name: DeleteOrganization :exec
-UPDATE organization SET deleted_at = ? WHERE id = ?;
-```
-
-**Placeholder Style:**
-
-SQLite uses `?` positional parameters:
-
-```sql
-WHERE id = ? AND year = ? AND month = ?;
-```
-
-sqlc generates numbered parameters in Go:
-
-```go
-func (q *Queries) GetPayrollPeriod(ctx, id string, year, month int) (...)
-```
-
-**Query Organization:**
-
-Group queries logically in each file:
-
-1. GET operations (by ID, by criteria)
-2. LIST operations (all, filtered, ordered)
-3. CREATE operation
-4. UPDATE operations
-5. DELETE operations (soft, restore, hard)
-6. Specialized queries (counts, lookups, helpers)
-
-**Naming Conventions:**
-
-- `Get{Entity}` - Single entity by ID
-- `Get{Entity}By{Criteria}` - Single entity by other field(s)
-- `List{Entities}` - Multiple entities
-- `List{Entities}By{Criteria}` - Filtered list
-- `Create{Entity}` - Insert
-- `Update{Entity}` - Generic update (if needed)
-- `{Verb}{Entity}` - Specific operations (Finalize, Restore, etc.)
-- `Count{Entities}...` - Aggregate queries
-- `Delete{Entity}` - Soft delete
-- `Restore{Entity}` - Undelete
-- `HardDelete{Entity}` - Permanent deletion
-
-**Including Deleted Pattern:**
-
-For queries that should optionally include soft-deleted records, create two variants:
-
-```sql
--- name: GetEntity :one
-SELECT * FROM entity WHERE id = ? AND deleted_at IS NULL;
-
--- name: GetEntityIncludingDeleted :one
-SELECT * FROM entity WHERE id = ?;
-```
-
-Repository decides which to use based on context.
-
-### Configuration
-
-**XDG Base Directory Compliance:**
-
-- Config: `~/.config/finmgmt/config.yaml`
-- Data: `~/.local/share/finmgmt/data.db`
-
----
-
-## Testing Strategy
-
-### Domain Tests
-
-Test validation and business rules without any infrastructure:
-
-```go
-func TestEmployee_Validate(t *testing.T) {
-    t.Parallel()
-
-    tests := []struct {
-        name    string
-        emp     *domain.Employee
-        wantErr error
-    }{
-        {
-            name: "valid employee",
-            emp: &domain.Employee{
-                ID:       uuid.New(),
-                FullName: "Ahmed Ali",
-                // ... all required fields
-            },
-            wantErr: nil,
-        },
-        {
-            name: "empty full name",
-            emp: &domain.Employee{
-                FullName: "",
-            },
-            wantErr: domain.ErrEmployeeFullNameRequired,
-        },
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            t.Parallel()
-
-            err := tt.emp.Validate()
-
-            if tt.wantErr == nil {
-                require.NoError(t, err)
-            } else {
-                require.ErrorIs(t, err, tt.wantErr)
-            }
-        })
-    }
-}
-```
-
-### Repository Tests
-
-Use `:memory:` SQLite for fast, isolated tests:
-
-```go
-func TestEmployeeRepository(t *testing.T) {
-    db, _ := sql.Open("sqlite", ":memory:")
-    defer db.Close()
-
-    // Enable foreign keys
-    db.Exec("PRAGMA foreign_keys = ON")
-
-    // Run migrations
-    goose.Up(db, "../../../../db/migration")
-
-    // Test
-    repo := NewEmployeeRepository(db)
-    emp := &domain.Employee{...}
-    err := repo.Create(context.Background(), emp)
-    require.NoError(t, err)
-}
-```
-
-### Service Tests
-
-Mock only what you need:
-
-```go
-type mockEmployeeRepo struct {
-    findByOrgIDFunc func(context.Context, uuid.UUID) ([]*domain.Employee, error)
-}
-
-func (m *mockEmployeeRepo) FindByOrgID(ctx context.Context, id uuid.UUID) ([]*domain.Employee, error) {
-    return m.findByOrgIDFunc(ctx, id)
-}
-
-func TestPayrollService_GeneratePayroll(t *testing.T) {
-    mock := &mockEmployeeRepo{
-        findByOrgIDFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.Employee, error) {
-            return []*domain.Employee{{...}}, nil
-        },
-    }
-
-    service := NewPayrollService(mock)
-    // Test service logic
-}
-```
-
-### Test Patterns
-
-**Table-Driven Tests:**
-
-- All domain validation tests use table-driven pattern
-- Easy to add new test cases
-- Clear test names
-
-**Parallel Execution:**
-
-- All tests use `t.Parallel()`
-- Fast test suite execution
-
-**Realistic Data:**
-
-- Use Moroccan names, amounts, dates
-- Makes tests more meaningful
+6. **SQLite foreign keys** — must explicitly enable with `PRAGMA foreign_keys = ON`
+   on every connection; SQLite disables them by default.
 
 ---
 
@@ -1996,57 +282,43 @@ func TestPayrollService_GeneratePayroll(t *testing.T) {
 
 ### Architecture
 
-1. **Go idioms > Cargo-culting Java patterns** -
-   No separate `ports/` package needed
-2. **Dependency direction matters, not directory structure** -
-   Inward toward domain is what counts
-3. **Small, focused interfaces** -
-   Services define only what they need
-4. **db/ for SQL, internal/ for Go** -
-   Don't force SQL into Go package structure
+1. **Go idioms > cargo-culting Java patterns** — no separate `ports/` package needed
+2. **Dependency direction matters, not directory structure** — inward toward domain is what counts
+3. **Small, focused interfaces** — services define only what they need
+4. **`db/` for SQL, `internal/` for Go** — don't force SQL into Go package structure
 
 ### Domain Design
 
-1. **Money type is fundamental** - Build it first, everything depends on it
-2. **Validation in domain is powerful** - Catches errors early, easy to test
-3. **Cross-field validation needs care** - BirthDate vs HireDate, Status vs FinalizedAt
-4. **Enums with helpers improve UX** - Pre-computed strings for error messages
-5. **Helper methods on entities** - TotalDueToCNSS() makes business logic clearer
+1. **Money type is fundamental** — build it first; everything depends on it
+2. **Validation in domain is powerful** — catches errors early, trivially testable
+3. **Cross-field validation needs care** — e.g., `BirthDate` vs `HireDate`, `Status` vs `FinalizedAt`
+4. **Helper methods on entities** — `TotalDueToCNSS()` makes business logic clearer
 
 ### Database
 
-1. **Calculated fields in payroll ARE correct** -
-   Historical accuracy trumps normalization
-2. **ON DELETE RESTRICT for historical artifacts** -
-   Preserve audit trail
-3. **Soft deletes everywhere** -
-   Financial data shouldn't disappear
-4. **PRAGMA foreign_keys = ON** -
-   Must enable on every SQLite connection
+1. **Calculated fields in payroll are correct** — historical accuracy trumps normalization
+2. **ON DELETE RESTRICT for historical artifacts** — preserve the audit trail
+3. **Soft deletes everywhere** — financial data shouldn't disappear
+4. **PRAGMA foreign_keys = ON** — must enable on every SQLite connection
 
 ### Database Queries
 
-1. **Primitive queries provide flexibility** - Let repository layer handle filtering
-2. **Immutability at SQL level is powerful** - Exclude fields from UPDATE to prevent accidents
-3. **Explicit workflow queries are safer** - `FinalizePayrollPeriod` vs generic UPDATE
-4. **Review catches subtle bugs** - Copy-paste errors, missing fields, typos
-5. **Consistent patterns reduce cognitive load** - Every entity follows same query structure
-6. **Specialized queries document business logic** - `GetNextSerialNumber`, `CountEmployeesUsingCompensationPackage`
-7. **sqlc annotations must match intent** - `:one` needs RETURNING, `:exec` doesn't
-8. **Audit trail queries enable compliance** - ListAuditLogsForRecord, ListAuditLogsByAction
+1. **Primitive queries provide flexibility** — let the repository layer handle filtering
+2. **Immutability at SQL level is powerful** — exclude fields from UPDATE to prevent accidents
+3. **Explicit workflow queries are safer** — `FinalizePayrollPeriod` vs a generic UPDATE
+4. **Consistent patterns reduce cognitive load** — every entity follows the same query structure
+5. **sqlc annotations must match intent** — `:one` needs `RETURNING *`, `:exec` doesn't
 
 ### Go Practices
 
-1. **Money as integer cents** - Never float64 for financial calculations
-2. **Error returns from Money operations** - Prevents silent failures
-3. **Use context.Context everywhere** - Enables timeouts and cancellation
-4. **sqlc over ORMs** - Type safety without magic
-5. **`:memory:` for tests** - Fast, isolated, auto-cleanup
-6. **Table-driven tests with t.Parallel()** - Best practice for Go testing
+1. **Integer cents, never float64** — for all financial calculations
+2. **Error returns from Money operations** — prevents silent failures
+3. **Use `context.Context` everywhere** — enables timeouts and cancellation
+4. **sqlc over ORMs** — type safety without magic
+5. **`:memory:` SQLite for tests** — fast, isolated, no cleanup needed
 
 ### Testing
 
-1. **Test domain first** - Pure logic, no dependencies, easy to test
-2. **Comprehensive test coverage builds confidence** - 200+ test scenarios
-3. **Realistic test data matters** - Moroccan context makes tests meaningful
-4. **Benchmarks are valuable** - Know your performance characteristics
+1. **Test domain first** — pure logic, no dependencies, easy to test
+2. **Realistic test data matters** — Moroccan names, amounts, and dates make tests meaningful
+3. **Table-driven tests with `t.Parallel()`** — standard Go best practice
