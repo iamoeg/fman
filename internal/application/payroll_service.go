@@ -161,14 +161,13 @@ type payrollCalculator interface {
 //   - Validate domain business rules
 //   - Coordinate payroll period and result repositories
 //   - Manage workflow state transitions (DRAFT → FINALIZED)
-//   - Orchestrate payroll calculation (Phase 1E integration point)
+//   - Orchestrate payroll calculation via the payrollCalculator interface
 //   - Translate repository errors to service-level errors
 //
 // This is the most complex service in the application layer because it:
 //   - Coordinates multiple repositories
 //   - Manages batch operations (generating results for all employees)
 //   - Enforces workflow rules (cannot finalize empty periods, etc.)
-//   - Will integrate with calculation engine in Phase 1E
 type PayrollService struct {
 	periods      payrollPeriodRepository
 	results      payrollResultRepository
