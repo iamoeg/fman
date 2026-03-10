@@ -101,7 +101,7 @@ func (s sidebar) view(height int, focused bool, activeOrg string) string {
 			Width(sidebarWidth - 4). // fit within border + padding
 			MaxWidth(sidebarWidth - 4)
 		orgIndicator = "\n" + dividerStyle.Render("─────────────────") +
-			"\n" + orgLabelStyle.Render("org") +
+			"\n" + orgLabelStyle.Render("Organization") +
 			"\n" + orgNameStyle.Render(activeOrg)
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/iamoeg/bootdev-capstone/internal/application"
+	"github.com/iamoeg/bootdev-capstone/pkg/config"
 )
 
 // orgState is the internal state machine for the organizations section.
@@ -26,6 +27,7 @@ const (
 // orgSection implements sectionModel for the Organizations section.
 type orgSection struct {
 	svc             *application.OrganizationService
+	cfg             *config.Config
 	list            list.Model
 	state           orgState
 	form            orgForm
@@ -34,13 +36,13 @@ type orgSection struct {
 	width, height   int
 }
 
-func newOrgSection(svc *application.OrganizationService) *orgSection {
+func newOrgSection(svc *application.OrganizationService, cfg *config.Config) *orgSection {
 	delegate := list.NewDefaultDelegate()
 	l := list.New(nil, delegate, 0, 0)
 	l.Title = "Organizations"
 	l.SetShowHelp(false)
 	l.SetFilteringEnabled(true)
-	return &orgSection{svc: svc, list: l}
+	return &orgSection{svc: svc, cfg: cfg, list: l}
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +75,7 @@ func (s *orgSection) ShortHelp() []key.Binding {
 			mainKeys.New,
 			mainKeys.Edit,
 			mainKeys.Delete,
+			mainKeys.SetActive,
 		}
 	}
 }
@@ -163,6 +166,13 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.pendingDeleteID = selected.org.ID
 			s.state = orgStateDeleting
 			return s, nil
+
+		case key.Matches(msg, mainKeys.SetActive):
+			selected, ok := s.list.SelectedItem().(orgItem)
+			if !ok {
+				return s, nil
+			}
+			return s, setActiveOrgCmd(s.cfg, selected.org)
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)

@@ -79,7 +79,7 @@ func NewModel(app *App) Model {
 		sidebar: newSidebar(),
 	}
 
-	m.sections[sectionOrganizations] = newOrgSection(app.OrganizationService)
+	m.sections[sectionOrganizations] = newOrgSection(app.OrganizationService, app.Config)
 	for i := sectionIndex(1); i < sectionCount; i++ {
 		m.sections[i] = newPlaceholderSection(sectionLabels[i])
 	}

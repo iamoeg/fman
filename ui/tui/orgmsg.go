@@ -8,6 +8,7 @@ import (
 
 	"github.com/iamoeg/bootdev-capstone/internal/application"
 	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/bootdev-capstone/pkg/config"
 )
 
 // orgsLoadedMsg carries the result of listing all organizations.
@@ -51,5 +52,18 @@ func deleteOrgCmd(svc *application.OrganizationService, id uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
 		err := svc.DeleteOrganization(context.Background(), id)
 		return deleteOrgDoneMsg{err: err}
+	}
+}
+
+// setActiveOrgCmd persists the selected org as default_org_id in the config
+// and returns an activeOrgLoadedMsg so the sidebar refreshes immediately.
+func setActiveOrgCmd(cfg *config.Config, org *domain.Organization) tea.Cmd {
+	return func() tea.Msg {
+		cfg.DefaultOrgID = org.ID.String()
+		if err := cfg.Save(""); err != nil {
+			// Non-fatal: sidebar won't update but the app keeps running.
+			return activeOrgLoadedMsg{}
+		}
+		return activeOrgLoadedMsg{name: org.Name}
 	}
 }
