@@ -222,6 +222,13 @@ func (c *Calculator) Calculate(
 		return nil, fmt.Errorf("taxable gross: %w", err)
 	}
 
+	// Grand total = gross salary + any other bonuses
+	totalOtherBonus := money.FromCents(0)
+	grossSalaryGrandTotal, err := grossSalary.Add(totalOtherBonus)
+	if err != nil {
+		return nil, fmt.Errorf("gross salary grand total: %w", err)
+	}
+
 	// ── Assemble result ───────────────────────────────────────────────────
 	now := time.Now().UTC()
 	result := &domain.PayrollResult{
@@ -235,8 +242,8 @@ func (c *Calculator) Calculate(
 		BaseSalary:            baseSalary,
 		SeniorityBonus:        seniorityBonus,
 		GrossSalary:           grossSalary,
-		TotalOtherBonus:       money.FromCents(0),
-		GrossSalaryGrandTotal: grossSalary, // no other bonuses for now
+		TotalOtherBonus:       totalOtherBonus,
+		GrossSalaryGrandTotal: grossSalaryGrandTotal,
 
 		// CNSS employee
 		SocialAllowanceEmployeeContrib:     cnssEmp.socialAllowance,
