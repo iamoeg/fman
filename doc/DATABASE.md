@@ -164,13 +164,13 @@ There is **no UPDATE query** for this table — corrections require deleting and
 
 **Salary components (cents):**
 
-| Column                           | Description            |
-| -------------------------------- | ---------------------- |
-| `base_salary_cents`              | Base monthly salary    |
-| `seniority_bonus_cents`          | Seniority bonus        |
-| `gross_salary_cents`             | base + seniority       |
-| `total_extra_bonus_cents`        | Other bonuses          |
-| `gross_salary_grand_total_cents` | Total gross            |
+| Column                           | Description         |
+| -------------------------------- | ------------------- |
+| `base_salary_cents`              | Base monthly salary |
+| `seniority_bonus_cents`          | Seniority bonus     |
+| `gross_salary_cents`             | base + seniority    |
+| `total_extra_bonus_cents`        | Other bonuses       |
+| `gross_salary_grand_total_cents` | Total gross         |
 
 **Employee deductions (cents):**
 
@@ -194,12 +194,12 @@ There is **no UPDATE query** for this table — corrections require deleting and
 
 **Tax calculation (cents):**
 
-| Column                       | Description                       |
-| ---------------------------- | --------------------------------- |
-| `total_exemptions_cents`     | Professional expenses, etc.       |
-| `taxable_gross_salary_cents` | Gross minus exemptions            |
-| `taxable_net_salary_cents`   | After CNSS/AMO deductions         |
-| `income_tax_cents`           | IR (progressive tax)              |
+| Column                       | Description                 |
+| ---------------------------- | --------------------------- |
+| `total_exemptions_cents`     | Professional expenses, etc. |
+| `taxable_gross_salary_cents` | Gross minus exemptions      |
+| `taxable_net_salary_cents`   | After CNSS/AMO deductions   |
+| `income_tax_cents`           | IR (progressive tax)        |
 
 **Final amounts (cents):**
 
@@ -219,15 +219,15 @@ There is **no UPDATE query** for this table — corrections require deleting and
 Append-only change tracking for compliance and debugging.
 Entries are created automatically inside other repositories' transactions — never directly.
 
-| Column       | Type | Constraints                          | Description                            |
-| ------------ | ---- | ------------------------------------ | -------------------------------------- |
-| `id`         | TEXT | PRIMARY KEY                          | UUID                                   |
-| `table_name` | TEXT | NOT NULL                             | Which table was modified               |
-| `record_id`  | TEXT | NOT NULL                             | Which record (UUID)                    |
-| `action`     | TEXT | NOT NULL, CHECK IN (CREATE, UPDATE…) | CREATE, UPDATE, SOFT_DELETE, DELETE    |
-| `before`     | TEXT | json_valid()                         | JSON snapshot before (null for CREATE) |
-| `after`      | TEXT | NOT NULL, json_valid()               | JSON snapshot after                    |
-| `timestamp`  | TEXT | NOT NULL                             | When the change occurred               |
+| Column       | Type | Constraints              | Description                                  |
+| ------------ | ---- | ------------------------ | -------------------------------------------- |
+| `id`         | TEXT | PRIMARY KEY              | UUID                                         |
+| `table_name` | TEXT | NOT NULL                 | Which table was modified                     |
+| `record_id`  | TEXT | NOT NULL                 | Which record (UUID)                          |
+| `action`     | TEXT | NOT NULL, CHECK IN (...) | CREATE, UPDATE, DELETE, RESTORE, HARD_DELETE |
+| `before`     | TEXT | json_valid()             | JSON snapshot before (null for CREATE)       |
+| `after`      | TEXT | NOT NULL, json_valid()   | JSON snapshot after                          |
+| `timestamp`  | TEXT | NOT NULL                 | When the change occurred                     |
 
 ---
 
@@ -255,12 +255,12 @@ PayrollResult (one per employee)
 
 Used when child records are meaningless without the parent.
 
-| Child Table      | Parent Table     | Rationale                                        |
-| ---------------- | ---------------- | ------------------------------------------------ |
-| `employee`       | `organization`   | Employees belong to an org                       |
-| `payroll_period` | `organization`   | Periods belong to an org                         |
-| `payroll_result` | `payroll_period` | Results are part of a period; delete together    |
-| `payroll_result` | `employee`       | If employee is deleted, their payroll goes too   |
+| Child Table      | Parent Table     | Rationale                                      |
+| ---------------- | ---------------- | ---------------------------------------------- |
+| `employee`       | `organization`   | Employees belong to an org                     |
+| `payroll_period` | `organization`   | Periods belong to an org                       |
+| `payroll_result` | `payroll_period` | Results are part of a period; delete together  |
+| `payroll_result` | `employee`       | If employee is deleted, their payroll goes too |
 
 Note: soft deletes mean CASCADE rarely triggers in practice. Hard deletes are for data purging only.
 
@@ -268,9 +268,9 @@ Note: soft deletes mean CASCADE rarely triggers in practice. Hard deletes are fo
 
 Used when the parent is a historical artifact that must be preserved.
 
-| Child Table      | Parent Table           | Rationale                                                   |
-| ---------------- | ---------------------- | ----------------------------------------------------------- |
-| `employee`       | `compensation_package` | Can't delete a package if employees are using it            |
+| Child Table      | Parent Table           | Rationale                                                     |
+| ---------------- | ---------------------- | ------------------------------------------------------------- |
+| `employee`       | `compensation_package` | Can't delete a package if employees are using it              |
 | `payroll_result` | `compensation_package` | Historical record — must preserve the exact compensation used |
 
 Once a compensation package is referenced by a payroll result, it is a permanent artifact.

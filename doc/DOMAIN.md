@@ -1,7 +1,7 @@
 # Domain Knowledge: Moroccan Payroll Context
 
 This document defines the exact rules, rates, and calculation order used by
-the Moroccan payroll engine (`internal/adapter/payroll/morocco/`).
+the Moroccan payroll engine (`internal/adapter/payroll/`).
 All rates are verified against real payslips and reflect 2026 legislation.
 
 > **Important:** When any rate or bracket changes, update this document first,

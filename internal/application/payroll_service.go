@@ -138,7 +138,7 @@ type payrollResultRepository interface {
 // ===============================================================================
 
 // payrollCalculator defines the interface for the Moroccan payroll calculation engine.
-// Satisfied by internal/adapter/payroll/morocco.Calculator.
+// Satisfied by internal/adapter/payroll.Calculator.
 type payrollCalculator interface {
 	Calculate(
 		ctx context.Context,
