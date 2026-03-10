@@ -24,8 +24,7 @@ var sectionLabels = [sectionCount]string{
 
 // sidebar renders the left navigation pane.
 type sidebar struct {
-	active  sectionIndex
-	focused bool
+	active sectionIndex
 }
 
 func newSidebar() sidebar {
@@ -48,7 +47,7 @@ func (s sidebar) update(msg interface{ String() string }) (sidebar, bool) {
 	return s, false
 }
 
-func (s sidebar) view(height int) string {
+func (s sidebar) view(height int, focused bool) string {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("205")).
@@ -87,7 +86,7 @@ func (s sidebar) view(height int) string {
 	}
 
 	borderStyle := unfocusedBorder
-	if s.focused {
+	if focused {
 		borderStyle = focusedBorder
 	}
 

@@ -51,7 +51,6 @@ func NewModel(app *App) Model {
 		active:  sectionOrganizations,
 		sidebar: newSidebar(),
 	}
-	m.sidebar.focused = true
 
 	// Install placeholder sections for every slot.
 	// Steps 2-4 replace these one by one with real implementations.
@@ -86,10 +85,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, globalKeys.SwitchPane):
 				if m.focus == focusSidebar {
 					m.focus = focusMain
-					m.sidebar.focused = false
 				} else {
 					m.focus = focusSidebar
-					m.sidebar.focused = true
 				}
 				return m, nil
 			}
@@ -112,7 +109,6 @@ func (m Model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.active = m.sidebar.active
 		// Switch focus to main pane after selecting a section.
 		m.focus = focusMain
-		m.sidebar.focused = false
 	}
 	return m, nil
 }
@@ -123,7 +119,6 @@ func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if km, ok := msg.(tea.KeyMsg); ok {
 		if key.Matches(km, mainKeys.Back) && !m.sections[m.active].IsCapturingInput() {
 			m.focus = focusSidebar
-			m.sidebar.focused = true
 			return m, nil
 		}
 	}
@@ -142,7 +137,7 @@ func (m Model) View() string {
 	mainH := m.mainContentHeight()
 
 	// Sidebar
-	sidebarView := m.sidebar.view(m.height - footerHeight - headerHeight)
+	sidebarView := m.sidebar.view(m.height-footerHeight-headerHeight, m.focus == focusSidebar)
 
 	// Header bar
 	headerStyle := lipgloss.NewStyle().
