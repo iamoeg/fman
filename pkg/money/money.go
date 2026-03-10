@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // Error definitions
@@ -112,6 +113,28 @@ func (m Money) ToMAD() float64 {
 //	fmt.Println(m)  // "1234.56 MAD"
 func (m Money) String() string {
 	return fmt.Sprintf("%.2f MAD", m.ToMAD())
+}
+
+// ============================================================================
+// JSON Marshaling
+// ============================================================================
+
+// MarshalJSON implements json.Marshaler.
+// The value is encoded as an integer number of cents (e.g., 123456 for 1234.56 MAD).
+// This ensures audit logs and other JSON snapshots preserve exact monetary values.
+func (m Money) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatInt(m.cents, 10)), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+// Expects an integer number of cents, as produced by MarshalJSON.
+func (m *Money) UnmarshalJSON(data []byte) error {
+	cents, err := strconv.ParseInt(string(data), 10, 64)
+	if err != nil {
+		return fmt.Errorf("money: cannot unmarshal %s as cents: %w", data, err)
+	}
+	m.cents = cents
+	return nil
 }
 
 // ============================================================================

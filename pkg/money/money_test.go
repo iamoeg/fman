@@ -1,6 +1,7 @@
 package money
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -309,6 +310,109 @@ func TestString(t *testing.T) {
 				t.Errorf("String() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// ============================================================================
+// JSON Marshaling Tests
+// ============================================================================
+
+func TestMoney_MarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		m    Money
+		want string
+	}{
+		{name: "zero", m: FromCents(0), want: "0"},
+		{name: "positive", m: FromCents(123456), want: "123456"},
+		{name: "negative", m: FromCents(-99900), want: "-99900"},
+		{name: "one cent", m: FromCents(1), want: "1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			b, err := json.Marshal(tt.m)
+			if err != nil {
+				t.Fatalf("MarshalJSON() unexpected error: %v", err)
+			}
+			if string(b) != tt.want {
+				t.Errorf("MarshalJSON() = %s, want %s", b, tt.want)
+			}
+		})
+	}
+}
+
+func TestMoney_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		input   string
+		want    Money
+		wantErr bool
+	}{
+		{name: "zero", input: "0", want: FromCents(0)},
+		{name: "positive", input: "123456", want: FromCents(123456)},
+		{name: "negative", input: "-99900", want: FromCents(-99900)},
+		{name: "invalid (float)", input: "123.45", wantErr: true},
+		{name: "invalid (string)", input: `"123"`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var m Money
+			err := json.Unmarshal([]byte(tt.input), &m)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("UnmarshalJSON(%s) expected error, got nil", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("UnmarshalJSON(%s) unexpected error: %v", tt.input, err)
+			}
+			if m != tt.want {
+				t.Errorf("UnmarshalJSON(%s) = %v, want %v", tt.input, m, tt.want)
+			}
+		})
+	}
+}
+
+func TestMoney_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	// Verify that a struct containing Money fields serializes and deserializes correctly.
+	// This is the audit log use case.
+	type record struct {
+		Salary  Money `json:"salary"`
+		Bonus   Money `json:"bonus"`
+		NetPay  Money `json:"net_pay"`
+	}
+
+	original := record{
+		Salary: FromCents(1_000_000),
+		Bonus:  FromCents(50_000),
+		NetPay: FromCents(875_420),
+	}
+
+	b, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	var restored record
+	if err := json.Unmarshal(b, &restored); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	if original != restored {
+		t.Errorf("round-trip failed: got %+v, want %+v", restored, original)
 	}
 }
 
