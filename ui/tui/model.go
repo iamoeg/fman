@@ -72,7 +72,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		return m, nil
+		// Forward to all sections so their internal components (list, viewport,
+		// table, …) can resize even if they haven't been visited yet.
+		var cmds []tea.Cmd
+		for i := range m.sections {
+			next, cmd := m.sections[i].Update(msg)
+			m.sections[i] = next
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		// Global bindings are skipped when the active section has a form or modal
