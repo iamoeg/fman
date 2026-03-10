@@ -70,6 +70,7 @@ func main() {
 
 	// 6. Wire the App container.
 	app := &tui.App{
+		Config:              cfg,
 		OrganizationService: orgSvc,
 		EmployeeService:     empSvc,
 		CompensationService: compSvc,

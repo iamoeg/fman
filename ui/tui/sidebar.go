@@ -48,7 +48,7 @@ func (s sidebar) update(msg tea.KeyMsg) (sidebar, bool) {
 	return s, false
 }
 
-func (s sidebar) view(height int, focused bool) string {
+func (s sidebar) view(height int, focused bool, activeOrg string) string {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("205")).
@@ -73,18 +73,39 @@ func (s sidebar) view(height int, focused bool) string {
 
 	title := titleStyle.Render("finmgmt")
 
-	items := title + "\n"
+	nav := title + "\n"
 	for i := sectionIndex(0); i < sectionCount; i++ {
 		label := sectionLabels[i]
 		if i == s.active {
-			items += activeItemStyle.Render("> " + label)
+			nav += activeItemStyle.Render("> " + label)
 		} else {
-			items += itemStyle.Render("  " + label)
+			nav += itemStyle.Render("  " + label)
 		}
 		if i < sectionCount-1 {
-			items += "\n"
+			nav += "\n"
 		}
 	}
+
+	// Active org indicator at the bottom.
+	orgIndicator := ""
+	if activeOrg != "" {
+		dividerStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("237")).
+			Padding(0, 1)
+		orgLabelStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("243")).
+			Padding(0, 1)
+		orgNameStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252")).
+			Padding(0, 1).
+			Width(sidebarWidth - 4). // fit within border + padding
+			MaxWidth(sidebarWidth - 4)
+		orgIndicator = "\n" + dividerStyle.Render("─────────────────") +
+			"\n" + orgLabelStyle.Render("org") +
+			"\n" + orgNameStyle.Render(activeOrg)
+	}
+
+	content := nav + orgIndicator
 
 	borderStyle := unfocusedBorder
 	if focused {
@@ -94,7 +115,7 @@ func (s sidebar) view(height int, focused bool) string {
 	return borderStyle.
 		Width(sidebarWidth - 2). // -2 for border chars
 		Height(height - 2).      // -2 for border chars
-		Render(items)
+		Render(content)
 }
 
 func (s sidebar) shortHelp() []key.Binding {

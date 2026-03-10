@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 )
 
 const (
@@ -36,15 +39,35 @@ type sectionModel interface {
 	IsOverlay() bool
 }
 
+// activeOrgLoadedMsg carries the display name of the active org (or empty on miss).
+type activeOrgLoadedMsg struct{ name string }
+
+// loadActiveOrgCmd looks up the org name for the given UUID.
+// Sends an empty name if the ID is nil or the org is not found.
+func loadActiveOrgCmd(app *App, idStr string) tea.Cmd {
+	return func() tea.Msg {
+		id, err := uuid.Parse(idStr)
+		if err != nil || id == uuid.Nil {
+			return activeOrgLoadedMsg{}
+		}
+		org, err := app.OrganizationService.GetOrganization(context.Background(), id)
+		if err != nil {
+			return activeOrgLoadedMsg{}
+		}
+		return activeOrgLoadedMsg{name: org.Name}
+	}
+}
+
 // Model is the root Bubble Tea model. It owns layout, focus, and routing.
 type Model struct {
-	app      *App
-	width    int
-	height   int
-	focus    focusTarget
-	active   sectionIndex
-	sections [sectionCount]sectionModel
-	sidebar  sidebar
+	app           *App
+	width         int
+	height        int
+	focus         focusTarget
+	active        sectionIndex
+	sections      [sectionCount]sectionModel
+	sidebar       sidebar
+	activeOrgName string
 }
 
 // NewModel constructs the root model. Call this from cmd/tui/main.go.
@@ -65,11 +88,14 @@ func NewModel(app *App) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := make([]tea.Cmd, 0, sectionCount)
+	cmds := make([]tea.Cmd, 0, sectionCount+1)
 	for i := range m.sections {
 		if cmd := m.sections[i].Init(); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	}
+	if m.app.Config != nil && m.app.Config.DefaultOrgID != "" {
+		cmds = append(cmds, loadActiveOrgCmd(m.app, m.app.Config.DefaultOrgID))
 	}
 	return tea.Batch(cmds...)
 }
@@ -91,6 +117,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, tea.Batch(cmds...)
+
+	case activeOrgLoadedMsg:
+		m.activeOrgName = msg.name
+		return m, nil
 
 	case tea.KeyMsg:
 		// Global bindings are skipped when the active section has a form or modal
@@ -160,7 +190,7 @@ func (m Model) View() string {
 	mainH := m.mainContentHeight()
 
 	// Sidebar
-	sidebarView := m.sidebar.view(m.height-footerHeight-headerHeight, m.focus == focusSidebar)
+	sidebarView := m.sidebar.view(m.height-footerHeight-headerHeight, m.focus == focusSidebar, m.activeOrgName)
 
 	// Header bar
 	headerStyle := lipgloss.NewStyle().
