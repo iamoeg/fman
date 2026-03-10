@@ -56,7 +56,7 @@ const (
 // Income tax brackets (2026). Applied to annualized net taxable salary.
 // Formula: annual_ir = (annual_taxable × rate) − deduction
 type incomeTaxBracket struct {
-	upperBound int64 // exclusive upper bound in cents; -1 means no upper bound
+	upperBound int64 // inclusive upper bound in cents; -1 means no upper bound
 	rate       float64
 	deduction  int64 // fixed deduction in cents
 }
