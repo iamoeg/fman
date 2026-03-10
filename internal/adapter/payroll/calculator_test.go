@@ -539,3 +539,27 @@ func TestCalculate_WorkedExample2(t *testing.T) {
 	// AMO employer
 	assert.Equal(t, mad(863.10), result.AMOEmployerContrib, "amo employer: 21,000 × 4.11%")
 }
+
+// TestCalculate_GrossSalaryBelowSMIG verifies that Calculate rejects a
+// compensation package whose base salary is below the legal minimum wage.
+// This would normally be caught by domain validation, but the calculator
+// enforces it as a second line of defense.
+func TestCalculate_GrossSalaryBelowSMIG(t *testing.T) {
+	t.Parallel()
+
+	period := newTestPeriod(2026, 1)
+	hireDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	emp := newTestEmployee(hireDate, 0)
+
+	// BaseSalary below SMIG (3,422.00 MAD) — bypasses domain validation directly
+	pkg := &domain.EmployeeCompensationPackage{
+		ID:         uuid.New(),
+		BaseSalary: mad(3_000), // below SMIG
+		Currency:   money.MAD,
+	}
+
+	calc := New()
+	_, err := calc.Calculate(context.Background(), period, emp, pkg)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrGrossSalaryBelowSMIG)
+}

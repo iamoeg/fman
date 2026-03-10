@@ -2,6 +2,7 @@ package calculator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -88,6 +89,15 @@ var seniorityTiers = []seniorityTier{
 }
 
 // ============================================================================
+// Errors
+// ============================================================================
+// ErrGrossSalaryBelowSMIG is returned when the computed gross salary falls
+// below the legal minimum wage (SMIG). This should not happen if domain
+// validation is enforced, but the calculator checks it as a second line of
+// defense against bypassed validation or stale compensation packages.
+var ErrGrossSalaryBelowSMIG = errors.New("calculator: gross salary is below the legal minimum wage (SMIG)")
+
+// ============================================================================
 // Public API
 // ============================================================================
 
@@ -123,6 +133,10 @@ func (c *Calculator) Calculate(
 	grossSalary, err := baseSalary.Add(seniorityBonus)
 	if err != nil {
 		return nil, fmt.Errorf("gross salary: %w", err)
+	}
+	if grossSalary.Cents() < smigMonthlyMAD {
+		return nil, fmt.Errorf("%w: got %v, minimum is %v",
+			ErrGrossSalaryBelowSMIG, grossSalary, money.FromCents(smigMonthlyMAD))
 	}
 
 	// ── Step 4: CNSS employee ─────────────────────────────────────────────
