@@ -131,6 +131,11 @@ type payrollResultRepository interface {
 	// FindAllIncludingDeleted retrieves all payroll results,
 	// including soft-deleted ones.
 	FindAllIncludingDeleted(ctx context.Context) ([]*domain.PayrollResult, error)
+
+	// ReplaceAllForPeriod atomically replaces all payroll results for a period.
+	// Soft-deletes any existing active results and creates all new ones in a
+	// single transaction, so the period never has a partial set of results.
+	ReplaceAllForPeriod(ctx context.Context, periodID uuid.UUID, results []*domain.PayrollResult) error
 }
 
 // ===============================================================================
@@ -768,38 +773,27 @@ func (s *PayrollService) GeneratePayrollResults(
 		return fmt.Errorf("failed to get employees: %w", err)
 	}
 
-	// 4. Delete existing results for this period (if regenerating)
-	existingResults, err := s.results.FindByPeriod(ctx, periodID)
-	if err != nil {
-		return fmt.Errorf("failed to get existing results: %w", err)
-	}
-	for _, result := range existingResults {
-		if err := s.results.Delete(ctx, result.ID); err != nil {
-			return fmt.Errorf("failed to delete existing result: %w", err)
-		}
-	}
-
-	// 5. Generate results for each employee
+	// 4. Calculate results for all employees (pure computation, no DB writes yet).
+	// All calculations must succeed before any database changes are made.
+	results := make([]*domain.PayrollResult, 0, len(empList))
 	for _, emp := range empList {
-		// Get employee's compensation package
 		pkg, err := s.compensation.FindByID(ctx, emp.CompensationPackageID)
 		if err != nil {
 			return fmt.Errorf("failed to get compensation package for employee %s: %w", emp.ID, err)
 		}
 
-		// Calculate payroll using the Moroccan calculation engine
 		result, err := s.calculator.Calculate(ctx, period, emp, pkg)
 		if err != nil {
 			return fmt.Errorf("%w for employee %s: %v", ErrPayrollCalculationFailed, emp.ID, err)
 		}
 
-		// Create the result
-		if err := s.results.Create(ctx, result); err != nil {
-			if errors.Is(err, sqlite.ErrDuplicateRecord) {
-				return fmt.Errorf("duplicate result for employee %s: %w", emp.ID, err)
-			}
-			return fmt.Errorf("failed to create payroll result for employee %s: %w", emp.ID, err)
-		}
+		results = append(results, result)
+	}
+
+	// 5. Atomically replace existing results with the newly calculated ones.
+	// Either all results are replaced or none are (the period is never left partial).
+	if err := s.results.ReplaceAllForPeriod(ctx, periodID, results); err != nil {
+		return fmt.Errorf("failed to replace payroll results: %w", err)
 	}
 
 	return nil

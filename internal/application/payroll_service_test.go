@@ -157,6 +157,7 @@ type mockPayrollResultRepository struct {
 	findByEmployeeIncludingDeletedFunc func(context.Context, uuid.UUID) ([]*domain.PayrollResult, error)
 	findAllFunc                        func(context.Context) ([]*domain.PayrollResult, error)
 	findAllIncludingDeletedFunc        func(context.Context) ([]*domain.PayrollResult, error)
+	replaceAllForPeriodFunc            func(context.Context, uuid.UUID, []*domain.PayrollResult) error
 }
 
 func (m *mockPayrollResultRepository) Create(ctx context.Context, result *domain.PayrollResult) error {
@@ -241,6 +242,13 @@ func (m *mockPayrollResultRepository) FindAllIncludingDeleted(ctx context.Contex
 		return m.findAllIncludingDeletedFunc(ctx)
 	}
 	return nil, nil
+}
+
+func (m *mockPayrollResultRepository) ReplaceAllForPeriod(ctx context.Context, periodID uuid.UUID, results []*domain.PayrollResult) error {
+	if m.replaceAllForPeriodFunc != nil {
+		return m.replaceAllForPeriodFunc(ctx, periodID, results)
+	}
+	return nil
 }
 
 // mockPayrollCalculator implements payrollCalculator interface for testing
@@ -1064,10 +1072,6 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					}, nil
 				}
 
-				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
-					return []*domain.PayrollResult{}, nil
-				}
-
 				me.findByOrganizationFunc = func(ctx context.Context, id uuid.UUID) ([]*domain.Employee, error) {
 					return []*domain.Employee{
 						createTestEmployee(orgID, compPackID),
@@ -1079,7 +1083,8 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					return createTestCompensationPackage(), nil
 				}
 
-				mr.createFunc = func(ctx context.Context, result *domain.PayrollResult) error {
+				mr.replaceAllForPeriodFunc = func(ctx context.Context, periodID uuid.UUID, results []*domain.PayrollResult) error {
+					assert.Len(t, results, 2, "should pass all calculated results")
 					return nil
 				}
 			},
@@ -1105,7 +1110,7 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 			wantErr:  application.ErrPayrollPeriodAlreadyFinalized,
 		},
 		{
-			name: "deletes existing results before regenerating",
+			name: "replaces existing results atomically when regenerating",
 			setupMocks: func(mp *mockPayrollPeriodRepository, mr *mockPayrollResultRepository, me *mockEmployeeRepository, mc *mockCompensationPackageRepository) {
 				orgID := uuid.New()
 				compPackID := uuid.New()
@@ -1120,20 +1125,6 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					}, nil
 				}
 
-				existingResults := []*domain.PayrollResult{
-					createTestPayrollResult(uuid.New(), uuid.New(), compPackID),
-				}
-
-				mr.findByPeriodFunc = func(ctx context.Context, periodID uuid.UUID) ([]*domain.PayrollResult, error) {
-					return existingResults, nil
-				}
-
-				deleteCalled := false
-				mr.deleteFunc = func(ctx context.Context, id uuid.UUID) error {
-					deleteCalled = true
-					return nil
-				}
-
 				me.findByOrganizationFunc = func(ctx context.Context, id uuid.UUID) ([]*domain.Employee, error) {
 					return []*domain.Employee{
 						createTestEmployee(orgID, compPackID),
@@ -1144,8 +1135,10 @@ func TestPayrollService_GeneratePayrollResults(t *testing.T) {
 					return createTestCompensationPackage(), nil
 				}
 
-				mr.createFunc = func(ctx context.Context, result *domain.PayrollResult) error {
-					assert.True(t, deleteCalled, "should delete existing results before creating new ones")
+				mr.replaceAllForPeriodFunc = func(ctx context.Context, periodID uuid.UUID, results []*domain.PayrollResult) error {
+					// The repository handles delete+create atomically; the service
+					// must pass the full set of calculated results in one call.
+					assert.Len(t, results, 1, "should pass one result per employee")
 					return nil
 				}
 			},

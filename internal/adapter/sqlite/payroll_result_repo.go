@@ -409,6 +409,76 @@ func (r *PayrollResultRepository) HardDelete(ctx context.Context, id uuid.UUID) 
 	return nil
 }
 
+// ReplaceAllForPeriod atomically replaces all payroll results for a period.
+// Soft-deletes any existing active results and creates all new ones in a single
+// transaction, so the period never has a partial set of results.
+func (r *PayrollResultRepository) ReplaceAllForPeriod(
+	ctx context.Context,
+	periodID uuid.UUID,
+	results []*domain.PayrollResult,
+) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf(FmtBeginTxErr, err)
+	}
+	defer tx.Rollback()
+
+	qtx := r.queries.WithTx(tx)
+
+	// Soft-delete all existing active results for the period.
+	existingRows, err := qtx.ListPayrollResultsByPayrollPeriod(ctx, periodID.String())
+	if err != nil {
+		return fmt.Errorf(FmtDBQueryErr, "list existing payroll results", err)
+	}
+
+	for _, existingRow := range existingRows {
+		resOld, err := rowToPayrollResult(existingRow)
+		if err != nil {
+			return fmt.Errorf(FmtRowParsingErr, "payroll result", err)
+		}
+
+		resDeletedRow, err := qtx.DeletePayrollResult(ctx, payrollResultToDeleteParams(resOld))
+		if err != nil {
+			return fmt.Errorf(FmtDBQueryErr, "delete existing payroll result", err)
+		}
+
+		resDeleted, err := rowToPayrollResult(resDeletedRow)
+		if err != nil {
+			return fmt.Errorf(FmtRowParsingErr, "payroll result", err)
+		}
+
+		if err := createAuditLog(ctx, qtx, PayrollResultTableName, resOld.ID.String(), DBActionDelete, resOld, resDeleted); err != nil {
+			return fmt.Errorf(FmtAuditLogErr, err)
+		}
+	}
+
+	// Create all new results.
+	for _, res := range results {
+		row, err := qtx.CreatePayrollResult(ctx, payrollResultToCreateParams(res))
+		if err != nil {
+			if isUniqueConstraintViolation(err) {
+				return ErrDuplicateRecord
+			}
+			return fmt.Errorf(FmtDBQueryErr, "create payroll result", err)
+		}
+
+		resCreated, err := rowToPayrollResult(row)
+		if err != nil {
+			return fmt.Errorf(FmtRowParsingErr, "payroll result", err)
+		}
+
+		if err := createAuditLog(ctx, qtx, PayrollResultTableName, resCreated.ID.String(), DBActionCreate, nil, resCreated); err != nil {
+			return fmt.Errorf(FmtAuditLogErr, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf(FmtCommitTxErr, err)
+	}
+
+	return nil
+}
+
 // ============================================================================
 // Transaction Support
 // ============================================================================
