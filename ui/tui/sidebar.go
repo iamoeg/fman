@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -31,17 +32,17 @@ func newSidebar() sidebar {
 	return sidebar{active: sectionOrganizations}
 }
 
-func (s sidebar) update(msg interface{ String() string }) (sidebar, bool) {
-	switch msg.String() {
-	case "k", "up":
+func (s sidebar) update(msg tea.KeyMsg) (sidebar, bool) {
+	switch {
+	case key.Matches(msg, sidebarKeys.Up):
 		if s.active > 0 {
 			s.active--
 		}
-	case "j", "down":
+	case key.Matches(msg, sidebarKeys.Down):
 		if s.active < sectionCount-1 {
 			s.active++
 		}
-	case "enter":
+	case key.Matches(msg, sidebarKeys.Select):
 		return s, true // signals selection confirmed
 	}
 	return s, false
