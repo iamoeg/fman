@@ -26,10 +26,11 @@ type sectionModel interface {
 	Update(msg tea.Msg) (sectionModel, tea.Cmd)
 	View(width, height int) string
 	ShortHelp() []key.Binding
-	// IsCapturingInput returns true when the section has a text input focused.
-	// The root model skips global key bindings (q, tab, esc) in that state
-	// so the section receives every keystroke uninterrupted.
-	IsCapturingInput() bool
+	// IsOverlay returns true when the section has a form or modal open.
+	// The root model skips ALL global key bindings (q, tab/shift+tab, esc) in
+	// that state so the section owns every keystroke — including tab for
+	// field navigation and esc to cancel.
+	IsOverlay() bool
 }
 
 // Model is the root Bubble Tea model. It owns layout, focus, and routing.
@@ -74,9 +75,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Global bindings are skipped when the active section has a text input
-		// focused — the section must receive every keystroke uninterrupted.
-		capturing := m.focus == focusMain && m.sections[m.active].IsCapturingInput()
+		// Global bindings are skipped when the active section has a form or modal
+		// open — the section owns every keystroke including tab and esc.
+		capturing := m.focus == focusMain && m.sections[m.active].IsOverlay()
 		if !capturing {
 			switch {
 			case key.Matches(msg, globalKeys.Quit):
@@ -117,7 +118,7 @@ func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for Esc to return focus to sidebar — but only when the section is
 	// not capturing input, so sections can use Esc internally (e.g. cancel form).
 	if km, ok := msg.(tea.KeyMsg); ok {
-		if key.Matches(km, mainKeys.Back) && !m.sections[m.active].IsCapturingInput() {
+		if key.Matches(km, mainKeys.Back) && !m.sections[m.active].IsOverlay() {
 			m.focus = focusSidebar
 			return m, nil
 		}
@@ -216,7 +217,7 @@ func (p *placeholderSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 	return p, nil
 }
 
-func (p *placeholderSection) IsCapturingInput() bool {
+func (p *placeholderSection) IsOverlay() bool {
 	return false
 }
 
