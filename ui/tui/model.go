@@ -178,9 +178,9 @@ func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
 }
 
-// mainWidth returns the width available for the main content pane.
+// mainWidth returns the width available for the main content pane (inside its border).
 func (m Model) mainWidth() int {
-	w := m.width - sidebarWidth
+	w := m.width - sidebarWidth - 2 // -2 for border chars, matching sidebar
 	if w < 0 {
 		return 0
 	}
