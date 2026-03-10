@@ -39,11 +39,12 @@ const (
 	amoEmployeeRate = 0.0226
 	amoEmployerRate = 0.0411
 
-	// Professional expense deduction
-	profExpenseRateHigh        = 0.20      // annual gross > 78,000 MAD
-	profExpenseRateLow         = 0.35      // annual gross <= 78,000 MAD
-	profExpenseAnnualThreshold = 78_000_00 // 78,000.00 MAD in cents
-	profExpenseMonthlyCap      = 2_500_00  // 2,500.00 MAD in cents
+	// Professional expense deduction.
+	// Lower-income employees get the higher deduction rate (35%).
+	profExpenseRateAboveThreshold = 0.20      // annual gross > 78,000 MAD
+	profExpenseRateBelowThreshold = 0.35      // annual gross <= 78,000 MAD
+	profExpenseAnnualThreshold    = 78_000_00 // 78,000.00 MAD in cents
+	profExpenseMonthlyCap         = 2_500_00  // 2,500.00 MAD in cents
 
 	// Family charge deduction
 	familyChargePerDependentMAD = 40_00 // 40.00 MAD in cents
@@ -392,9 +393,9 @@ func calculateProfessionalExpenseDeduction(gross money.Money) (money.Money, erro
 		return money.Money{}, fmt.Errorf("annualize gross: %w", err)
 	}
 
-	rate := profExpenseRateHigh
+	rate := profExpenseRateAboveThreshold
 	if annualGross.Cents() <= profExpenseAnnualThreshold {
-		rate = profExpenseRateLow
+		rate = profExpenseRateBelowThreshold
 	}
 
 	deduction, err := gross.Multiply(rate)
