@@ -23,6 +23,9 @@ const (
 // sectionModel is the interface every section must satisfy.
 // The root model dispatches to whichever section is active.
 type sectionModel interface {
+	// Init is called once at program start; return a Cmd to kick off initial
+	// data loading (or nil if the section has nothing to load up-front).
+	Init() tea.Cmd
 	Update(msg tea.Msg) (sectionModel, tea.Cmd)
 	View(width, height int) string
 	ShortHelp() []key.Binding
@@ -53,9 +56,8 @@ func NewModel(app *App) Model {
 		sidebar: newSidebar(),
 	}
 
-	// Install placeholder sections for every slot.
-	// Steps 2-4 replace these one by one with real implementations.
-	for i := sectionIndex(0); i < sectionCount; i++ {
+	m.sections[sectionOrganizations] = newOrgSection(app.OrganizationService)
+	for i := sectionIndex(1); i < sectionCount; i++ {
 		m.sections[i] = newPlaceholderSection(sectionLabels[i])
 	}
 
@@ -63,7 +65,13 @@ func NewModel(app *App) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	cmds := make([]tea.Cmd, 0, sectionCount)
+	for i := range m.sections {
+		if cmd := m.sections[i].Init(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -108,9 +116,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSidebar(msg)
 		}
 		return m.updateMain(msg)
-	}
 
-	return m, nil
+	default:
+		// Route async messages (service responses, etc.) to the active section.
+		next, cmd := m.sections[m.active].Update(msg)
+		m.sections[m.active] = next
+		return m, cmd
+	}
 }
 
 func (m Model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -223,6 +235,10 @@ type placeholderSection struct {
 
 func newPlaceholderSection(label string) sectionModel {
 	return &placeholderSection{label: label}
+}
+
+func (p *placeholderSection) Init() tea.Cmd {
+	return nil
 }
 
 func (p *placeholderSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {

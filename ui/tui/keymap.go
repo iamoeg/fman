@@ -82,3 +82,47 @@ var mainKeys = MainKeyMap{
 		key.WithHelp("esc", "back"),
 	),
 }
+
+// FormKeyMap holds keybindings active inside a create/edit form overlay.
+type FormKeyMap struct {
+	NextField key.Binding
+	PrevField key.Binding
+	Submit    key.Binding
+	Cancel    key.Binding
+}
+
+var formKeys = FormKeyMap{
+	NextField: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "next field"),
+	),
+	PrevField: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "prev field"),
+	),
+	Submit: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "save"),
+	),
+	Cancel: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "cancel"),
+	),
+}
+
+// ConfirmKeyMap holds keybindings for a yes/no confirmation prompt.
+type ConfirmKeyMap struct {
+	Yes key.Binding
+	No  key.Binding
+}
+
+var confirmKeys = ConfirmKeyMap{
+	Yes: key.NewBinding(
+		key.WithKeys("y"),
+		key.WithHelp("y", "yes"),
+	),
+	No: key.NewBinding(
+		key.WithKeys("n", "esc"),
+		key.WithHelp("n/esc", "no"),
+	),
+}
