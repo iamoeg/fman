@@ -18,7 +18,9 @@ var (
 // renderFooter renders a single-line help bar from a list of key bindings.
 // Always appends the global quit binding at the end.
 func renderFooter(width int, bindings []key.Binding) string {
-	all := append(bindings, globalKeys.SwitchPane, globalKeys.Quit)
+	all := make([]key.Binding, len(bindings), len(bindings)+2)
+	copy(all, bindings)
+	all = append(all, globalKeys.SwitchPane, globalKeys.Quit)
 
 	parts := make([]string, 0, len(all))
 	for _, b := range all {
