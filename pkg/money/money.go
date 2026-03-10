@@ -21,12 +21,15 @@ var (
 //
 // Example:
 //
-//	salary := money.FromMAD(10234.56)  // 10,234.56 MAD
-//	bonus := money.FromMAD(500.00)
-//	total, err := salary.Add(bonus)
+//	salary, err := money.FromMAD(10234.56)  // 10,234.56 MAD
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
+//	bonus, err := money.FromMAD(500.00)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	total, err := salary.Add(bonus)
 type Money struct {
 	cents int64
 }
@@ -66,7 +69,7 @@ func FromMAD(mad float64) (Money, error) {
 	// Check if conversion would overflow
 	// We multiply by 100 to convert to cents, so check before multiplication
 	madCents := mad * 100
-	if madCents > float64(math.MaxInt64) || madCents < float64(math.MinInt64) {
+	if madCents >= float64(math.MaxInt64) || madCents < float64(math.MinInt64) {
 		return Money{}, fmt.Errorf("%w: %f MAD is too large to represent", ErrOverflow, mad)
 	}
 
@@ -180,7 +183,7 @@ func (m Money) Multiply(factor float64) (Money, error) {
 	result := float64(m.cents) * factor
 
 	// Check if result fits in int64
-	if result > float64(math.MaxInt64) || result < float64(math.MinInt64) {
+	if result >= float64(math.MaxInt64) || result < float64(math.MinInt64) {
 		return Money{}, fmt.Errorf("%w: %v * %f", ErrOverflow, m, factor)
 	}
 
@@ -213,7 +216,7 @@ func (m Money) Divide(divisor float64) (Money, error) {
 	result := float64(m.cents) / divisor
 
 	// Check if result fits in int64
-	if result > float64(math.MaxInt64) || result < float64(math.MinInt64) {
+	if result >= float64(math.MaxInt64) || result < float64(math.MinInt64) {
 		return Money{}, fmt.Errorf("%w: %v / %f", ErrOverflow, m, divisor)
 	}
 

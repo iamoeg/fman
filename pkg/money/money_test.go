@@ -701,6 +701,13 @@ func TestMultiply_Overflow(t *testing.T) {
 			factor: 10.0,
 		},
 		{
+			// 2^62 * 2.0 = 2^63 exactly in float64, which equals float64(math.MaxInt64)
+			// and would overflow int64 on conversion — the boundary case.
+			name:   "exact boundary overflow (2^62 * 2)",
+			m:      FromCents(1 << 62),
+			factor: 2.0,
+		},
+		{
 			name:   "negative underflow",
 			m:      FromCents(math.MinInt64 / 2),
 			factor: 10.0,
