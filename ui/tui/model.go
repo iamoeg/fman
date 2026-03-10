@@ -118,9 +118,10 @@ func (m Model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Check for Esc to return focus to sidebar.
+	// Check for Esc to return focus to sidebar — but only when the section is
+	// not capturing input, so sections can use Esc internally (e.g. cancel form).
 	if km, ok := msg.(tea.KeyMsg); ok {
-		if key.Matches(km, mainKeys.Back) {
+		if key.Matches(km, mainKeys.Back) && !m.sections[m.active].IsCapturingInput() {
 			m.focus = focusSidebar
 			m.sidebar.focused = true
 			return m, nil
