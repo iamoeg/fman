@@ -80,8 +80,11 @@ func NewModel(app *App) Model {
 	}
 
 	m.sections[sectionOrganizations] = newOrgSection(app.OrganizationService, app.Config)
-	for i := sectionIndex(1); i < sectionCount; i++ {
-		m.sections[i] = newPlaceholderSection(sectionLabels[i])
+	m.sections[sectionCompensation] = newCompSection(app.CompensationService)
+	for i := sectionIndex(0); i < sectionCount; i++ {
+		if m.sections[i] == nil {
+			m.sections[i] = newPlaceholderSection(sectionLabels[i])
+		}
 	}
 
 	return m
