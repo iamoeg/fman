@@ -463,6 +463,12 @@ func calculateIncomeTax(monthlyNetTaxable money.Money) (money.Money, error) {
 		return money.Money{}, fmt.Errorf("apply income tax deduction: %w", err)
 	}
 
+	// The bracket structure guarantees non-negative tax for valid inputs, but
+	// clamp defensively in case brackets are ever updated incorrectly.
+	if annualIncomeTax.IsNegative() {
+		annualIncomeTax = money.FromCents(0)
+	}
+
 	monthlyIncomeTax, err := annualIncomeTax.Divide(12)
 	if err != nil {
 		return money.Money{}, fmt.Errorf("monthly income tax: %w", err)
