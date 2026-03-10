@@ -92,6 +92,11 @@ func Load(configPath string) (*Config, error) {
 		// Explicit path provided - use it directly
 		configFileToUse = configPath
 	} else {
+		// Reload XDG paths from the current environment before searching.
+		// The xdg package caches paths at init time, so this ensures changes
+		// to XDG_CONFIG_HOME (e.g. in tests) are respected.
+		xdg.Reload()
+
 		// Search for config file in XDG paths
 		// (searches XDG_CONFIG_HOME and XDG_CONFIG_DIRS)
 		foundPath, err := xdg.SearchConfigFile("finmgmt/config.yaml")
