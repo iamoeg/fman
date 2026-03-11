@@ -453,6 +453,7 @@ func newEmpSection(
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
+	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
 	return &empSection{empSvc: empSvc, compSvc: compSvc, orgID: orgID, list: l}
 }
 

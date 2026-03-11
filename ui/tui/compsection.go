@@ -178,6 +178,7 @@ func newCompSection(svc *application.CompensationPackageService, orgID uuid.UUID
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
+	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
 	return &compSection{svc: svc, orgID: orgID, list: l}
 }
 

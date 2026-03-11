@@ -194,11 +194,13 @@ func newPayrollSection(
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
+	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
 
 	rl := list.New(nil, delegate, 0, 0)
 	rl.SetShowHelp(false)
 	rl.SetShowStatusBar(false)
 	rl.SetFilteringEnabled(false)
+	rl.Styles.NoItems = rl.Styles.NoItems.PaddingLeft(2)
 
 	return &payrollSection{
 		payrollSvc: payrollSvc,

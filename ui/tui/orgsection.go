@@ -43,6 +43,7 @@ func newOrgSection(svc *application.OrganizationService, cfg *config.Config) *or
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
+	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
 	return &orgSection{svc: svc, cfg: cfg, list: l}
 }
 
