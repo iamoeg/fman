@@ -25,6 +25,7 @@ The database consists of 5 core tables plus an audit log:
 ```text
 organization (1) ──< (N) employee
                  └──< (N) payroll_period
+                 └──< (N) employee_compensation_package
 
 employee_compensation_package (1) ──< (N) employee
                                    └──< (N) payroll_result
@@ -75,14 +76,18 @@ A separate table (rather than inline fields on `employee`) allows tracking
 compensation changes over time and preserves the exact package used for each
 payroll calculation.
 
-| Column              | Type    | Constraints                | Description                   |
-| ------------------- | ------- | -------------------------- | ----------------------------- |
-| `id`                | TEXT    | PRIMARY KEY                | UUID                          |
-| `base_salary_cents` | INTEGER | NOT NULL, >= 0             | Monthly salary in cents (MAD) |
-| `currency`          | TEXT    | NOT NULL, CHECK IN ('MAD') | Currency code                 |
-| `created_at`        | TEXT    | NOT NULL                   | ISO 8601 timestamp            |
-| `updated_at`        | TEXT    | NOT NULL                   | ISO 8601 timestamp            |
-| `deleted_at`        | TEXT    |                            | Soft delete timestamp         |
+| Column              | Type    | Constraints                         | Description                        |
+| ------------------- | ------- | ----------------------------------- | ---------------------------------- |
+| `id`                | TEXT    | PRIMARY KEY                         | UUID                               |
+| `org_id`            | TEXT    | FK → organization, NOT NULL         | Owning organization                |
+| `name`              | TEXT    | NOT NULL                            | Human-readable package name        |
+| `base_salary_cents` | INTEGER | NOT NULL, >= 0                      | Monthly salary in cents (MAD)      |
+| `currency`          | TEXT    | NOT NULL, CHECK IN ('MAD')          | Currency code                      |
+| `created_at`        | TEXT    | NOT NULL                            | ISO 8601 timestamp                 |
+| `updated_at`        | TEXT    | NOT NULL                            | ISO 8601 timestamp                 |
+| `deleted_at`        | TEXT    |                                     | Soft delete timestamp              |
+
+**Index:** `idx_comp_package_org_id` on `(org_id)` for efficient org-scoped lookups.
 
 ---
 

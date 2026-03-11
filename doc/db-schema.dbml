@@ -72,6 +72,8 @@ Enum marital_status_enum {
 
 Table employee_compensation_package {
   id uuid [pk]
+  org_id uuid [ref: > organization.id, not null]
+  name text [not null]
   base_salary_cents int [not null]
   currency currency_enum [not null, default: currency_enum.MAD]
 

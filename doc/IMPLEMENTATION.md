@@ -11,7 +11,7 @@ Phase-by-phase implementation plan for `finmgmt`.
 3. [Phase 1C — Repositories](#phase-1c--repositories-)
 4. [Phase 1D — Application Services](#phase-1d--application-services-)
 5. [Phase 1E — Payroll Engine](#phase-1e--payroll-engine-)
-6. [Phase 1F — TUI Implementation](#phase-1f--tui-implementation)
+6. [Phase 1F — TUI Implementation](#phase-1f--tui-implementation-)
 7. [Phase 1G — Export & Polish](#phase-1g--export--polish)
 8. [Things to Consider](#things-to-consider)
 
@@ -116,17 +116,31 @@ Moroccan payroll calculator adapter and integration into PayrollService.
 
 ---
 
-## Phase 1F — TUI Implementation
+## Phase 1F — TUI Implementation ✅
 
-**Status:** In progress
+Four sections fully wired to application services, all with CRUD and validation.
 
-### Goals
+**Architecture:**
 
-- Wire services into TUI screens
-- Employee list and detail views
-- Payroll period workflow (create, generate, finalize)
-- Form input with validation feedback
-- Navigation between screens
+- `sectionModel` interface: `Init`, `Update`, `View(w,h)`, `ShortHelp`, `IsOverlay`
+- Root model routes key messages to the focused pane (sidebar or main)
+- `IsOverlay() = true` suppresses all global keys (`q`, `tab`, `esc`) — section owns all input
+- Footer renders `ShortHelp()` of the active pane + global bindings when not in overlay/filter mode
+- All service calls are async; sections handle result messages and reload the list
+
+**Sections:**
+
+- **Organizations** — CRUD, set-active-org, active org persisted to config and reflected in sidebar
+- **Compensation Packages** — CRUD + rename; org-scoped; immutable once referenced by a payroll result
+- **Employees** — CRUD; 16-field form with scrollable viewport, cycling fields for enum values, org-scoped serial numbers
+- **Payroll** — Period CRUD, generate results, finalize/unfinalize; drills into per-employee results view
+
+**Notable patterns:**
+
+- Form overlay: `lipgloss.Place(w, h, Center, Center, box)` centered over a dimmed list background
+- `IsOverlay()` also returns `true` when the list filter is active — prevents `q`/`esc`/`tab` from firing global actions while the user is typing a search
+- `activeOrgLoadedMsg{name, orgID}` — root model updates the sidebar AND forwards to all org-scoped sections so they reload for the new org
+- One status row reserved at the bottom of each list view for error and success messages
 
 ---
 
