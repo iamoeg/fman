@@ -91,12 +91,6 @@ func NewModel(app *App) Model {
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
 	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, initialOrgID)
 	m.sections[sectionPayroll] = newPayrollSection(app.PayrollService, app.EmployeeService, initialOrgID)
-	for i := sectionIndex(0); i < sectionCount; i++ {
-		if m.sections[i] == nil {
-			m.sections[i] = newPlaceholderSection(sectionLabels[i])
-		}
-	}
-
 	return m
 }
 
@@ -306,38 +300,3 @@ func (m Model) mainContentHeight() int {
 	return h
 }
 
-// ---------------------------------------------------------------------------
-// Placeholder section — used until Steps 2-4 replace each section.
-// ---------------------------------------------------------------------------
-
-type placeholderSection struct {
-	label string
-}
-
-func newPlaceholderSection(label string) sectionModel {
-	return &placeholderSection{label: label}
-}
-
-func (p *placeholderSection) Init() tea.Cmd {
-	return nil
-}
-
-func (p *placeholderSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
-	return p, nil
-}
-
-func (p *placeholderSection) IsOverlay() bool {
-	return false
-}
-
-func (p *placeholderSection) View(width, height int) string {
-	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Italic(true).
-		Padding(1, 2)
-	return style.Render("(" + p.label + " — coming soon)")
-}
-
-func (p *placeholderSection) ShortHelp() []key.Binding {
-	return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete}
-}
