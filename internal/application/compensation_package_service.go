@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,11 @@ type compensationPackageRepository interface {
 	// Returns ErrCompensationPackageInUse if package is referenced by employees
 	// or payroll results (historical artifact protection).
 	Update(ctx context.Context, pkg *domain.EmployeeCompensationPackage) error
+
+	// Rename updates only the name field of an existing compensation package.
+	// Unlike Update, it does NOT enforce in-use guards — name is display metadata.
+	// Returns ErrRecordNotFound if package doesn't exist or is soft-deleted.
+	Rename(ctx context.Context, id uuid.UUID, name string) error
 
 	// Delete soft-deletes a compensation package by setting deleted_at timestamp.
 	// Returns ErrRecordNotFound if package doesn't exist or is already deleted.
@@ -267,6 +273,27 @@ func (s *CompensationPackageService) UpdateCompensationPackage(
 		return fmt.Errorf("failed to update compensation package: %w", err)
 	}
 
+	return nil
+}
+
+// RenameCompensationPackage updates only the name of an existing compensation package.
+// Unlike UpdateCompensationPackage, this is allowed even when the package is in use
+// by employees or payroll results — the name is display metadata, not a financial term.
+func (s *CompensationPackageService) RenameCompensationPackage(
+	ctx context.Context,
+	id uuid.UUID,
+	name string,
+) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("name is required")
+	}
+	if err := s.repo.Rename(ctx, id, name); err != nil {
+		if errors.Is(err, sqlite.ErrRecordNotFound) {
+			return ErrCompensationPackageNotFound
+		}
+		return fmt.Errorf("failed to rename compensation package: %w", err)
+	}
 	return nil
 }
 

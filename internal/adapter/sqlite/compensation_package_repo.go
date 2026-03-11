@@ -260,6 +260,71 @@ func (r *EmployeeCompensationPackageRepository) Update(ctx context.Context, pkg 
 	return nil
 }
 
+// Rename updates only the name field of an existing compensation package.
+// Unlike Update, it does NOT enforce in-use guards — name is display metadata and
+// can always be corrected even when the package is referenced by employees or payroll results.
+// Returns ErrRecordNotFound if the package doesn't exist or is soft-deleted.
+// The operation is atomic — both the update and audit log are created in a single transaction.
+func (r *EmployeeCompensationPackageRepository) Rename(ctx context.Context, id uuid.UUID, name string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf(FmtBeginTxErr, err)
+	}
+	defer tx.Rollback()
+
+	qtx := r.queries.WithTx(tx)
+
+	pkgOldRow, err := qtx.GetEmployeeCompensationPackage(ctx, id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrRecordNotFound
+		}
+		return fmt.Errorf(FmtDBQueryErr, "get employee compensation package", err)
+	}
+
+	pkgOld, err := rowToCompensationPackage(pkgOldRow)
+	if err != nil {
+		return fmt.Errorf(FmtRowParsingErr, "employee compensation package", err)
+	}
+
+	// No checkNotInUse — name is metadata and can always be corrected.
+	params := sqldb.UpdateEmployeeCompensationPackageParams{
+		ID:              id.String(),
+		Name:            name,
+		Currency:        pkgOld.Currency.String(),
+		BaseSalaryCents: pkgOld.BaseSalary.Cents(),
+		UpdatedAt:       time.Now().Format(DBTimeFormat),
+	}
+
+	pkgUpdatedRow, err := qtx.UpdateEmployeeCompensationPackage(ctx, params)
+	if err != nil {
+		return fmt.Errorf(FmtDBQueryErr, "rename employee compensation package", err)
+	}
+
+	pkgUpdated, err := rowToCompensationPackage(pkgUpdatedRow)
+	if err != nil {
+		return fmt.Errorf(FmtRowParsingErr, "employee compensation package", err)
+	}
+
+	if err := createAuditLog(
+		ctx,
+		qtx,
+		CompensationPackageTableName,
+		id.String(),
+		DBActionUpdate,
+		pkgOld,
+		pkgUpdated,
+	); err != nil {
+		return fmt.Errorf(FmtAuditLogErr, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf(FmtCommitTxErr, err)
+	}
+
+	return nil
+}
+
 // Delete soft-deletes a compensation package by setting deleted_at timestamp.
 // Creates an audit log entry with before/after snapshots.
 // Returns ErrRecordNotFound if the package doesn't exist or is already soft-deleted.

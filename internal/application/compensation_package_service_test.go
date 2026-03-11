@@ -27,6 +27,7 @@ type mockCompensationPackageRepository struct {
 	// Function implementations - set these in tests
 	createFunc                   func(context.Context, *domain.EmployeeCompensationPackage) error
 	updateFunc                   func(context.Context, *domain.EmployeeCompensationPackage) error
+	renameFunc                   func(context.Context, uuid.UUID, string) error
 	deleteFunc                   func(context.Context, uuid.UUID) error
 	restoreFunc                  func(context.Context, uuid.UUID) error
 	hardDeleteFunc               func(context.Context, uuid.UUID) error
@@ -48,6 +49,13 @@ func (m *mockCompensationPackageRepository) Create(ctx context.Context, pkg *dom
 func (m *mockCompensationPackageRepository) Update(ctx context.Context, pkg *domain.EmployeeCompensationPackage) error {
 	if m.updateFunc != nil {
 		return m.updateFunc(ctx, pkg)
+	}
+	return nil
+}
+
+func (m *mockCompensationPackageRepository) Rename(ctx context.Context, id uuid.UUID, name string) error {
+	if m.renameFunc != nil {
+		return m.renameFunc(ctx, id, name)
 	}
 	return nil
 }
