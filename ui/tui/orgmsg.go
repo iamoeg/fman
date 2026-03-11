@@ -71,8 +71,8 @@ func setActiveOrgCmd(cfg *config.Config, org *domain.Organization) tea.Cmd {
 	return func() tea.Msg {
 		cfg.DefaultOrgID = org.ID.String()
 		if err := cfg.Save(""); err != nil {
-			// Non-fatal: sidebar won't update but the app keeps running.
-			return activeOrgLoadedMsg{}
+			// Non-fatal: config not persisted to disk, but in-memory state is correct.
+			return activeOrgLoadedMsg{name: org.Name, orgID: org.ID}
 		}
 		return activeOrgLoadedMsg{name: org.Name, orgID: org.ID}
 	}
