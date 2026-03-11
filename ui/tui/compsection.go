@@ -111,6 +111,7 @@ func newCompSection(svc *application.CompensationPackageService) *compSection {
 	l := list.New(nil, delegate, 0, 0)
 	l.Title = "Compensation Packages"
 	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	return &compSection{svc: svc, list: l}
 }

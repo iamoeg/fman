@@ -41,6 +41,7 @@ func newOrgSection(svc *application.OrganizationService, cfg *config.Config) *or
 	l := list.New(nil, delegate, 0, 0)
 	l.Title = "Organizations"
 	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	return &orgSection{svc: svc, cfg: cfg, list: l}
 }
