@@ -391,8 +391,10 @@ func TestEmployeeRepository_ErrorHandling(t *testing.T) {
 		compPackRepo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		// Create compensation package only (no organization)
-		compPack := createTestCompensationPackage()
+		// Create a real org for the comp package (FK required), but use a
+		// different non-existent org_id for the employee to trigger the error
+		pkgOrg := createAndPersistTestOrg(t, db)
+		compPack := createTestCompensationPackage(pkgOrg.ID)
 		err := compPackRepo.Create(ctx, compPack)
 		require.NoError(t, err)
 

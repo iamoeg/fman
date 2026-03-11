@@ -27,18 +27,26 @@ const (
 	compStateDeleting           // delete confirmation open
 )
 
-// compForm holds the single BaseSalary input for the create overlay.
+// compForm holds the Name and BaseSalary inputs for the create overlay.
 type compForm struct {
-	input textinput.Model
+	nameInput   textinput.Model
+	salaryInput textinput.Model
+	focused     int // 0 = name, 1 = salary
 }
 
 func newCompForm() compForm {
-	t := textinput.New()
-	t.Placeholder = "e.g. 3422.00"
-	t.Width = 20
-	t.CharLimit = 12
-	t.Focus() //nolint:errcheck
-	return compForm{input: t}
+	name := textinput.New()
+	name.Placeholder = "e.g. Standard Developer"
+	name.Width = 24
+	name.CharLimit = 64
+	name.Focus() //nolint:errcheck
+
+	salary := textinput.New()
+	salary.Placeholder = "e.g. 3422.00"
+	salary.Width = 20
+	salary.CharLimit = 12
+
+	return compForm{nameInput: name, salaryInput: salary, focused: 0}
 }
 
 func (f compForm) update(msg tea.KeyMsg) (compForm, formResult, tea.Cmd) {
@@ -47,16 +55,38 @@ func (f compForm) update(msg tea.KeyMsg) (compForm, formResult, tea.Cmd) {
 		return f, formCancel, nil
 	case key.Matches(msg, formKeys.Submit):
 		return f, formSubmit, nil
+	case key.Matches(msg, key.NewBinding(key.WithKeys("tab", "shift+tab"))):
+		// Toggle focus between name and salary
+		if f.focused == 0 {
+			f.focused = 1
+			f.nameInput.Blur()
+			f.salaryInput.Focus() //nolint:errcheck
+		} else {
+			f.focused = 0
+			f.salaryInput.Blur()
+			f.nameInput.Focus() //nolint:errcheck
+		}
+		return f, formContinue, nil
 	default:
 		var cmd tea.Cmd
-		f.input, cmd = f.input.Update(msg)
+		if f.focused == 0 {
+			f.nameInput, cmd = f.nameInput.Update(msg)
+		} else {
+			f.salaryInput, cmd = f.salaryInput.Update(msg)
+		}
 		return f, formContinue, cmd
 	}
 }
 
-// toDomain parses the salary input into a domain.EmployeeCompensationPackage.
-func (f compForm) toDomain() (*domain.EmployeeCompensationPackage, error) {
-	raw := strings.TrimSpace(f.input.Value())
+// toDomain parses the form inputs into a domain.EmployeeCompensationPackage.
+// The caller is responsible for setting OrgID.
+func (f compForm) toDomain(orgID uuid.UUID) (*domain.EmployeeCompensationPackage, error) {
+	name := strings.TrimSpace(f.nameInput.Value())
+	if name == "" {
+		return nil, errors.New("Name is required")
+	}
+
+	raw := strings.TrimSpace(f.salaryInput.Value())
 	if raw == "" {
 		return nil, errors.New("Base salary is required")
 	}
@@ -69,6 +99,8 @@ func (f compForm) toDomain() (*domain.EmployeeCompensationPackage, error) {
 		return nil, fmt.Errorf("Invalid salary amount: %w", err)
 	}
 	return &domain.EmployeeCompensationPackage{
+		OrgID:      orgID,
+		Name:       name,
 		Currency:   money.MAD,
 		BaseSalary: salary,
 	}, nil
@@ -84,7 +116,9 @@ func (f compForm) view() string {
 
 	rows := []string{
 		lipgloss.JoinHorizontal(lipgloss.Center,
-			labelStyle.Render("Base Salary *"), f.input.View()),
+			labelStyle.Render("Name *"), f.nameInput.View()),
+		lipgloss.JoinHorizontal(lipgloss.Center,
+			labelStyle.Render("Base Salary *"), f.salaryInput.View()),
 		lipgloss.JoinHorizontal(lipgloss.Center,
 			lipgloss.NewStyle().Width(14).Foreground(lipgloss.Color("245")).Render("Currency"),
 			staticStyle.Render("MAD  (only supported currency)")),
@@ -98,6 +132,7 @@ func (f compForm) view() string {
 
 type compSection struct {
 	svc             *application.CompensationPackageService
+	orgID           uuid.UUID
 	list            list.Model
 	state           compState
 	form            compForm
@@ -106,14 +141,14 @@ type compSection struct {
 	width, height   int
 }
 
-func newCompSection(svc *application.CompensationPackageService) *compSection {
+func newCompSection(svc *application.CompensationPackageService, orgID uuid.UUID) *compSection {
 	delegate := list.NewDefaultDelegate()
 	l := list.New(nil, delegate, 0, 0)
 	l.Title = "Compensation Packages"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
-	return &compSection{svc: svc, list: l}
+	return &compSection{svc: svc, orgID: orgID, list: l}
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +156,7 @@ func newCompSection(svc *application.CompensationPackageService) *compSection {
 // ---------------------------------------------------------------------------
 
 func (s *compSection) Init() tea.Cmd {
-	return loadCompsCmd(s.svc)
+	return loadCompsCmd(s.svc, s.orgID)
 }
 
 func (s *compSection) IsOverlay() bool {
@@ -148,6 +183,10 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.list.SetSize(s.width, s.listHeight())
 		return s, nil
 
+	case activeOrgLoadedMsg:
+		s.orgID = msg.orgID
+		return s, loadCompsCmd(s.svc, s.orgID)
+
 	case compsLoadedMsg:
 		if msg.err != nil {
 			s.errMsg = "load error: " + msg.err.Error()
@@ -168,7 +207,7 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 			return s, nil
 		}
 		s.errMsg = ""
-		return s, loadCompsCmd(s.svc)
+		return s, loadCompsCmd(s.svc, s.orgID)
 
 	case deleteCompDoneMsg:
 		s.state = compStateList
@@ -178,7 +217,7 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 			return s, nil
 		}
 		s.errMsg = ""
-		return s, loadCompsCmd(s.svc)
+		return s, loadCompsCmd(s.svc, s.orgID)
 
 	case tea.KeyMsg:
 		return s.updateKey(msg)
@@ -198,6 +237,10 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	case compStateList:
 		switch {
 		case key.Matches(msg, mainKeys.New):
+			if s.orgID == uuid.Nil {
+				s.errMsg = "Select an active organization first"
+				return s, nil
+			}
 			s.form = newCompForm()
 			s.state = compStateCreating
 			s.errMsg = ""
@@ -221,7 +264,7 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		s.form = f
 		switch result {
 		case formSubmit:
-			pkg, err := s.form.toDomain()
+			pkg, err := s.form.toDomain(s.orgID)
 			if err != nil {
 				s.errMsg = err.Error()
 				return s, nil
@@ -297,7 +340,7 @@ func (s *compSection) renderFormOverlay(width, height int) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("205")).
 		Padding(1, 2).
-		Width(48).
+		Width(52).
 		Render(inner)
 
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
@@ -307,15 +350,15 @@ func (s *compSection) renderFormOverlay(width, height int) string {
 }
 
 func (s *compSection) renderDeleteConfirm(listView string, width int) string {
-	salary := ""
+	name := ""
 	if selected, ok := s.list.SelectedItem().(compItem); ok {
-		salary = selected.Title()
+		name = selected.Title()
 	}
 	prompt := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("196")).
 		Bold(true).
 		Width(width).
-		Render(fmt.Sprintf("  Delete package %q? [y] yes  [n/esc] cancel", salary))
+		Render(fmt.Sprintf("  Delete package %q? [y] yes  [n/esc] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 

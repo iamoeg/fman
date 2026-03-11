@@ -18,9 +18,12 @@ type compsLoadedMsg struct {
 type saveCompDoneMsg struct{ err error }
 type deleteCompDoneMsg struct{ err error }
 
-func loadCompsCmd(svc *application.CompensationPackageService) tea.Cmd {
+func loadCompsCmd(svc *application.CompensationPackageService, orgID uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
-		pkgs, err := svc.ListCompensationPackages(context.Background())
+		if orgID == uuid.Nil {
+			return compsLoadedMsg{}
+		}
+		pkgs, err := svc.ListCompensationPackages(context.Background(), orgID)
 		return compsLoadedMsg{pkgs: pkgs, err: err}
 	}
 }

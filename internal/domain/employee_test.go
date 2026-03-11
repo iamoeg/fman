@@ -1162,6 +1162,8 @@ func TestEmployeeCompensationPackage_Validate(t *testing.T) {
 		baseSalary, _ := money.FromMAD(5000.00)
 		return &domain.EmployeeCompensationPackage{
 			ID:         uuid.New(),
+			OrgID:      uuid.New(),
+			Name:       "Standard Package",
 			Currency:   money.MAD,
 			BaseSalary: baseSalary,
 			CreatedAt:  time.Now().UTC(),

@@ -80,10 +80,10 @@ func (r *EmployeeCompensationPackageRepository) FindByIDIncludingDeleted(ctx con
 	return pkg, nil
 }
 
-// FindAll retrieves all active (non-deleted) compensation packages.
+// FindAll retrieves all active (non-deleted) compensation packages for the given org.
 // Returns an empty slice if no packages exist.
-func (r *EmployeeCompensationPackageRepository) FindAll(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
-	rows, err := r.queries.ListEmployeeCompensationPackages(ctx)
+func (r *EmployeeCompensationPackageRepository) FindAll(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
+	rows, err := r.queries.ListEmployeeCompensationPackagesByOrg(ctx, orgID.String())
 	if err != nil {
 		return nil, fmt.Errorf(FmtDBQueryErr, "list employee compensation packages", err)
 	}
@@ -100,10 +100,10 @@ func (r *EmployeeCompensationPackageRepository) FindAll(ctx context.Context) ([]
 	return pkgs, nil
 }
 
-// FindAllIncludingDeleted retrieves all compensation packages, including soft-deleted records.
+// FindAllIncludingDeleted retrieves all compensation packages for the given org, including soft-deleted records.
 // Returns an empty slice if no packages exist.
-func (r *EmployeeCompensationPackageRepository) FindAllIncludingDeleted(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
-	rows, err := r.queries.ListEmployeeCompensationPackagesIncludingDeleted(ctx)
+func (r *EmployeeCompensationPackageRepository) FindAllIncludingDeleted(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
+	rows, err := r.queries.ListEmployeeCompensationPackagesByOrgIncludingDeleted(ctx, orgID.String())
 	if err != nil {
 		return nil, fmt.Errorf(FmtDBQueryErr, "list employee compensation packages (including deleted)", err)
 	}
@@ -503,6 +503,11 @@ func rowToCompensationPackage(row sqldb.EmployeeCompensationPackage) (*domain.Em
 		return nil, fmt.Errorf(FmtColumnParsingErr, "id as uuid", err)
 	}
 
+	orgID, err := uuid.Parse(row.OrgID)
+	if err != nil {
+		return nil, fmt.Errorf(FmtColumnParsingErr, "org_id as uuid", err)
+	}
+
 	createdAt, err := time.Parse(DBTimeFormat, row.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf(FmtColumnParsingErr, "created_at as time", err)
@@ -524,6 +529,8 @@ func rowToCompensationPackage(row sqldb.EmployeeCompensationPackage) (*domain.Em
 
 	return &domain.EmployeeCompensationPackage{
 		ID:         id,
+		OrgID:      orgID,
+		Name:       row.Name,
 		Currency:   money.Currency(row.Currency),
 		BaseSalary: money.FromCents(row.BaseSalaryCents),
 		CreatedAt:  createdAt,
@@ -537,6 +544,8 @@ func rowToCompensationPackage(row sqldb.EmployeeCompensationPackage) (*domain.Em
 func compensationPackageToCreateParams(pkg *domain.EmployeeCompensationPackage) sqldb.CreateEmployeeCompensationPackageParams {
 	return sqldb.CreateEmployeeCompensationPackageParams{
 		ID:              pkg.ID.String(),
+		OrgID:           pkg.OrgID.String(),
+		Name:            pkg.Name,
 		Currency:        pkg.Currency.String(),
 		BaseSalaryCents: pkg.BaseSalary.Cents(),
 		CreatedAt:       pkg.CreatedAt.Format(DBTimeFormat),
@@ -549,6 +558,7 @@ func compensationPackageToCreateParams(pkg *domain.EmployeeCompensationPackage) 
 func compensationPackageToUpdateParams(pkg *domain.EmployeeCompensationPackage) sqldb.UpdateEmployeeCompensationPackageParams {
 	return sqldb.UpdateEmployeeCompensationPackageParams{
 		ID:              pkg.ID.String(),
+		Name:            pkg.Name,
 		Currency:        pkg.Currency.String(),
 		BaseSalaryCents: pkg.BaseSalary.Cents(),
 		UpdatedAt:       time.Now().Format(DBTimeFormat),

@@ -63,14 +63,14 @@ type compensationPackageRepository interface {
 	// Returns ErrRecordNotFound if not found.
 	FindByIDIncludingDeleted(ctx context.Context, id uuid.UUID) (*domain.EmployeeCompensationPackage, error)
 
-	// FindAll retrieves all active (non-deleted) compensation packages.
+	// FindAll retrieves all active (non-deleted) compensation packages for the given org.
 	// Returns empty slice if none found.
-	FindAll(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error)
+	FindAll(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error)
 
-	// FindAllIncludingDeleted retrieves all compensation packages,
+	// FindAllIncludingDeleted retrieves all compensation packages for the given org,
 	// including soft-deleted ones.
 	// Returns empty slice if none found.
-	FindAllIncludingDeleted(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error)
+	FindAllIncludingDeleted(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error)
 
 	// CountEmployeesUsing returns the count of employees (including soft-deleted)
 	// that reference this compensation package.
@@ -500,8 +500,9 @@ func (s *CompensationPackageService) GetCompensationPackageIncludingDeleted(
 //	}
 func (s *CompensationPackageService) ListCompensationPackages(
 	ctx context.Context,
+	orgID uuid.UUID,
 ) ([]*domain.EmployeeCompensationPackage, error) {
-	pkgs, err := s.repo.FindAll(ctx)
+	pkgs, err := s.repo.FindAll(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list compensation packages: %w", err)
 	}
@@ -538,8 +539,9 @@ func (s *CompensationPackageService) ListCompensationPackages(
 //	}
 func (s *CompensationPackageService) ListCompensationPackagesIncludingDeleted(
 	ctx context.Context,
+	orgID uuid.UUID,
 ) ([]*domain.EmployeeCompensationPackage, error) {
-	pkgs, err := s.repo.FindAllIncludingDeleted(ctx)
+	pkgs, err := s.repo.FindAllIncludingDeleted(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list compensation packages (including deleted): %w", err)
 	}

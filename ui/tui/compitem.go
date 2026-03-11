@@ -11,13 +11,13 @@ type compItem struct {
 }
 
 func (i compItem) Title() string {
-	return fmt.Sprintf("%.2f %s", i.pkg.BaseSalary.ToMAD(), i.pkg.Currency)
+	return i.pkg.Name
 }
 
 func (i compItem) Description() string {
-	return "Created: " + i.pkg.CreatedAt.Format("2006-01-02")
+	return fmt.Sprintf("%.2f %s · Created %s", i.pkg.BaseSalary.ToMAD(), i.pkg.Currency, i.pkg.CreatedAt.Format("2006-01-02"))
 }
 
 func (i compItem) FilterValue() string {
-	return i.Title()
+	return i.pkg.Name
 }

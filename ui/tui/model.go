@@ -39,8 +39,11 @@ type sectionModel interface {
 	IsOverlay() bool
 }
 
-// activeOrgLoadedMsg carries the display name of the active org (or empty on miss).
-type activeOrgLoadedMsg struct{ name string }
+// activeOrgLoadedMsg carries the display name and ID of the active org (or empty on miss).
+type activeOrgLoadedMsg struct {
+	name  string
+	orgID uuid.UUID
+}
 
 // loadActiveOrgCmd looks up the org name for the given UUID.
 // Sends an empty name if the ID is nil or the org is not found.
@@ -54,7 +57,7 @@ func loadActiveOrgCmd(app *App, idStr string) tea.Cmd {
 		if err != nil {
 			return activeOrgLoadedMsg{}
 		}
-		return activeOrgLoadedMsg{name: org.Name}
+		return activeOrgLoadedMsg{name: org.Name, orgID: id}
 	}
 }
 
@@ -80,7 +83,12 @@ func NewModel(app *App) Model {
 	}
 
 	m.sections[sectionOrganizations] = newOrgSection(app.OrganizationService, app.Config)
-	m.sections[sectionCompensation] = newCompSection(app.CompensationService)
+
+	var initialOrgID uuid.UUID
+	if app.Config != nil && app.Config.DefaultOrgID != "" {
+		initialOrgID, _ = uuid.Parse(app.Config.DefaultOrgID)
+	}
+	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
 	for i := sectionIndex(0); i < sectionCount; i++ {
 		if m.sections[i] == nil {
 			m.sections[i] = newPlaceholderSection(sectionLabels[i])
@@ -123,7 +131,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case activeOrgLoadedMsg:
 		m.activeOrgName = msg.name
-		return m, nil
+		next, cmd := m.sections[sectionCompensation].Update(msg)
+		m.sections[sectionCompensation] = next
+		return m, cmd
+
+	case compsLoadedMsg, saveCompDoneMsg, deleteCompDoneMsg:
+		// Route compensation async responses directly to the comp section,
+		// regardless of which section is currently active.
+		next, cmd := m.sections[sectionCompensation].Update(msg)
+		m.sections[sectionCompensation] = next
+		return m, cmd
 
 	case tea.KeyMsg:
 		// Global bindings are skipped when the active section has a form or modal

@@ -13,17 +13,21 @@ import (
 const createEmployeeCompensationPackage = `-- name: CreateEmployeeCompensationPackage :one
 INSERT INTO employee_compensation_package(
     id,
+    org_id,
+    name,
     currency,
     base_salary_cents,
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?
-) RETURNING id, currency, base_salary_cents, created_at, updated_at, deleted_at
+    ?, ?, ?, ?, ?, ?, ?
+) RETURNING id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 `
 
 type CreateEmployeeCompensationPackageParams struct {
 	ID              string `json:"id"`
+	OrgID           string `json:"org_id"`
+	Name            string `json:"name"`
 	Currency        string `json:"currency"`
 	BaseSalaryCents int64  `json:"base_salary_cents"`
 	CreatedAt       string `json:"created_at"`
@@ -33,6 +37,8 @@ type CreateEmployeeCompensationPackageParams struct {
 func (q *Queries) CreateEmployeeCompensationPackage(ctx context.Context, arg CreateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error) {
 	row := q.db.QueryRowContext(ctx, createEmployeeCompensationPackage,
 		arg.ID,
+		arg.OrgID,
+		arg.Name,
 		arg.Currency,
 		arg.BaseSalaryCents,
 		arg.CreatedAt,
@@ -41,6 +47,8 @@ func (q *Queries) CreateEmployeeCompensationPackage(ctx context.Context, arg Cre
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,
@@ -58,7 +66,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
-RETURNING id, currency, base_salary_cents, created_at, updated_at, deleted_at
+RETURNING id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 `
 
 type DeleteEmployeeCompensationPackageParams struct {
@@ -72,6 +80,8 @@ func (q *Queries) DeleteEmployeeCompensationPackage(ctx context.Context, arg Del
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,
@@ -82,7 +92,7 @@ func (q *Queries) DeleteEmployeeCompensationPackage(ctx context.Context, arg Del
 }
 
 const getEmployeeCompensationPackage = `-- name: GetEmployeeCompensationPackage :one
-SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+SELECT id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
 WHERE
     id = ?
@@ -94,6 +104,8 @@ func (q *Queries) GetEmployeeCompensationPackage(ctx context.Context, id string)
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,
@@ -104,7 +116,7 @@ func (q *Queries) GetEmployeeCompensationPackage(ctx context.Context, id string)
 }
 
 const getEmployeeCompensationPackageIncludingDeleted = `-- name: GetEmployeeCompensationPackageIncludingDeleted :one
-SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+SELECT id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
 WHERE id = ?
 `
@@ -114,6 +126,8 @@ func (q *Queries) GetEmployeeCompensationPackageIncludingDeleted(ctx context.Con
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,
@@ -133,14 +147,14 @@ func (q *Queries) HardDeleteEmployeeCompensationPackage(ctx context.Context, id 
 	return err
 }
 
-const listEmployeeCompensationPackages = `-- name: ListEmployeeCompensationPackages :many
-SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+const listEmployeeCompensationPackagesByOrg = `-- name: ListEmployeeCompensationPackagesByOrg :many
+SELECT id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
-WHERE deleted_at IS NULL
+WHERE org_id = ? AND deleted_at IS NULL
 `
 
-func (q *Queries) ListEmployeeCompensationPackages(ctx context.Context) ([]EmployeeCompensationPackage, error) {
-	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackages)
+func (q *Queries) ListEmployeeCompensationPackagesByOrg(ctx context.Context, orgID string) ([]EmployeeCompensationPackage, error) {
+	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackagesByOrg, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +164,8 @@ func (q *Queries) ListEmployeeCompensationPackages(ctx context.Context) ([]Emplo
 		var i EmployeeCompensationPackage
 		if err := rows.Scan(
 			&i.ID,
+			&i.OrgID,
+			&i.Name,
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.CreatedAt,
@@ -169,13 +185,14 @@ func (q *Queries) ListEmployeeCompensationPackages(ctx context.Context) ([]Emplo
 	return items, nil
 }
 
-const listEmployeeCompensationPackagesIncludingDeleted = `-- name: ListEmployeeCompensationPackagesIncludingDeleted :many
-SELECT id, currency, base_salary_cents, created_at, updated_at, deleted_at
+const listEmployeeCompensationPackagesByOrgIncludingDeleted = `-- name: ListEmployeeCompensationPackagesByOrgIncludingDeleted :many
+SELECT id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 FROM employee_compensation_package
+WHERE org_id = ?
 `
 
-func (q *Queries) ListEmployeeCompensationPackagesIncludingDeleted(ctx context.Context) ([]EmployeeCompensationPackage, error) {
-	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackagesIncludingDeleted)
+func (q *Queries) ListEmployeeCompensationPackagesByOrgIncludingDeleted(ctx context.Context, orgID string) ([]EmployeeCompensationPackage, error) {
+	rows, err := q.db.QueryContext(ctx, listEmployeeCompensationPackagesByOrgIncludingDeleted, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +202,8 @@ func (q *Queries) ListEmployeeCompensationPackagesIncludingDeleted(ctx context.C
 		var i EmployeeCompensationPackage
 		if err := rows.Scan(
 			&i.ID,
+			&i.OrgID,
+			&i.Name,
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.CreatedAt,
@@ -212,7 +231,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NOT NULL
-RETURNING id, currency, base_salary_cents, created_at, updated_at, deleted_at
+RETURNING id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 `
 
 type RestoreEmployeeCompensationPackageParams struct {
@@ -225,6 +244,8 @@ func (q *Queries) RestoreEmployeeCompensationPackage(ctx context.Context, arg Re
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,
@@ -237,16 +258,18 @@ func (q *Queries) RestoreEmployeeCompensationPackage(ctx context.Context, arg Re
 const updateEmployeeCompensationPackage = `-- name: UpdateEmployeeCompensationPackage :one
 UPDATE employee_compensation_package
 SET
+    name = ?,
     currency = ?,
     base_salary_cents = ?,
     updated_at = ?
 WHERE
     id = ?
     AND deleted_at IS NULL
-RETURNING id, currency, base_salary_cents, created_at, updated_at, deleted_at
+RETURNING id, org_id, name, currency, base_salary_cents, created_at, updated_at, deleted_at
 `
 
 type UpdateEmployeeCompensationPackageParams struct {
+	Name            string `json:"name"`
 	Currency        string `json:"currency"`
 	BaseSalaryCents int64  `json:"base_salary_cents"`
 	UpdatedAt       string `json:"updated_at"`
@@ -255,6 +278,7 @@ type UpdateEmployeeCompensationPackageParams struct {
 
 func (q *Queries) UpdateEmployeeCompensationPackage(ctx context.Context, arg UpdateEmployeeCompensationPackageParams) (EmployeeCompensationPackage, error) {
 	row := q.db.QueryRowContext(ctx, updateEmployeeCompensationPackage,
+		arg.Name,
 		arg.Currency,
 		arg.BaseSalaryCents,
 		arg.UpdatedAt,
@@ -263,6 +287,8 @@ func (q *Queries) UpdateEmployeeCompensationPackage(ctx context.Context, arg Upd
 	var i EmployeeCompensationPackage
 	err := row.Scan(
 		&i.ID,
+		&i.OrgID,
+		&i.Name,
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.CreatedAt,

@@ -32,8 +32,8 @@ type mockCompensationPackageRepository struct {
 	hardDeleteFunc               func(context.Context, uuid.UUID) error
 	findByIDFunc                 func(context.Context, uuid.UUID) (*domain.EmployeeCompensationPackage, error)
 	findByIDIncludingDeletedFunc func(context.Context, uuid.UUID) (*domain.EmployeeCompensationPackage, error)
-	findAllFunc                  func(context.Context) ([]*domain.EmployeeCompensationPackage, error)
-	findAllIncludingDeletedFunc  func(context.Context) ([]*domain.EmployeeCompensationPackage, error)
+	findAllFunc                  func(context.Context, uuid.UUID) ([]*domain.EmployeeCompensationPackage, error)
+	findAllIncludingDeletedFunc  func(context.Context, uuid.UUID) ([]*domain.EmployeeCompensationPackage, error)
 	countEmployeesUsingFunc      func(context.Context, uuid.UUID) (int64, error)
 	countPayrollResultsUsingFunc func(context.Context, uuid.UUID) (int64, error)
 }
@@ -87,16 +87,16 @@ func (m *mockCompensationPackageRepository) FindByIDIncludingDeleted(ctx context
 	return nil, sqlite.ErrRecordNotFound
 }
 
-func (m *mockCompensationPackageRepository) FindAll(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
+func (m *mockCompensationPackageRepository) FindAll(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
 	if m.findAllFunc != nil {
-		return m.findAllFunc(ctx)
+		return m.findAllFunc(ctx, orgID)
 	}
 	return []*domain.EmployeeCompensationPackage{}, nil
 }
 
-func (m *mockCompensationPackageRepository) FindAllIncludingDeleted(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
+func (m *mockCompensationPackageRepository) FindAllIncludingDeleted(ctx context.Context, orgID uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
 	if m.findAllIncludingDeletedFunc != nil {
-		return m.findAllIncludingDeletedFunc(ctx)
+		return m.findAllIncludingDeletedFunc(ctx, orgID)
 	}
 	return []*domain.EmployeeCompensationPackage{}, nil
 }
@@ -126,6 +126,8 @@ func createTestCompensationPackage() *domain.EmployeeCompensationPackage {
 
 	return &domain.EmployeeCompensationPackage{
 		ID:         uuid.New(),
+		OrgID:      uuid.New(),
+		Name:       "Test Package",
 		BaseSalary: baseSalary,
 		Currency:   money.MAD,
 		CreatedAt:  now,
@@ -161,6 +163,8 @@ func TestCompensationPackageService_CreateCompensationPackage(t *testing.T) {
 		service := application.NewCompensationPackageService(mock)
 
 		pkg := &domain.EmployeeCompensationPackage{
+			OrgID:      uuid.New(),
+			Name:       "Test Package",
 			BaseSalary: money.FromCents(500000),
 			Currency:   money.MAD,
 		}
@@ -189,6 +193,8 @@ func TestCompensationPackageService_CreateCompensationPackage(t *testing.T) {
 
 		pkg := &domain.EmployeeCompensationPackage{
 			ID:         providedID,
+			OrgID:      uuid.New(),
+			Name:       "Test Package",
 			BaseSalary: money.FromCents(500000),
 			Currency:   money.MAD,
 		}
@@ -206,6 +212,8 @@ func TestCompensationPackageService_CreateCompensationPackage(t *testing.T) {
 		service := application.NewCompensationPackageService(mock)
 
 		pkg := &domain.EmployeeCompensationPackage{
+			OrgID:      uuid.New(),
+			Name:       "Test Package",
 			BaseSalary: money.FromCents(200000), // 2000.00 MAD - below SMIG
 			Currency:   money.MAD,
 		}
@@ -224,6 +232,8 @@ func TestCompensationPackageService_CreateCompensationPackage(t *testing.T) {
 		service := application.NewCompensationPackageService(mock)
 
 		pkg := &domain.EmployeeCompensationPackage{
+			OrgID:      uuid.New(),
+			Name:       "Test Package",
 			BaseSalary: money.FromCents(500000),
 			Currency:   "USD", // Not supported
 		}
@@ -249,6 +259,8 @@ func TestCompensationPackageService_CreateCompensationPackage(t *testing.T) {
 		service := application.NewCompensationPackageService(mock)
 
 		pkg := &domain.EmployeeCompensationPackage{
+			OrgID:      uuid.New(),
+			Name:       "Test Package",
 			BaseSalary: money.FromCents(500000),
 			Currency:   money.MAD,
 		}
@@ -809,15 +821,16 @@ func TestCompensationPackageService_ListCompensationPackages(t *testing.T) {
 		pkg2 := createTestCompensationPackage()
 		expected := []*domain.EmployeeCompensationPackage{pkg1, pkg2}
 
+		orgID := uuid.New()
 		mock := &mockCompensationPackageRepository{
-			findAllFunc: func(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
+			findAllFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
 				return expected, nil
 			},
 		}
 
 		service := application.NewCompensationPackageService(mock)
 
-		result, err := service.ListCompensationPackages(ctx)
+		result, err := service.ListCompensationPackages(ctx, orgID)
 
 		require.NoError(t, err)
 		assert.Equal(t, expected, result)
@@ -827,15 +840,16 @@ func TestCompensationPackageService_ListCompensationPackages(t *testing.T) {
 	t.Run("returns empty slice when no packages", func(t *testing.T) {
 		t.Parallel()
 
+		orgID := uuid.New()
 		mock := &mockCompensationPackageRepository{
-			findAllFunc: func(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
+			findAllFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
 				return []*domain.EmployeeCompensationPackage{}, nil
 			},
 		}
 
 		service := application.NewCompensationPackageService(mock)
 
-		result, err := service.ListCompensationPackages(ctx)
+		result, err := service.ListCompensationPackages(ctx, orgID)
 
 		require.NoError(t, err)
 		assert.Empty(t, result)
@@ -857,15 +871,16 @@ func TestCompensationPackageService_ListCompensationPackagesIncludingDeleted(t *
 
 		expected := []*domain.EmployeeCompensationPackage{pkg1, pkg2}
 
+		orgID := uuid.New()
 		mock := &mockCompensationPackageRepository{
-			findAllIncludingDeletedFunc: func(ctx context.Context) ([]*domain.EmployeeCompensationPackage, error) {
+			findAllIncludingDeletedFunc: func(ctx context.Context, id uuid.UUID) ([]*domain.EmployeeCompensationPackage, error) {
 				return expected, nil
 			},
 		}
 
 		service := application.NewCompensationPackageService(mock)
 
-		result, err := service.ListCompensationPackagesIncludingDeleted(ctx)
+		result, err := service.ListCompensationPackagesIncludingDeleted(ctx, orgID)
 
 		require.NoError(t, err)
 		assert.Equal(t, expected, result)

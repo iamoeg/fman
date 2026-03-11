@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iamoeg/bootdev-capstone/db/migration"
@@ -39,6 +40,9 @@ func TestCompensationPackageRepository_Concurrency(t *testing.T) {
 		err = migration.RunMigrations(db)
 		require.NoError(t, err)
 
+		// Create an org for all packages
+		org := createAndPersistTestOrg(t, db)
+
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
@@ -51,7 +55,7 @@ func TestCompensationPackageRepository_Concurrency(t *testing.T) {
 		for range numGoroutines {
 			go func() {
 				defer wg.Done()
-				pkg := createTestCompensationPackage()
+				pkg := createTestCompensationPackage(org.ID)
 				errChan <- repo.Create(ctx, pkg)
 			}()
 		}
@@ -63,7 +67,7 @@ func TestCompensationPackageRepository_Concurrency(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		pkgs, err := repo.FindAll(ctx)
+		pkgs, err := repo.FindAll(ctx, org.ID)
 		require.NoError(t, err)
 		require.Len(t, pkgs, numGoroutines)
 	})
@@ -81,17 +85,18 @@ func TestCompensationPackageRepository_TransactionRollback(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create first package successfully
-		pkg1 := createTestCompensationPackage()
+		pkg1 := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg1)
 		require.NoError(t, err)
 
 		// Manually insert a duplicate ID (will fail on primary key constraint)
 		// This simulates what happens when transaction fails partway through
-		pkg2 := createTestCompensationPackage()
+		pkg2 := createTestCompensationPackage(org.ID)
 		pkg2.ID = pkg1.ID // Duplicate ID
 
 		err = repo.Create(ctx, pkg2)
@@ -128,12 +133,13 @@ func TestCompensationPackageRepository_Timestamps(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		before := time.Now().UTC().Truncate(time.Second)
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -162,10 +168,11 @@ func TestCompensationPackageRepository_Timestamps(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -193,10 +200,11 @@ func TestCompensationPackageRepository_Timestamps(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -223,10 +231,11 @@ func TestCompensationPackageRepository_Timestamps(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -255,10 +264,11 @@ func TestCompensationPackageRepository_AuditLog(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -280,10 +290,11 @@ func TestCompensationPackageRepository_AuditLog(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -312,10 +323,11 @@ func TestCompensationPackageRepository_AuditLog(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -349,6 +361,7 @@ func TestCompensationPackageRepository_MoneyHandling(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
@@ -368,7 +381,7 @@ func TestCompensationPackageRepository_MoneyHandling(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				pkg := createTestCompensationPackage()
+				pkg := createTestCompensationPackage(org.ID)
 				pkg.BaseSalary = money.FromCents(tc.cents)
 
 				err := repo.Create(ctx, pkg)
@@ -389,10 +402,11 @@ func TestCompensationPackageRepository_MoneyHandling(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		pkg.Currency = money.MAD
 
 		err := repo.Create(ctx, pkg)
@@ -417,10 +431,11 @@ func TestCompensationPackageRepository_UsageGuards(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -445,7 +460,7 @@ func TestCompensationPackageRepository_UsageGuards(t *testing.T) {
 		err := orgRepo.Create(ctx, org)
 		require.NoError(t, err)
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err = pkgRepo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -472,10 +487,11 @@ func TestCompensationPackageRepository_UsageGuards(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -490,10 +506,11 @@ func TestCompensationPackageRepository_UsageGuards(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -524,12 +541,14 @@ func TestCompensationPackageRepository_ErrorHandling(t *testing.T) {
 
 		// Create a database and close it
 		db := setupTestDB(t)
-		db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
+		db.Close()
+
 		err := repo.Create(ctx, pkg)
 		require.Error(t, err)
 	})
@@ -540,10 +559,11 @@ func TestCompensationPackageRepository_ErrorHandling(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -571,10 +591,11 @@ func TestCompensationPackageRepository_DataIntegrity(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		pkg.BaseSalary = money.FromCents(543210)
 		pkg.Currency = money.MAD
 
@@ -585,6 +606,8 @@ func TestCompensationPackageRepository_DataIntegrity(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, pkg.ID, found.ID)
+		require.Equal(t, pkg.OrgID, found.OrgID)
+		require.Equal(t, pkg.Name, found.Name)
 		require.Equal(t, pkg.BaseSalary.Cents(), found.BaseSalary.Cents())
 		require.Equal(t, pkg.Currency, found.Currency)
 		require.Equal(t, pkg.CreatedAt.UTC().Truncate(time.Second),
@@ -597,17 +620,18 @@ func TestCompensationPackageRepository_DataIntegrity(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create packages with different salaries
-		pkg1 := createTestCompensationPackage()
+		pkg1 := createTestCompensationPackage(org.ID)
 		pkg1.BaseSalary = money.FromCents(300000) // 3000 MAD
 
-		pkg2 := createTestCompensationPackage()
+		pkg2 := createTestCompensationPackage(org.ID)
 		pkg2.BaseSalary = money.FromCents(500000) // 5000 MAD
 
-		pkg3 := createTestCompensationPackage()
+		pkg3 := createTestCompensationPackage(org.ID)
 		pkg3.BaseSalary = money.FromCents(1000000) // 10000 MAD
 
 		err := repo.Create(ctx, pkg1)

@@ -69,7 +69,7 @@ func setupEmployeeTestDeps(t *testing.T, ctx context.Context, db *sql.DB) (uuid.
 
 	// Create compensation package
 	compPackRepo := sqlite.NewCompensationPackageRepository(db)
-	compPack := createTestCompensationPackage()
+	compPack := createTestCompensationPackage(org.ID)
 	err = compPackRepo.Create(ctx, compPack)
 	require.NoError(t, err)
 

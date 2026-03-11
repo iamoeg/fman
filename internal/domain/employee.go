@@ -433,7 +433,10 @@ var (
 //   - Base salary must be >= SMIG (Moroccan minimum wage)
 //   - Currency must be supported (currently only MAD)
 type EmployeeCompensationPackage struct {
-	ID         uuid.UUID
+	ID    uuid.UUID
+	OrgID uuid.UUID
+	Name  string
+
 	Currency   money.Currency
 	BaseSalary money.Money
 
@@ -449,6 +452,14 @@ func (cp *EmployeeCompensationPackage) Validate() error {
 		return err
 	}
 
+	if err := cp.ValidateOrgID(); err != nil {
+		return err
+	}
+
+	if err := cp.ValidateName(); err != nil {
+		return err
+	}
+
 	if err := cp.ValidateBaseSalary(); err != nil {
 		return err
 	}
@@ -457,6 +468,22 @@ func (cp *EmployeeCompensationPackage) Validate() error {
 		return err
 	}
 
+	return nil
+}
+
+// ValidateOrgID ensures the compensation package belongs to an organization.
+func (cp *EmployeeCompensationPackage) ValidateOrgID() error {
+	if cp.OrgID == uuid.Nil {
+		return ErrCompensationPackageOrgIDRequired
+	}
+	return nil
+}
+
+// ValidateName ensures the compensation package has a non-empty name.
+func (cp *EmployeeCompensationPackage) ValidateName() error {
+	if strings.TrimSpace(cp.Name) == "" {
+		return ErrCompensationPackageNameRequired
+	}
 	return nil
 }
 
@@ -514,4 +541,6 @@ var MinWageSMIG = money.FromCents(SMIG2026Cents)
 
 var (
 	ErrInvalidEmployeeCompensationPackageBaseSalary = errors.New("domain: employee: compensation package: invalid base salary")
+	ErrCompensationPackageOrgIDRequired             = errors.New("domain: employee: compensation package: org id is required")
+	ErrCompensationPackageNameRequired              = errors.New("domain: employee: compensation package: name is required")
 )

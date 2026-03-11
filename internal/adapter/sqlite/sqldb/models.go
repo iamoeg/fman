@@ -45,6 +45,8 @@ type Employee struct {
 
 type EmployeeCompensationPackage struct {
 	ID              string         `json:"id"`
+	OrgID           string         `json:"org_id"`
+	Name            string         `json:"name"`
 	Currency        string         `json:"currency"`
 	BaseSalaryCents int64          `json:"base_salary_cents"`
 	CreatedAt       string         `json:"created_at"`

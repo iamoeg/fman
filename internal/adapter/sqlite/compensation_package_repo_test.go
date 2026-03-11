@@ -2,6 +2,8 @@ package sqlite_adapter_test
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -20,8 +22,8 @@ import (
 
 var pkgCounter int64
 
-// createTestCompensationPackage creates a valid test compensation package.
-func createTestCompensationPackage() *domain.EmployeeCompensationPackage {
+// createTestCompensationPackage creates a valid test compensation package for the given org.
+func createTestCompensationPackage(orgID uuid.UUID) *domain.EmployeeCompensationPackage {
 	now := time.Now().UTC()
 	counter := atomic.AddInt64(&pkgCounter, 1)
 
@@ -30,11 +32,23 @@ func createTestCompensationPackage() *domain.EmployeeCompensationPackage {
 
 	return &domain.EmployeeCompensationPackage{
 		ID:         uuid.New(),
+		OrgID:      orgID,
+		Name:       fmt.Sprintf("Package %d", counter),
 		Currency:   money.MAD,
 		BaseSalary: money.FromCents(baseSalaryCents),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
+}
+
+// createAndPersistTestOrg creates a test organization and persists it to the given DB.
+func createAndPersistTestOrg(t *testing.T, db *sql.DB) *domain.Organization {
+	t.Helper()
+	orgRepo := sqlite.NewOrganizationRepository(db)
+	org := createTestOrganization()
+	err := orgRepo.Create(context.Background(), org)
+	require.NoError(t, err)
+	return org
 }
 
 // ============================================================================
@@ -50,11 +64,12 @@ func TestCompensationPackageRepository_FindByID(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -89,11 +104,12 @@ func TestCompensationPackageRepository_FindByID(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create and delete package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -121,10 +137,11 @@ func TestCompensationPackageRepository_FindByIDIncludingDeleted(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -141,10 +158,11 @@ func TestCompensationPackageRepository_FindByIDIncludingDeleted(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -188,10 +206,11 @@ func TestCompensationPackageRepository_FindAll(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkgs, err := repo.FindAll(ctx)
+		pkgs, err := repo.FindAll(ctx, org.ID)
 		require.NoError(t, err)
 		require.NotNil(t, pkgs)
 		require.Len(t, pkgs, 0)
@@ -203,13 +222,14 @@ func TestCompensationPackageRepository_FindAll(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create 3 packages
-		pkg1 := createTestCompensationPackage()
-		pkg2 := createTestCompensationPackage()
-		pkg3 := createTestCompensationPackage()
+		pkg1 := createTestCompensationPackage(org.ID)
+		pkg2 := createTestCompensationPackage(org.ID)
+		pkg3 := createTestCompensationPackage(org.ID)
 
 		err := repo.Create(ctx, pkg1)
 		require.NoError(t, err)
@@ -218,7 +238,7 @@ func TestCompensationPackageRepository_FindAll(t *testing.T) {
 		err = repo.Create(ctx, pkg3)
 		require.NoError(t, err)
 
-		pkgs, err := repo.FindAll(ctx)
+		pkgs, err := repo.FindAll(ctx, org.ID)
 		require.NoError(t, err)
 		require.Len(t, pkgs, 3)
 	})
@@ -229,12 +249,13 @@ func TestCompensationPackageRepository_FindAll(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create 2 packages, delete 1
-		pkg1 := createTestCompensationPackage()
-		pkg2 := createTestCompensationPackage()
+		pkg1 := createTestCompensationPackage(org.ID)
+		pkg2 := createTestCompensationPackage(org.ID)
 
 		err := repo.Create(ctx, pkg1)
 		require.NoError(t, err)
@@ -244,7 +265,7 @@ func TestCompensationPackageRepository_FindAll(t *testing.T) {
 		err = repo.Delete(ctx, pkg1.ID)
 		require.NoError(t, err)
 
-		pkgs, err := repo.FindAll(ctx)
+		pkgs, err := repo.FindAll(ctx, org.ID)
 		require.NoError(t, err)
 		require.Len(t, pkgs, 1)
 		require.Equal(t, pkg2.ID, pkgs[0].ID)
@@ -264,13 +285,14 @@ func TestCompensationPackageRepository_FindAllIncludingDeleted(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create 3 packages, delete 1
-		pkg1 := createTestCompensationPackage()
-		pkg2 := createTestCompensationPackage()
-		pkg3 := createTestCompensationPackage()
+		pkg1 := createTestCompensationPackage(org.ID)
+		pkg2 := createTestCompensationPackage(org.ID)
+		pkg3 := createTestCompensationPackage(org.ID)
 
 		err := repo.Create(ctx, pkg1)
 		require.NoError(t, err)
@@ -282,7 +304,7 @@ func TestCompensationPackageRepository_FindAllIncludingDeleted(t *testing.T) {
 		err = repo.Delete(ctx, pkg1.ID)
 		require.NoError(t, err)
 
-		pkgs, err := repo.FindAllIncludingDeleted(ctx)
+		pkgs, err := repo.FindAllIncludingDeleted(ctx, org.ID)
 		require.NoError(t, err)
 		require.Len(t, pkgs, 3) // Should include deleted
 	})
@@ -301,10 +323,11 @@ func TestCompensationPackageRepository_CountEmployeesUsing(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -329,7 +352,7 @@ func TestCompensationPackageRepository_CountEmployeesUsing(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create compensation package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err = pkgRepo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -367,10 +390,11 @@ func TestCompensationPackageRepository_CountPayrollResultsUsing(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -393,10 +417,11 @@ func TestCompensationPackageRepository_Create(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -414,10 +439,11 @@ func TestCompensationPackageRepository_Create(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -437,6 +463,7 @@ func TestCompensationPackageRepository_Create(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
@@ -454,7 +481,7 @@ func TestCompensationPackageRepository_Create(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				pkg := createTestCompensationPackage()
+				pkg := createTestCompensationPackage(org.ID)
 				pkg.BaseSalary = money.FromCents(tc.cents)
 
 				err := repo.Create(ctx, pkg)
@@ -482,11 +509,12 @@ func TestCompensationPackageRepository_Update(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -507,11 +535,12 @@ func TestCompensationPackageRepository_Update(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -543,10 +572,11 @@ func TestCompensationPackageRepository_Update(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Update(ctx, pkg)
 		require.Error(t, err)
 		require.ErrorIs(t, err, sqlite.ErrRecordNotFound)
@@ -558,11 +588,12 @@ func TestCompensationPackageRepository_Update(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
 		// Create and delete
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 		err = repo.Delete(ctx, pkg.ID)
@@ -591,7 +622,7 @@ func TestCompensationPackageRepository_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create compensation package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err = pkgRepo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -626,10 +657,11 @@ func TestCompensationPackageRepository_Delete(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -653,10 +685,11 @@ func TestCompensationPackageRepository_Delete(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -689,7 +722,7 @@ func TestCompensationPackageRepository_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create compensation package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err = pkgRepo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -723,10 +756,11 @@ func TestCompensationPackageRepository_Restore(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -750,10 +784,11 @@ func TestCompensationPackageRepository_Restore(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -787,10 +822,11 @@ func TestCompensationPackageRepository_HardDelete(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -810,10 +846,11 @@ func TestCompensationPackageRepository_HardDelete(t *testing.T) {
 		db := setupTestDB(t)
 		defer db.Close()
 
+		org := createAndPersistTestOrg(t, db)
 		repo := sqlite.NewCompensationPackageRepository(db)
 		ctx := context.Background()
 
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err := repo.Create(ctx, pkg)
 		require.NoError(t, err)
 
@@ -846,7 +883,7 @@ func TestCompensationPackageRepository_HardDelete(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create compensation package
-		pkg := createTestCompensationPackage()
+		pkg := createTestCompensationPackage(org.ID)
 		err = pkgRepo.Create(ctx, pkg)
 		require.NoError(t, err)
 

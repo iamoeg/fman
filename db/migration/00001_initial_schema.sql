@@ -21,6 +21,8 @@ CREATE TABLE organization(
 
 CREATE TABLE employee_compensation_package(
     id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'MAD' CHECK(currency IN ('MAD')),
     base_salary_cents INTEGER NOT NULL CHECK(base_salary_cents >= 0),
 
@@ -28,6 +30,8 @@ CREATE TABLE employee_compensation_package(
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TEXT
 );
+
+CREATE INDEX idx_comp_package_org_id ON employee_compensation_package(org_id);
 
 CREATE TABLE employee(
     id TEXT PRIMARY KEY,
@@ -156,6 +160,8 @@ DROP TABLE payroll_period;
 DROP INDEX idx_employee_org_id;
 
 DROP TABLE employee;
+
+DROP INDEX idx_comp_package_org_id;
 
 DROP TABLE employee_compensation_package;
 

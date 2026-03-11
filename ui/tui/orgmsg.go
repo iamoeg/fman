@@ -74,6 +74,6 @@ func setActiveOrgCmd(cfg *config.Config, org *domain.Organization) tea.Cmd {
 			// Non-fatal: sidebar won't update but the app keeps running.
 			return activeOrgLoadedMsg{}
 		}
-		return activeOrgLoadedMsg{name: org.Name}
+		return activeOrgLoadedMsg{name: org.Name, orgID: org.ID}
 	}
 }

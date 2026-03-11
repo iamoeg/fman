@@ -10,29 +10,33 @@ SELECT *
 FROM employee_compensation_package
 WHERE id = ?;
 
--- name: ListEmployeeCompensationPackages :many
+-- name: ListEmployeeCompensationPackagesByOrg :many
 SELECT *
 FROM employee_compensation_package
-WHERE deleted_at IS NULL;
+WHERE org_id = ? AND deleted_at IS NULL;
 
--- name: ListEmployeeCompensationPackagesIncludingDeleted :many
+-- name: ListEmployeeCompensationPackagesByOrgIncludingDeleted :many
 SELECT *
-FROM employee_compensation_package;
+FROM employee_compensation_package
+WHERE org_id = ?;
 
 -- name: CreateEmployeeCompensationPackage :one
 INSERT INTO employee_compensation_package(
     id,
+    org_id,
+    name,
     currency,
     base_salary_cents,
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?
 ) RETURNING *;
 
 -- name: UpdateEmployeeCompensationPackage :one
 UPDATE employee_compensation_package
 SET
+    name = ?,
     currency = ?,
     base_salary_cents = ?,
     updated_at = ?

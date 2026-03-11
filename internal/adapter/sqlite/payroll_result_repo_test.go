@@ -111,7 +111,7 @@ func setupPayrollTestData(t *testing.T, db *sql.DB) (orgID uuid.UUID, empID uuid
 
 	// Create compensation package
 	compRepo := sqlite.NewCompensationPackageRepository(db)
-	comp := createTestCompensationPackage()
+	comp := createTestCompensationPackage(org.ID)
 	err = compRepo.Create(ctx, comp)
 	require.NoError(t, err)
 
