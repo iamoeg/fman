@@ -58,7 +58,8 @@ func (s *orgSection) Init() tea.Cmd {
 func (s *orgSection) IsOverlay() bool {
 	return s.state == orgStateCreating ||
 		s.state == orgStateEditing ||
-		s.state == orgStateDeleting
+		s.state == orgStateDeleting ||
+		s.list.FilterState() == list.Filtering
 }
 
 func (s *orgSection) ShortHelp() []key.Binding {
@@ -78,6 +79,7 @@ func (s *orgSection) ShortHelp() []key.Binding {
 			mainKeys.Edit,
 			mainKeys.Delete,
 			mainKeys.SetActive,
+			mainKeys.Filter,
 		}
 	}
 }
@@ -147,6 +149,11 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
 
 	case orgStateList:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
 		switch {
 		case key.Matches(msg, mainKeys.New):
 			s.form = newOrgForm()

@@ -191,7 +191,8 @@ func (s *compSection) Init() tea.Cmd {
 }
 
 func (s *compSection) IsOverlay() bool {
-	return s.state == compStateCreating || s.state == compStateEditing || s.state == compStateDeleting
+	return s.state == compStateCreating || s.state == compStateEditing || s.state == compStateDeleting ||
+		s.list.FilterState() == list.Filtering
 }
 
 func (s *compSection) ShortHelp() []key.Binding {
@@ -201,7 +202,7 @@ func (s *compSection) ShortHelp() []key.Binding {
 	case compStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	default:
-		return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete}
+		return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
 	}
 }
 
@@ -275,6 +276,11 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
 
 	case compStateList:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
 		switch {
 		case key.Matches(msg, mainKeys.New):
 			if s.orgID == uuid.Nil {

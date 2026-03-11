@@ -220,7 +220,8 @@ func (s *payrollSection) Init() tea.Cmd {
 }
 
 func (s *payrollSection) IsOverlay() bool {
-	return s.state == payrollStateCreating || s.state == payrollStateDeleting
+	return s.state == payrollStateCreating || s.state == payrollStateDeleting ||
+		s.list.FilterState() == list.Filtering
 }
 
 func (s *payrollSection) ShortHelp() []key.Binding {
@@ -239,6 +240,7 @@ func (s *payrollSection) ShortHelp() []key.Binding {
 			payrollKeys.Finalize,
 			payrollKeys.Unfinalize,
 			mainKeys.Delete,
+			mainKeys.Filter,
 		}
 	}
 }
@@ -361,6 +363,11 @@ func (s *payrollSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
 
 	case payrollStateList:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
 		switch {
 		case key.Matches(msg, mainKeys.New):
 			if s.orgID == uuid.Nil {

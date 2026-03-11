@@ -22,7 +22,7 @@ func (i empItem) Description() string {
 }
 
 func (i empItem) FilterValue() string {
-	return i.emp.FullName
+	return i.Title()
 }
 
 // pkgNameMap builds a uuid→name lookup from a package slice.
