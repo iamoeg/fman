@@ -24,14 +24,19 @@ type compState int
 const (
 	compStateList     compState = iota
 	compStateCreating           // create form open
+	compStateEditing            // rename form open
 	compStateDeleting           // delete confirmation open
 )
 
-// compForm holds the Name and BaseSalary inputs for the create overlay.
+// compForm holds the Name and BaseSalary inputs for the create overlay,
+// or just the Name input when editing (renaming) an existing package.
 type compForm struct {
-	nameInput   textinput.Model
-	salaryInput textinput.Model
-	focused     int // 0 = name, 1 = salary
+	nameInput     textinput.Model
+	salaryInput   textinput.Model
+	focused       int
+	editing       bool      // true = rename mode (salary is immutable, not shown as input)
+	editingID     uuid.UUID // ID of the package being renamed
+	salaryDisplay string    // formatted salary for display when editing
 }
 
 func newCompForm() compForm {
@@ -49,6 +54,15 @@ func newCompForm() compForm {
 	return compForm{nameInput: name, salaryInput: salary, focused: 0}
 }
 
+func newCompFormFromPkg(pkg *domain.EmployeeCompensationPackage) compForm {
+	f := newCompForm()
+	f.nameInput.SetValue(pkg.Name)
+	f.editing = true
+	f.editingID = pkg.ID
+	f.salaryDisplay = fmt.Sprintf("%.2f %s", pkg.BaseSalary.ToMAD(), pkg.Currency)
+	return f
+}
+
 func (f compForm) update(msg tea.KeyMsg) (compForm, formResult, tea.Cmd) {
 	switch {
 	case key.Matches(msg, formKeys.Cancel):
@@ -56,6 +70,10 @@ func (f compForm) update(msg tea.KeyMsg) (compForm, formResult, tea.Cmd) {
 	case key.Matches(msg, formKeys.Submit):
 		return f, formSubmit, nil
 	case key.Matches(msg, key.NewBinding(key.WithKeys("tab", "shift+tab"))):
+		if f.editing {
+			// Name-only form: no second field to cycle to
+			return f, formContinue, nil
+		}
 		// Toggle focus between name and salary
 		if f.focused == 0 {
 			f.focused = 1
@@ -113,15 +131,27 @@ func (f compForm) view() string {
 		Bold(true)
 	staticStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240"))
+	dimLabel := lipgloss.NewStyle().Width(14).Foreground(lipgloss.Color("245"))
 
 	rows := []string{
 		lipgloss.JoinHorizontal(lipgloss.Center,
 			labelStyle.Render("Name *"), f.nameInput.View()),
-		lipgloss.JoinHorizontal(lipgloss.Center,
-			labelStyle.Render("Base Salary *"), f.salaryInput.View()),
-		lipgloss.JoinHorizontal(lipgloss.Center,
-			lipgloss.NewStyle().Width(14).Foreground(lipgloss.Color("245")).Render("Currency"),
-			staticStyle.Render("MAD  (only supported currency)")),
+	}
+
+	if f.editing {
+		rows = append(rows,
+			lipgloss.JoinHorizontal(lipgloss.Center,
+				dimLabel.Render("Base Salary"),
+				staticStyle.Render(f.salaryDisplay+" (immutable)")),
+		)
+	} else {
+		rows = append(rows,
+			lipgloss.JoinHorizontal(lipgloss.Center,
+				labelStyle.Render("Base Salary *"), f.salaryInput.View()),
+			lipgloss.JoinHorizontal(lipgloss.Center,
+				dimLabel.Render("Currency"),
+				staticStyle.Render("MAD  (only supported currency)")),
+		)
 	}
 	return strings.Join(rows, "\n")
 }
@@ -160,17 +190,17 @@ func (s *compSection) Init() tea.Cmd {
 }
 
 func (s *compSection) IsOverlay() bool {
-	return s.state == compStateCreating || s.state == compStateDeleting
+	return s.state == compStateCreating || s.state == compStateEditing || s.state == compStateDeleting
 }
 
 func (s *compSection) ShortHelp() []key.Binding {
 	switch s.state {
-	case compStateCreating:
+	case compStateCreating, compStateEditing:
 		return []key.Binding{formKeys.Submit, formKeys.Cancel}
 	case compStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	default:
-		return []key.Binding{mainKeys.New, mainKeys.Delete}
+		return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete}
 	}
 }
 
@@ -219,6 +249,15 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.errMsg = ""
 		return s, loadCompsCmd(s.svc, s.orgID)
 
+	case renameCompDoneMsg:
+		s.state = compStateList
+		if msg.err != nil {
+			s.errMsg = userFriendlyCompError(msg.err)
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadCompsCmd(s.svc, s.orgID)
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
@@ -246,6 +285,16 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.errMsg = ""
 			return s, nil
 
+		case key.Matches(msg, mainKeys.Edit):
+			selected, ok := s.list.SelectedItem().(compItem)
+			if !ok {
+				return s, nil
+			}
+			s.form = newCompFormFromPkg(selected.pkg)
+			s.state = compStateEditing
+			s.errMsg = ""
+			return s, nil
+
 		case key.Matches(msg, mainKeys.Delete):
 			selected, ok := s.list.SelectedItem().(compItem)
 			if !ok {
@@ -258,6 +307,28 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
 		return s, cmd
+
+	case compStateEditing:
+		f, result, cmd := s.form.update(msg)
+		s.form = f
+		switch result {
+		case formSubmit:
+			name := strings.TrimSpace(s.form.nameInput.Value())
+			if name == "" {
+				s.errMsg = "Name is required"
+				return s, nil
+			}
+			id := s.form.editingID
+			s.state = compStateList
+			s.errMsg = ""
+			return s, renameCompCmd(s.svc, id, name)
+		case formCancel:
+			s.state = compStateList
+			s.errMsg = ""
+			return s, nil
+		default:
+			return s, cmd
+		}
 
 	case compStateCreating:
 		f, result, cmd := s.form.update(msg)
@@ -318,12 +389,14 @@ func (s *compSection) View(width, height int) string {
 	case compStateDeleting:
 		return s.renderDeleteConfirm(listView, width)
 	case compStateCreating:
-		return s.renderFormOverlay(width, height)
+		return s.renderFormOverlay("New Compensation Package", width, height)
+	case compStateEditing:
+		return s.renderFormOverlay("Edit Package Name", width, height)
 	}
 	return listView
 }
 
-func (s *compSection) renderFormOverlay(width, height int) string {
+func (s *compSection) renderFormOverlay(title string, width, height int) string {
 	titleStyle := lipgloss.NewStyle().Bold(true).MarginBottom(1).
 		Foreground(lipgloss.Color("205"))
 
@@ -334,7 +407,7 @@ func (s *compSection) renderFormOverlay(width, height int) string {
 			Render("  "+s.errMsg)
 	}
 
-	inner := titleStyle.Render("New Compensation Package") + "\n" + s.form.view() + errorLine
+	inner := titleStyle.Render(title) + "\n" + s.form.view() + errorLine
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

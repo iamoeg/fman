@@ -17,6 +17,7 @@ type compsLoadedMsg struct {
 
 type saveCompDoneMsg struct{ err error }
 type deleteCompDoneMsg struct{ err error }
+type renameCompDoneMsg struct{ err error }
 
 func loadCompsCmd(svc *application.CompensationPackageService, orgID uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
@@ -39,5 +40,12 @@ func deleteCompCmd(svc *application.CompensationPackageService, id uuid.UUID) te
 	return func() tea.Msg {
 		err := svc.DeleteCompensationPackage(context.Background(), id)
 		return deleteCompDoneMsg{err: err}
+	}
+}
+
+func renameCompCmd(svc *application.CompensationPackageService, id uuid.UUID, name string) tea.Cmd {
+	return func() tea.Msg {
+		err := svc.RenameCompensationPackage(context.Background(), id, name)
+		return renameCompDoneMsg{err: err}
 	}
 }

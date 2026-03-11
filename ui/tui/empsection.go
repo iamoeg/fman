@@ -496,6 +496,15 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		// Keep the package picker in sync whenever comp packages are reloaded.
 		if msg.err == nil {
 			s.pkgs = msg.pkgs
+			// Rebuild list items so package names stay current (e.g. after a rename).
+			names := pkgNameMap(msg.pkgs)
+			current := s.list.Items()
+			for i, it := range current {
+				if ei, ok := it.(empItem); ok {
+					current[i] = empItem{emp: ei.emp, pkgName: names[ei.emp.CompensationPackageID]}
+				}
+			}
+			return s, s.list.SetItems(current)
 		}
 		return s, nil
 
