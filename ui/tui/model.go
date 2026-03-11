@@ -89,6 +89,7 @@ func NewModel(app *App) Model {
 		initialOrgID, _ = uuid.Parse(app.Config.DefaultOrgID)
 	}
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
+	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, initialOrgID)
 	for i := sectionIndex(0); i < sectionCount; i++ {
 		if m.sections[i] == nil {
 			m.sections[i] = newPlaceholderSection(sectionLabels[i])
@@ -131,8 +132,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case activeOrgLoadedMsg:
 		m.activeOrgName = msg.name
-		next, cmd := m.sections[sectionCompensation].Update(msg)
-		m.sections[sectionCompensation] = next
+		var cmds []tea.Cmd
+		nextComp, cmd := m.sections[sectionCompensation].Update(msg)
+		m.sections[sectionCompensation] = nextComp
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		nextEmp, cmd2 := m.sections[sectionEmployees].Update(msg)
+		m.sections[sectionEmployees] = nextEmp
+		if cmd2 != nil {
+			cmds = append(cmds, cmd2)
+		}
+		return m, tea.Batch(cmds...)
+
+	case empsLoadedMsg, saveEmpDoneMsg, deleteEmpDoneMsg:
+		next, cmd := m.sections[sectionEmployees].Update(msg)
+		m.sections[sectionEmployees] = next
 		return m, cmd
 
 	case compsLoadedMsg, saveCompDoneMsg, deleteCompDoneMsg:
@@ -140,6 +155,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// regardless of which section is currently active.
 		next, cmd := m.sections[sectionCompensation].Update(msg)
 		m.sections[sectionCompensation] = next
+		// Also forward compsLoadedMsg to the emp section so its package picker stays fresh.
+		if _, ok := msg.(compsLoadedMsg); ok {
+			nextEmp, _ := m.sections[sectionEmployees].Update(msg)
+			m.sections[sectionEmployees] = nextEmp
+		}
 		return m, cmd
 
 	case tea.KeyMsg:
