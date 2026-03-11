@@ -5,13 +5,15 @@ focusing on payroll compliance and business operations.
 
 ## Project Status
 
-**Current Phase:** Phase 1A ✅ Complete | Phase 1B 🚧 In Progress
+**Current Phase:** Phase 1F ✅ Complete | Phase 1G ⏳ Next
 
-- ✅ Project structure established
-- ✅ Database schema designed and migrated
-- ✅ TUI skeleton running
-- 🚧 Domain models and repositories (in progress)
-- ⏳ Payroll engine (next)
+- ✅ Foundation, database schema, TUI skeleton (1A)
+- ✅ Domain models & tests (1B)
+- ✅ SQLite repositories (1C)
+- ✅ Application services (1D)
+- ✅ Moroccan payroll engine — CNSS, AMO, IR (1E)
+- ✅ Full TUI implementation — all CRUD sections (1F)
+- ⏳ Export (payslip PDF), end-to-end tests, documentation polish (1G)
 
 ## Overview
 
