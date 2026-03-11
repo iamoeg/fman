@@ -90,6 +90,7 @@ func NewModel(app *App) Model {
 	}
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
 	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, initialOrgID)
+	m.sections[sectionPayroll] = newPayrollSection(app.PayrollService, app.EmployeeService, initialOrgID)
 	for i := sectionIndex(0); i < sectionCount; i++ {
 		if m.sections[i] == nil {
 			m.sections[i] = newPlaceholderSection(sectionLabels[i])
@@ -143,7 +144,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd2 != nil {
 			cmds = append(cmds, cmd2)
 		}
+		nextPayroll, cmd3 := m.sections[sectionPayroll].Update(msg)
+		m.sections[sectionPayroll] = nextPayroll
+		if cmd3 != nil {
+			cmds = append(cmds, cmd3)
+		}
 		return m, tea.Batch(cmds...)
+
+	case periodsLoadedMsg, resultsLoadedMsg, createPeriodDoneMsg, generateResultsDoneMsg, finalizePeriodDoneMsg, unfinalizePeriodDoneMsg, deletePeriodDoneMsg:
+		next, cmd := m.sections[sectionPayroll].Update(msg)
+		m.sections[sectionPayroll] = next
+		return m, cmd
 
 	case empsLoadedMsg, saveEmpDoneMsg, deleteEmpDoneMsg:
 		next, cmd := m.sections[sectionEmployees].Update(msg)
