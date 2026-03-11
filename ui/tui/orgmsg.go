@@ -24,6 +24,7 @@ type saveOrgDoneMsg struct {
 
 // deleteOrgDoneMsg carries the result of a delete operation.
 type deleteOrgDoneMsg struct {
+	id  uuid.UUID
 	err error
 }
 
@@ -51,7 +52,16 @@ func updateOrgCmd(svc *application.OrganizationService, org *domain.Organization
 func deleteOrgCmd(svc *application.OrganizationService, id uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
 		err := svc.DeleteOrganization(context.Background(), id)
-		return deleteOrgDoneMsg{err: err}
+		return deleteOrgDoneMsg{id: id, err: err}
+	}
+}
+
+// clearActiveOrgCmd clears the active org from config and notifies the root model.
+func clearActiveOrgCmd(cfg *config.Config) tea.Cmd {
+	return func() tea.Msg {
+		cfg.DefaultOrgID = ""
+		cfg.Save("") // best effort; sidebar clears regardless
+		return activeOrgLoadedMsg{}
 	}
 }
 

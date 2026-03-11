@@ -122,7 +122,11 @@ func (s *orgSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 			return s, nil
 		}
 		s.errMsg = ""
-		return s, loadOrgsCmd(s.svc)
+		cmds := []tea.Cmd{loadOrgsCmd(s.svc)}
+		if s.cfg != nil && msg.id.String() == s.cfg.DefaultOrgID {
+			cmds = append(cmds, clearActiveOrgCmd(s.cfg))
+		}
+		return s, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		return s.updateKey(msg)
