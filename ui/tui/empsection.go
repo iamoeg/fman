@@ -387,6 +387,17 @@ func (f empForm) view() string {
 			} else {
 				valueRendered = cycleIdleStyle.Render("  " + val + "  ")
 			}
+			rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, labelRendered, valueRendered))
+			// Static salary info row below the picker.
+			salaryInfo := ""
+			if len(f.pkgs) > 0 {
+				pkg := f.pkgs[f.pkgIdx]
+				salaryInfo = fmt.Sprintf("%.2f %s", pkg.BaseSalary.ToMAD(), pkg.Currency)
+			}
+			rows = append(rows, lipgloss.NewStyle().
+				Width(16).Foreground(lipgloss.Color("240")).Render("Base Salary")+
+				lipgloss.NewStyle().Width(26).Foreground(lipgloss.Color("243")).Render("  "+salaryInfo))
+			continue
 		default:
 			valueRendered = f.inputs[i].View()
 		}
