@@ -420,7 +420,7 @@ func (s *compSection) renderFormOverlay(title string, width, height int) string 
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("205")).
 		Padding(1, 2).
-		Width(52).
+		Width(56).
 		Render(inner)
 
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
