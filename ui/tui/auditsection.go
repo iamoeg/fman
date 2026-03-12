@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -152,6 +154,14 @@ func (s *auditSection) View(width, height int) string {
 	return listView
 }
 
+func formatJSON(raw string) string {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(raw), "", "  "); err != nil {
+		return raw
+	}
+	return buf.String()
+}
+
 func (s *auditSection) listHeight() int {
 	if s.height <= 1 {
 		return s.height
@@ -185,23 +195,28 @@ func renderAuditDetail(log *application.AuditLog, width, height int) string {
 
 	if log.Before != "" && log.Before != "null" {
 		lines = append(lines, divider("Before"))
-		lines = append(lines, dimStyle.Render(log.Before))
+		lines = append(lines, dimStyle.Render(formatJSON(log.Before)))
 		lines = append(lines, "")
 	}
 
 	if log.After != "" && log.After != "null" {
 		lines = append(lines, divider("After"))
-		lines = append(lines, dimStyle.Render(log.After))
+		lines = append(lines, dimStyle.Render(formatJSON(log.After)))
 		lines = append(lines, "")
 	}
 
 	lines = append(lines, hintStyle.Render("            [esc] close"))
 
+	boxWidth := width - 8
+	if boxWidth > 80 {
+		boxWidth = 80
+	}
+
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("205")).
 		Padding(1, 2).
-		Width(60).
+		Width(boxWidth).
 		Render(strings.Join(lines, "\n"))
 
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
