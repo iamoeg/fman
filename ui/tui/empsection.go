@@ -26,6 +26,12 @@ const (
 	empStateCreating          // create form open
 	empStateEditing           // edit form open
 	empStateDeleting          // delete confirmation open
+	empStateDetail            // read-only detail overlay
+)
+
+var empDetailKey = key.NewBinding(
+	key.WithKeys("enter"),
+	key.WithHelp("enter", "view details"),
 )
 
 // ---------------------------------------------------------------------------
@@ -438,6 +444,8 @@ type empSection struct {
 	form            empForm
 	pendingDeleteID uuid.UUID
 	editTarget      *domain.Employee // non-nil when editing
+	detailTarget    *domain.Employee // non-nil when viewing detail
+	detailPkgName   string
 	errMsg          string
 	width, height   int
 }
@@ -467,6 +475,7 @@ func (s *empSection) Init() tea.Cmd {
 
 func (s *empSection) IsOverlay() bool {
 	return s.state == empStateCreating || s.state == empStateEditing || s.state == empStateDeleting ||
+		s.state == empStateDetail ||
 		s.list.FilterState() == list.Filtering
 }
 
@@ -476,8 +485,10 @@ func (s *empSection) ShortHelp() []key.Binding {
 		return []key.Binding{formKeys.Submit, formKeys.Cancel}
 	case empStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
+	case empStateDetail:
+		return []key.Binding{payrollKeys.Back}
 	default:
-		return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
+		return []key.Binding{empDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
 	}
 }
 
@@ -600,6 +611,14 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.pendingDeleteID = selected.emp.ID
 			s.state = empStateDeleting
 			return s, nil
+
+		case key.Matches(msg, empDetailKey):
+			if selected, ok := s.list.SelectedItem().(empItem); ok {
+				s.detailTarget = selected.emp
+				s.detailPkgName = selected.pkgName
+				s.state = empStateDetail
+			}
+			return s, nil
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
@@ -648,6 +667,15 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.pendingDeleteID = uuid.Nil
 			return s, nil
 		}
+
+	case empStateDetail:
+		if key.Matches(msg, payrollKeys.Back) {
+			s.state = empStateList
+			s.detailTarget = nil
+			s.detailPkgName = ""
+			return s, nil
+		}
+		return s, nil
 	}
 	return s, nil
 }
@@ -677,6 +705,8 @@ func (s *empSection) View(width, height int) string {
 		return s.renderFormOverlay("New Employee", width, height)
 	case empStateEditing:
 		return s.renderFormOverlay("Edit Employee", width, height)
+	case empStateDetail:
+		return s.renderEmpDetail(width, height)
 	}
 	return listView
 }
@@ -718,6 +748,66 @@ func (s *empSection) renderDeleteConfirm(listView string, width int) string {
 		Width(width).
 		Render(fmt.Sprintf("  Delete employee %q? [y] yes  [n/esc] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
+}
+
+func (s *empSection) renderEmpDetail(width, height int) string {
+	e := s.detailTarget
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+
+	opt := func(v string) string {
+		if v == "" {
+			return "—"
+		}
+		return v
+	}
+	row := func(label, value string) string {
+		return fmt.Sprintf("  %-20s%-22s", label, value)
+	}
+	divider := func(label string) string {
+		return sectionStyle.Render("── " + label + " " + strings.Repeat("─", 20))
+	}
+
+	lines := []string{
+		titleStyle.Render(fmt.Sprintf("#%d · %s", e.SerialNum, e.FullName)),
+		"",
+		divider("Personal"),
+		row("Full Name", e.FullName),
+		row("Display Name", opt(e.DisplayName)),
+		row("Birth Date", e.BirthDate.Format("2006-01-02")),
+		row("Gender", string(e.Gender)),
+		row("CIN", e.CINNum),
+		row("CNSS", opt(e.CNSSNum)),
+		row("Phone", opt(e.PhoneNumber)),
+		row("Email", opt(e.EmailAddress)),
+		row("Address", opt(e.Address)),
+		"",
+		divider("Employment"),
+		row("Employee #", fmt.Sprintf("%d", e.SerialNum)),
+		row("Position", e.Position),
+		row("Hire Date", e.HireDate.Format("2006-01-02")),
+		row("Package", s.detailPkgName),
+		"",
+		divider("Tax Info"),
+		row("Marital Status", string(e.MaritalStatus)),
+		row("Dependents", fmt.Sprintf("%d", e.NumDependents)),
+		row("Children", fmt.Sprintf("%d", e.NumKids)),
+		"",
+		divider("Banking"),
+		row("Bank RIB", opt(e.BankRIB)),
+	}
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Render(strings.Join(lines, "\n"))
+
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
+	)
 }
 
 func (s *empSection) listHeight() int {
