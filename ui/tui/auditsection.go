@@ -3,10 +3,12 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -22,6 +24,10 @@ var (
 		key.WithKeys("r"),
 		key.WithHelp("r", "refresh"),
 	)
+	auditScrollKey = key.NewBinding(
+		key.WithKeys("up", "down", "j", "k"),
+		key.WithHelp("↑↓/jk", "scroll"),
+	)
 )
 
 type auditState int
@@ -34,6 +40,7 @@ const (
 type auditSection struct {
 	svc           *application.AuditLogService
 	list          list.Model
+	viewport      viewport.Model
 	state         auditState
 	errMsg        string
 	width, height int
@@ -47,7 +54,7 @@ func newAuditSection(svc *application.AuditLogService) *auditSection {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
-	return &auditSection{svc: svc, list: l}
+	return &auditSection{svc: svc, list: l, viewport: viewport.New(0, 0)}
 }
 
 // sectionModel interface
@@ -62,7 +69,7 @@ func (s *auditSection) IsOverlay() bool {
 
 func (s *auditSection) ShortHelp() []key.Binding {
 	if s.state == auditStateDetail {
-		return []key.Binding{mainKeys.Back}
+		return []key.Binding{mainKeys.Back, auditScrollKey}
 	}
 	return []key.Binding{auditDetailKey, auditRefreshKey, mainKeys.Filter}
 }
@@ -74,6 +81,11 @@ func (s *auditSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.width = msg.Width - sidebarWidth - 2
 		s.height = msg.Height - headerHeight - footerHeight - 2
 		s.list.SetSize(s.width, s.listHeight())
+		if s.state == auditStateDetail {
+			if item, ok := s.list.SelectedItem().(auditItem); ok {
+				s.setDetailContent(item.log)
+			}
+		}
 		return s, nil
 
 	case auditLogsLoadedMsg:
@@ -93,12 +105,14 @@ func (s *auditSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		return s.updateKey(msg)
 	}
 
-	if s.state == auditStateList {
-		var cmd tea.Cmd
+	var cmd tea.Cmd
+	switch s.state {
+	case auditStateList:
 		s.list, cmd = s.list.Update(msg)
-		return s, cmd
+	case auditStateDetail:
+		s.viewport, cmd = s.viewport.Update(msg)
 	}
-	return s, nil
+	return s, cmd
 }
 
 func (s *auditSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
@@ -112,9 +126,10 @@ func (s *auditSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, auditDetailKey):
-			if _, ok := s.list.SelectedItem().(auditItem); ok {
+			if item, ok := s.list.SelectedItem().(auditItem); ok {
 				s.state = auditStateDetail
 				s.errMsg = ""
+				s.setDetailContent(item.log)
 			}
 			return s, nil
 		case key.Matches(msg, auditRefreshKey):
@@ -127,8 +142,11 @@ func (s *auditSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	case auditStateDetail:
 		if key.Matches(msg, mainKeys.Back) {
 			s.state = auditStateList
+			return s, nil
 		}
-		return s, nil
+		var cmd tea.Cmd
+		s.viewport, cmd = s.viewport.Update(msg)
+		return s, cmd
 	}
 	return s, nil
 }
@@ -149,9 +167,99 @@ func (s *auditSection) View(width, height int) string {
 		if !ok {
 			return listView
 		}
-		return renderAuditDetail(selected.log, width, height)
+		return s.renderAuditDetail(selected.log, width, height)
 	}
 	return listView
+}
+
+func (s *auditSection) setDetailContent(log *application.AuditLog) {
+	boxWidth := s.width - 8
+	if boxWidth > 160 {
+		boxWidth = 160
+	}
+	// height budget: border top/bottom(2) + padding top/bottom(2) + header(7) + blank+hint(2) = 13
+	vpHeight := s.height - 13
+	if vpHeight < 4 {
+		vpHeight = 4
+	}
+	s.viewport.Width = boxWidth
+	s.viewport.Height = vpHeight
+	s.viewport.SetContent(buildAuditJSONContent(log, boxWidth))
+	s.viewport.GotoTop()
+}
+
+func buildAuditJSONContent(log *application.AuditLog, boxWidth int) string {
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+
+	hasBefore := log.Before != "" && log.Before != "null"
+	hasAfter := log.After != "" && log.After != "null"
+
+	if hasBefore && hasAfter {
+		colWidth := (boxWidth - 2) / 2
+		labelBefore := sectionStyle.Render("── Before " + strings.Repeat("─", max(0, colWidth-12)))
+		labelAfter := sectionStyle.Render("── After " + strings.Repeat("─", max(0, colWidth-11)))
+		colStyle := lipgloss.NewStyle().Width(colWidth).Foreground(lipgloss.Color("240"))
+		leftPane := lipgloss.JoinVertical(lipgloss.Left, labelBefore, colStyle.Render(formatJSON(log.Before)))
+		rightPane := lipgloss.JoinVertical(lipgloss.Left, labelAfter, colStyle.Render(formatJSON(log.After)))
+		spacer := lipgloss.NewStyle().Width(2).Render("")
+		return lipgloss.JoinHorizontal(lipgloss.Top, leftPane, spacer, rightPane)
+	}
+
+	divider := func(label string) string {
+		return sectionStyle.Render("── " + label + " " + strings.Repeat("─", 16))
+	}
+	var parts []string
+	if hasBefore {
+		parts = append(parts, divider("Before"), dimStyle.Render(formatJSON(log.Before)))
+	}
+	if hasAfter {
+		parts = append(parts, divider("After"), dimStyle.Render(formatJSON(log.After)))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func (s *auditSection) renderAuditDetail(log *application.AuditLog, width, height int) string {
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	labelStyle := lipgloss.NewStyle().Width(12).Foreground(lipgloss.Color("245"))
+	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+
+	row := func(label, value string) string {
+		return lipgloss.JoinHorizontal(lipgloss.Top, labelStyle.Render(label), value)
+	}
+
+	scrollPct := fmt.Sprintf("  %3d%%", int(s.viewport.ScrollPercent()*100))
+	hint := hintStyle.Render("  [esc] close  ↑↓/jk scroll") + scrollPct
+
+	lines := []string{
+		titleStyle.Render("Audit Entry"),
+		"",
+		row("Action", log.Action),
+		row("Table", log.TableName),
+		row("Record ID", log.RecordID),
+		row("Timestamp", log.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC")),
+		"",
+		s.viewport.View(),
+		"",
+		hint,
+	}
+
+	boxWidth := s.width - 8
+	if boxWidth > 160 {
+		boxWidth = 160
+	}
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Width(boxWidth).
+		Render(strings.Join(lines, "\n"))
+
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
+	)
 }
 
 func formatJSON(raw string) string {
@@ -167,73 +275,4 @@ func (s *auditSection) listHeight() int {
 		return s.height
 	}
 	return s.height - 1
-}
-
-func renderAuditDetail(log *application.AuditLog, width, height int) string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
-	labelStyle := lipgloss.NewStyle().Width(12).Foreground(lipgloss.Color("245"))
-	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-
-	row := func(label, value string) string {
-		return lipgloss.JoinHorizontal(lipgloss.Top, labelStyle.Render(label), value)
-	}
-	divider := func(label string) string {
-		return sectionStyle.Render("── " + label + " " + strings.Repeat("─", 16))
-	}
-
-	lines := []string{
-		titleStyle.Render("Audit Entry"),
-		"",
-		row("Action", log.Action),
-		row("Table", log.TableName),
-		row("Record ID", log.RecordID),
-		row("Timestamp", log.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC")),
-		"",
-	}
-
-	hasBefore := log.Before != "" && log.Before != "null"
-	hasAfter := log.After != "" && log.After != "null"
-
-	boxWidth := width - 8
-	if boxWidth > 160 {
-		boxWidth = 160
-	}
-
-	if hasBefore && hasAfter {
-		colWidth := (boxWidth - 2) / 2
-		labelBefore := sectionStyle.Render("── Before " + strings.Repeat("─", max(0, colWidth-12)))
-		labelAfter := sectionStyle.Render("── After " + strings.Repeat("─", max(0, colWidth-11)))
-		colStyle := lipgloss.NewStyle().Width(colWidth).Foreground(lipgloss.Color("240"))
-		leftPane := lipgloss.JoinVertical(lipgloss.Left, labelBefore, colStyle.Render(formatJSON(log.Before)))
-		rightPane := lipgloss.JoinVertical(lipgloss.Left, labelAfter, colStyle.Render(formatJSON(log.After)))
-		spacer := lipgloss.NewStyle().Width(2).Render("")
-		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, leftPane, spacer, rightPane), "")
-	} else {
-		if hasBefore {
-			lines = append(lines, divider("Before"))
-			lines = append(lines, dimStyle.Render(formatJSON(log.Before)))
-			lines = append(lines, "")
-		}
-		if hasAfter {
-			lines = append(lines, divider("After"))
-			lines = append(lines, dimStyle.Render(formatJSON(log.After)))
-			lines = append(lines, "")
-		}
-	}
-
-	lines = append(lines, hintStyle.Render("            [esc] close"))
-
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("205")).
-		Padding(1, 2).
-		Width(boxWidth).
-		Render(strings.Join(lines, "\n"))
-
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
-		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
-	)
 }
