@@ -22,16 +22,23 @@ import (
 type empState int
 
 const (
-	empStateList     empState = iota
-	empStateCreating          // create form open
-	empStateEditing           // edit form open
-	empStateDeleting          // delete confirmation open
-	empStateDetail            // read-only detail overlay
+	empStateList          empState = iota
+	empStateCreating               // create form open
+	empStateEditing                // edit form open
+	empStateDeleting               // delete confirmation open
+	empStateDetail                 // read-only detail overlay
+	empStateHistory                // full-screen payroll history list
+	empStateHistoryDetail          // result detail overlay (shared renderer)
 )
 
 var empDetailKey = key.NewBinding(
 	key.WithKeys("enter"),
 	key.WithHelp("enter", "view details"),
+)
+
+var empHistoryKey = key.NewBinding(
+	key.WithKeys("h"),
+	key.WithHelp("h", "payroll history"),
 )
 
 // ---------------------------------------------------------------------------
@@ -435,24 +442,29 @@ func (f empForm) view() string {
 // ---------------------------------------------------------------------------
 
 type empSection struct {
-	empSvc          *application.EmployeeService
-	compSvc         *application.CompensationPackageService
-	orgID           uuid.UUID
-	list            list.Model
-	pkgs            []*domain.EmployeeCompensationPackage
-	state           empState
-	form            empForm
-	pendingDeleteID uuid.UUID
-	editTarget      *domain.Employee // non-nil when editing
-	detailTarget    *domain.Employee // non-nil when viewing detail
-	detailPkgName   string
-	errMsg          string
-	width, height   int
+	empSvc             *application.EmployeeService
+	compSvc            *application.CompensationPackageService
+	payrollSvc         *application.PayrollService
+	orgID              uuid.UUID
+	list               list.Model
+	historyList        list.Model
+	pkgs               []*domain.EmployeeCompensationPackage
+	state              empState
+	form               empForm
+	pendingDeleteID    uuid.UUID
+	editTarget         *domain.Employee // non-nil when editing
+	detailTarget       *domain.Employee // non-nil when viewing detail
+	detailPkgName      string
+	selectedHistResult *domain.PayrollResult
+	selectedHistPeriod *domain.PayrollPeriod
+	errMsg             string
+	width, height      int
 }
 
 func newEmpSection(
 	empSvc *application.EmployeeService,
 	compSvc *application.CompensationPackageService,
+	payrollSvc *application.PayrollService,
 	orgID uuid.UUID,
 ) *empSection {
 	delegate := list.NewDefaultDelegate()
@@ -462,7 +474,21 @@ func newEmpSection(
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
-	return &empSection{empSvc: empSvc, compSvc: compSvc, orgID: orgID, list: l}
+
+	hl := list.New(nil, delegate, 0, 0)
+	hl.SetShowHelp(false)
+	hl.SetShowStatusBar(false)
+	hl.SetFilteringEnabled(false)
+	hl.Styles.NoItems = hl.Styles.NoItems.PaddingLeft(2)
+
+	return &empSection{
+		empSvc:     empSvc,
+		compSvc:    compSvc,
+		payrollSvc: payrollSvc,
+		orgID:      orgID,
+		list:       l,
+		historyList: hl,
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -475,7 +501,7 @@ func (s *empSection) Init() tea.Cmd {
 
 func (s *empSection) IsOverlay() bool {
 	return s.state == empStateCreating || s.state == empStateEditing || s.state == empStateDeleting ||
-		s.state == empStateDetail ||
+		s.state == empStateDetail || s.state == empStateHistoryDetail ||
 		s.list.FilterState() == list.Filtering
 }
 
@@ -486,6 +512,10 @@ func (s *empSection) ShortHelp() []key.Binding {
 	case empStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case empStateDetail:
+		return []key.Binding{empHistoryKey, payrollKeys.Back}
+	case empStateHistory:
+		return []key.Binding{payrollKeys.ViewResults, payrollKeys.Back}
+	case empStateHistoryDetail:
 		return []key.Binding{payrollKeys.Back}
 	default:
 		return []key.Binding{empDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
@@ -499,6 +529,7 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.width = msg.Width - sidebarWidth - 2
 		s.height = msg.Height - headerHeight - footerHeight - 2
 		s.list.SetSize(s.width, s.listHeight())
+		s.historyList.SetSize(s.width, s.listHeight())
 		return s, nil
 
 	case activeOrgLoadedMsg:
@@ -556,13 +587,33 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.errMsg = ""
 		return s, loadEmpsCmd(s.empSvc, s.compSvc, s.orgID)
 
+	case empHistoryLoadedMsg:
+		if msg.err != nil {
+			s.errMsg = "load error: " + msg.err.Error()
+			s.state = empStateDetail
+			return s, nil
+		}
+		items := make([]list.Item, len(msg.entries))
+		for i, e := range msg.entries {
+			items[i] = empHistoryItem{entry: e}
+		}
+		cmd := s.historyList.SetItems(items)
+		s.state = empStateHistory
+		s.errMsg = ""
+		return s, cmd
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
 
-	if s.state == empStateList {
+	switch s.state {
+	case empStateList:
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
+		return s, cmd
+	case empStateHistory:
+		var cmd tea.Cmd
+		s.historyList, cmd = s.historyList.Update(msg)
 		return s, cmd
 	}
 	return s, nil
@@ -669,10 +720,41 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		}
 
 	case empStateDetail:
-		if key.Matches(msg, payrollKeys.Back) {
+		switch {
+		case key.Matches(msg, empHistoryKey):
+			s.historyList.Title = s.detailTarget.FullName + " — Payroll History"
+			s.state = empStateHistory
+			return s, loadEmpHistoryCmd(s.payrollSvc, s.detailTarget.ID)
+		case key.Matches(msg, payrollKeys.Back):
 			s.state = empStateList
 			s.detailTarget = nil
 			s.detailPkgName = ""
+			return s, nil
+		}
+		return s, nil
+
+	case empStateHistory:
+		switch {
+		case key.Matches(msg, payrollKeys.Back):
+			s.state = empStateDetail
+			return s, nil
+		case key.Matches(msg, payrollKeys.ViewResults):
+			if selected, ok := s.historyList.SelectedItem().(empHistoryItem); ok {
+				s.selectedHistResult = selected.entry.result
+				s.selectedHistPeriod = selected.entry.period
+				s.state = empStateHistoryDetail
+			}
+			return s, nil
+		}
+		var cmd tea.Cmd
+		s.historyList, cmd = s.historyList.Update(msg)
+		return s, cmd
+
+	case empStateHistoryDetail:
+		if key.Matches(msg, payrollKeys.Back) {
+			s.state = empStateHistory
+			s.selectedHistResult = nil
+			s.selectedHistPeriod = nil
 			return s, nil
 		}
 		return s, nil
@@ -685,6 +767,18 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 // ---------------------------------------------------------------------------
 
 func (s *empSection) View(width, height int) string {
+	if s.state == empStateHistory {
+		histView := s.historyList.View()
+		if s.errMsg != "" {
+			statusRow := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("196")).
+				Width(width).
+				Render("  " + s.errMsg)
+			histView = lipgloss.JoinVertical(lipgloss.Left, histView, statusRow)
+		}
+		return histView
+	}
+
 	listView := s.list.View()
 
 	statusRow := ""
@@ -707,6 +801,8 @@ func (s *empSection) View(width, height int) string {
 		return s.renderFormOverlay("Edit Employee", width, height)
 	case empStateDetail:
 		return s.renderEmpDetail(width, height)
+	case empStateHistoryDetail:
+		return renderPayrollResultDetail(s.selectedHistResult, s.detailTarget.FullName, s.selectedHistPeriod, width, height)
 	}
 	return listView
 }

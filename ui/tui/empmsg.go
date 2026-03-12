@@ -10,6 +10,34 @@ import (
 	"github.com/iamoeg/bootdev-capstone/internal/domain"
 )
 
+type empHistoryEntry struct {
+	result *domain.PayrollResult
+	period *domain.PayrollPeriod
+}
+
+type empHistoryLoadedMsg struct {
+	entries []empHistoryEntry
+	err     error
+}
+
+func loadEmpHistoryCmd(payrollSvc *application.PayrollService, empID uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		results, err := payrollSvc.ListPayrollResultsByEmployee(context.Background(), empID)
+		if err != nil {
+			return empHistoryLoadedMsg{err: err}
+		}
+		entries := make([]empHistoryEntry, 0, len(results))
+		for _, r := range results {
+			period, err := payrollSvc.GetPayrollPeriod(context.Background(), r.PayrollPeriodID)
+			if err != nil {
+				continue // skip orphaned results
+			}
+			entries = append(entries, empHistoryEntry{result: r, period: period})
+		}
+		return empHistoryLoadedMsg{entries: entries}
+	}
+}
+
 type empsLoadedMsg struct {
 	emps []*domain.Employee
 	pkgs []*domain.EmployeeCompensationPackage

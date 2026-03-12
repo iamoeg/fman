@@ -89,7 +89,7 @@ func NewModel(app *App) Model {
 		initialOrgID, _ = uuid.Parse(app.Config.DefaultOrgID)
 	}
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
-	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, initialOrgID)
+	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, app.PayrollService, initialOrgID)
 	m.sections[sectionPayroll] = newPayrollSection(app.PayrollService, app.EmployeeService, initialOrgID)
 	return m
 }
@@ -150,7 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sections[sectionPayroll] = next
 		return m, cmd
 
-	case empsLoadedMsg, saveEmpDoneMsg, deleteEmpDoneMsg:
+	case empsLoadedMsg, saveEmpDoneMsg, deleteEmpDoneMsg, empHistoryLoadedMsg:
 		next, cmd := m.sections[sectionEmployees].Update(msg)
 		m.sections[sectionEmployees] = next
 		return m, cmd
