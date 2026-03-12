@@ -14,4 +14,5 @@ type App struct {
 	EmployeeService     *application.EmployeeService
 	CompensationService *application.CompensationPackageService
 	PayrollService      *application.PayrollService
+	AuditLogService     *application.AuditLogService
 }

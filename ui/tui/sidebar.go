@@ -13,6 +13,7 @@ const (
 	sectionEmployees
 	sectionCompensation
 	sectionPayroll
+	sectionAuditLog
 	sectionCount // must be last
 )
 
@@ -21,6 +22,7 @@ var sectionLabels = [sectionCount]string{
 	sectionEmployees:     "Employees",
 	sectionCompensation:  "Compensation",
 	sectionPayroll:       "Payroll",
+	sectionAuditLog:      "Audit Log",
 }
 
 // sidebar renders the left navigation pane.

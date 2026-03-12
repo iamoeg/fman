@@ -60,6 +60,7 @@ func main() {
 	compRepo := sqlite.NewCompensationPackageRepository(db)
 	periodRepo := sqlite.NewPayrollPeriodRepository(db)
 	resultRepo := sqlite.NewPayrollResultRepository(db)
+	auditRepo := sqlite.NewAuditLogRepository(db)
 
 	// 5. Build services.
 	orgSvc := application.NewOrganizationService(orgRepo)
@@ -67,6 +68,7 @@ func main() {
 	compSvc := application.NewCompensationPackageService(compRepo)
 	calc := calculator.New()
 	payrollSvc := application.NewPayrollService(periodRepo, resultRepo, empRepo, compRepo, calc)
+	auditSvc := application.NewAuditLogService(auditRepo)
 
 	// 6. Wire the App container.
 	app := &tui.App{
@@ -75,6 +77,7 @@ func main() {
 		EmployeeService:     empSvc,
 		CompensationService: compSvc,
 		PayrollService:      payrollSvc,
+		AuditLogService:     auditSvc,
 	}
 
 	// 7. Start the TUI.

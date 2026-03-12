@@ -91,6 +91,7 @@ func NewModel(app *App) Model {
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
 	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, app.PayrollService, initialOrgID)
 	m.sections[sectionPayroll] = newPayrollSection(app.PayrollService, app.EmployeeService, initialOrgID)
+	m.sections[sectionAuditLog] = newAuditSection(app.AuditLogService)
 	return m
 }
 
@@ -144,6 +145,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd3)
 		}
 		return m, tea.Batch(cmds...)
+
+	case auditLogsLoadedMsg:
+		next, cmd := m.sections[sectionAuditLog].Update(msg)
+		m.sections[sectionAuditLog] = next
+		return m, cmd
 
 	case periodsLoadedMsg, resultsLoadedMsg, createPeriodDoneMsg, generateResultsDoneMsg, finalizePeriodDoneMsg, unfinalizePeriodDoneMsg, deletePeriodDoneMsg:
 		next, cmd := m.sections[sectionPayroll].Update(msg)
