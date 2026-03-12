@@ -29,6 +29,7 @@ const (
 	payrollStateCreating              // new period form overlay
 	payrollStateDeleting              // delete confirm inline
 	payrollStateResults               // drilled into results for selected period
+	payrollStateResultDetail          // drilled into a single result's full breakdown
 )
 
 // ---------------------------------------------------------------------------
@@ -174,9 +175,11 @@ type payrollSection struct {
 	resultList      list.Model
 	state           payrollState
 	form            payrollForm
-	selectedPeriod  *domain.PayrollPeriod
-	pendingDeleteID uuid.UUID
-	errMsg          string
+	selectedPeriod     *domain.PayrollPeriod
+	selectedResult     *domain.PayrollResult
+	selectedResultName string
+	pendingDeleteID    uuid.UUID
+	errMsg             string
 	statusMsg       string
 	width           int
 	height          int
@@ -221,6 +224,7 @@ func (s *payrollSection) Init() tea.Cmd {
 
 func (s *payrollSection) IsOverlay() bool {
 	return s.state == payrollStateCreating || s.state == payrollStateDeleting ||
+		s.state == payrollStateResultDetail ||
 		s.list.FilterState() == list.Filtering
 }
 
@@ -231,6 +235,8 @@ func (s *payrollSection) ShortHelp() []key.Binding {
 	case payrollStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case payrollStateResults:
+		return []key.Binding{payrollKeys.ViewResults, payrollKeys.Back}
+	case payrollStateResultDetail:
 		return []key.Binding{payrollKeys.Back}
 	default:
 		return []key.Binding{
@@ -471,16 +477,33 @@ func (s *payrollSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		}
 
 	case payrollStateResults:
-		if key.Matches(msg, payrollKeys.Back) {
+		switch {
+		case key.Matches(msg, payrollKeys.Back):
 			s.state = payrollStateList
 			s.selectedPeriod = nil
 			s.errMsg = ""
 			s.statusMsg = ""
 			return s, nil
+		case key.Matches(msg, payrollKeys.ViewResults):
+			if selected, ok := s.resultList.SelectedItem().(resultItem); ok {
+				s.selectedResult = selected.result
+				s.selectedResultName = selected.empName
+				s.state = payrollStateResultDetail
+			}
+			return s, nil
 		}
 		var cmd tea.Cmd
 		s.resultList, cmd = s.resultList.Update(msg)
 		return s, cmd
+
+	case payrollStateResultDetail:
+		if key.Matches(msg, payrollKeys.Back) {
+			s.state = payrollStateResults
+			s.selectedResult = nil
+			s.selectedResultName = ""
+			return s, nil
+		}
+		return s, nil
 	}
 	return s, nil
 }
@@ -491,9 +514,10 @@ func (s *payrollSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 
 func (s *payrollSection) View(width, height int) string {
 	var mainView string
-	if s.state == payrollStateResults {
+	switch s.state {
+	case payrollStateResults, payrollStateResultDetail:
 		mainView = s.resultList.View()
-	} else {
+	default:
 		mainView = s.list.View()
 	}
 
@@ -518,6 +542,8 @@ func (s *payrollSection) View(width, height int) string {
 		return s.renderDeleteConfirm(mainView, width)
 	case payrollStateCreating:
 		return s.renderFormOverlay(width, height)
+	case payrollStateResultDetail:
+		return s.renderResultDetail(width, height)
 	}
 	return mainView
 }
@@ -559,6 +585,74 @@ func (s *payrollSection) renderDeleteConfirm(mainView string, width int) string 
 		Width(width).
 		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/esc] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, mainView, prompt)
+}
+
+func (s *payrollSection) renderResultDetail(width, height int) string {
+	r := s.selectedResult
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	boldStyle := lipgloss.NewStyle().Bold(true)
+	netStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("114"))
+
+	row := func(label, value string) string {
+		return fmt.Sprintf("  %-26s%16s", label, value)
+	}
+	totalRow := func(label, value string) string {
+		return boldStyle.Render(fmt.Sprintf("  %-26s%16s", label, value))
+	}
+	divider := func(label string) string {
+		return sectionStyle.Render("── " + label + " " + strings.Repeat("─", 20))
+	}
+
+	periodTitle := ""
+	if s.selectedPeriod != nil {
+		periodTitle = fmt.Sprintf(" — %s %d",
+			time.Month(s.selectedPeriod.Month).String(), s.selectedPeriod.Year)
+	}
+
+	lines := []string{
+		titleStyle.Render(s.selectedResultName + periodTitle),
+		"",
+		divider("Salary"),
+		row("Base Salary", r.BaseSalary.String()),
+		row("Seniority Bonus", r.SeniorityBonus.String()),
+		row("Gross Salary", r.GrossSalary.String()),
+		row("Other Bonuses", r.TotalOtherBonus.String()),
+		totalRow("Gross (Grand Total)", r.GrossSalaryGrandTotal.String()),
+		"",
+		divider("Employee Deductions"),
+		row("CNSS - Social Allowance", r.SocialAllowanceEmployeeContrib.String()),
+		row("CNSS - Job Loss", r.JobLossCompensationEmployeeContrib.String()),
+		totalRow("  Total CNSS", r.TotalCNSSEmployeeContrib.String()),
+		row("AMO", r.AMOEmployeeContrib.String()),
+		row("Exemptions", r.TotalExemptions.String()),
+		row("Taxable Net Salary", r.TaxableNetSalary.String()),
+		row("Income Tax", r.IncomeTax.String()),
+		"",
+		divider("Net Payment"),
+		row("Rounding", r.RoundingAmount.String()),
+		netStyle.Render(fmt.Sprintf("  %-26s%16s", "Net to Pay", r.NetToPay.String())),
+		"",
+		divider("Employer Contributions"),
+		row("CNSS - Social Allowance", r.SocialAllowanceEmployerContrib.String()),
+		row("CNSS - Job Loss", r.JobLossCompensationEmployerContrib.String()),
+		row("CNSS - Training Tax", r.TrainingTaxEmployerContrib.String()),
+		row("CNSS - Family Benefits", r.FamilyBenefitsEmployerContrib.String()),
+		totalRow("  Total CNSS", r.TotalCNSSEmployerContrib.String()),
+		row("AMO", r.AMOEmployerContrib.String()),
+	}
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Render(strings.Join(lines, "\n"))
+
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
+	)
 }
 
 func (s *payrollSection) listHeight() int {
