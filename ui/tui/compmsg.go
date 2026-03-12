@@ -49,3 +49,16 @@ func renameCompCmd(svc *application.CompensationPackageService, id uuid.UUID, na
 		return renameCompDoneMsg{err: err}
 	}
 }
+
+type compUsageLoadedMsg struct {
+	empCount    int64
+	resultCount int64
+	err         error
+}
+
+func loadCompUsageCmd(svc *application.CompensationPackageService, pkgID uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		empCount, resultCount, err := svc.GetCompensationPackageUsageCount(context.Background(), pkgID)
+		return compUsageLoadedMsg{empCount: empCount, resultCount: resultCount, err: err}
+	}
+}

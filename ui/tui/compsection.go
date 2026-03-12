@@ -18,6 +18,11 @@ import (
 	"github.com/iamoeg/bootdev-capstone/pkg/money"
 )
 
+var compDetailKey = key.NewBinding(
+	key.WithKeys("enter"),
+	key.WithHelp("enter", "details"),
+)
+
 // compState is the internal state machine for the compensation section.
 type compState int
 
@@ -26,6 +31,7 @@ const (
 	compStateCreating           // create form open
 	compStateEditing            // rename form open
 	compStateDeleting           // delete confirmation open
+	compStateDetail             // read-only detail overlay
 )
 
 // compForm holds the Name and BaseSalary inputs for the create overlay,
@@ -161,14 +167,17 @@ func (f compForm) view() string {
 // ---------------------------------------------------------------------------
 
 type compSection struct {
-	svc             *application.CompensationPackageService
-	orgID           uuid.UUID
-	list            list.Model
-	state           compState
-	form            compForm
-	pendingDeleteID uuid.UUID
-	errMsg          string
-	width, height   int
+	svc                *application.CompensationPackageService
+	orgID              uuid.UUID
+	list               list.Model
+	state              compState
+	form               compForm
+	pendingDeleteID    uuid.UUID
+	errMsg             string
+	width, height      int
+	detailEmpCount     int64
+	detailPayrollCount int64
+	detailUsageLoaded  bool
 }
 
 func newCompSection(svc *application.CompensationPackageService, orgID uuid.UUID) *compSection {
@@ -192,7 +201,7 @@ func (s *compSection) Init() tea.Cmd {
 
 func (s *compSection) IsOverlay() bool {
 	return s.state == compStateCreating || s.state == compStateEditing || s.state == compStateDeleting ||
-		s.list.FilterState() == list.Filtering
+		s.state == compStateDetail || s.list.FilterState() == list.Filtering
 }
 
 func (s *compSection) ShortHelp() []key.Binding {
@@ -201,8 +210,10 @@ func (s *compSection) ShortHelp() []key.Binding {
 		return []key.Binding{formKeys.Submit, formKeys.Cancel}
 	case compStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
+	case compStateDetail:
+		return []key.Binding{mainKeys.Back}
 	default:
-		return []key.Binding{mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
+		return []key.Binding{compDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
 	}
 }
 
@@ -260,6 +271,16 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.errMsg = ""
 		return s, loadCompsCmd(s.svc, s.orgID)
 
+	case compUsageLoadedMsg:
+		if msg.err != nil {
+			s.errMsg = "usage load error: " + msg.err.Error()
+		} else {
+			s.detailEmpCount = msg.empCount
+			s.detailPayrollCount = msg.resultCount
+			s.detailUsageLoaded = true
+		}
+		return s, nil
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
@@ -310,10 +331,28 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.pendingDeleteID = selected.pkg.ID
 			s.state = compStateDeleting
 			return s, nil
+
+		case key.Matches(msg, compDetailKey):
+			selected, ok := s.list.SelectedItem().(compItem)
+			if !ok {
+				return s, nil
+			}
+			s.state = compStateDetail
+			s.detailUsageLoaded = false
+			s.detailEmpCount = 0
+			s.detailPayrollCount = 0
+			s.errMsg = ""
+			return s, loadCompUsageCmd(s.svc, selected.pkg.ID)
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
 		return s, cmd
+
+	case compStateDetail:
+		if key.Matches(msg, mainKeys.Back) {
+			s.state = compStateList
+		}
+		return s, nil
 
 	case compStateEditing:
 		f, result, cmd := s.form.update(msg)
@@ -399,6 +438,12 @@ func (s *compSection) View(width, height int) string {
 		return s.renderFormOverlay("New Compensation Package", width, height)
 	case compStateEditing:
 		return s.renderFormOverlay("Edit Package Name", width, height)
+	case compStateDetail:
+		selected, ok := s.list.SelectedItem().(compItem)
+		if !ok {
+			return listView
+		}
+		return renderCompDetail(selected.pkg, s.detailEmpCount, s.detailPayrollCount, s.detailUsageLoaded, width, height)
 	}
 	return listView
 }
