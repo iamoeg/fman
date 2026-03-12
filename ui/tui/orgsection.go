@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/iamoeg/bootdev-capstone/internal/application"
+	"github.com/iamoeg/bootdev-capstone/internal/domain"
 	"github.com/iamoeg/bootdev-capstone/pkg/config"
 )
 
@@ -22,6 +24,12 @@ const (
 	orgStateCreating                 // create form open
 	orgStateEditing                  // edit form open
 	orgStateDeleting                 // delete confirmation open
+	orgStateDetail                   // read-only detail overlay
+)
+
+var orgDetailKey = key.NewBinding(
+	key.WithKeys("enter"),
+	key.WithHelp("enter", "view details"),
 )
 
 // orgSection implements sectionModel for the Organizations section.
@@ -32,6 +40,7 @@ type orgSection struct {
 	state           orgState
 	form            orgForm
 	pendingDeleteID uuid.UUID
+	detailTarget    *domain.Organization
 	errMsg          string
 	width, height   int
 }
@@ -56,9 +65,7 @@ func (s *orgSection) Init() tea.Cmd {
 }
 
 func (s *orgSection) IsOverlay() bool {
-	return s.state == orgStateCreating ||
-		s.state == orgStateEditing ||
-		s.state == orgStateDeleting ||
+	return s.state != orgStateList ||
 		s.list.FilterState() == list.Filtering
 }
 
@@ -73,8 +80,11 @@ func (s *orgSection) ShortHelp() []key.Binding {
 		}
 	case orgStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
+	case orgStateDetail:
+		return []key.Binding{mainKeys.Back}
 	default:
 		return []key.Binding{
+			orgDetailKey,
 			mainKeys.New,
 			mainKeys.Edit,
 			mainKeys.Delete,
@@ -186,6 +196,13 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 				return s, nil
 			}
 			return s, setActiveOrgCmd(s.cfg, selected.org)
+
+		case key.Matches(msg, orgDetailKey):
+			if selected, ok := s.list.SelectedItem().(orgItem); ok {
+				s.detailTarget = selected.org
+				s.state = orgStateDetail
+			}
+			return s, nil
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
@@ -228,6 +245,13 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.pendingDeleteID = uuid.Nil
 			return s, nil
 		}
+
+	case orgStateDetail:
+		if key.Matches(msg, mainKeys.Back) {
+			s.state = orgStateList
+			s.detailTarget = nil
+		}
+		return s, nil
 	}
 	return s, nil
 }
@@ -256,6 +280,8 @@ func (s *orgSection) View(width, height int) string {
 		return s.renderDeleteConfirm(listView, width, height)
 	case orgStateCreating, orgStateEditing:
 		return s.renderFormOverlay(width, height)
+	case orgStateDetail:
+		return s.renderOrgDetail(width, height)
 	}
 	return listView
 }
@@ -302,6 +328,60 @@ func (s *orgSection) renderDeleteConfirm(listView string, width, _ int) string {
 		Width(width).
 		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/esc] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
+}
+
+func (s *orgSection) renderOrgDetail(width, height int) string {
+	o := s.detailTarget
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+
+	opt := func(v string) string {
+		if v == "" {
+			return "—"
+		}
+		return v
+	}
+	row := func(label, value string) string {
+		return fmt.Sprintf("  %-18s%-22s", label, value)
+	}
+	divider := func(label string) string {
+		return sectionStyle.Render("── " + label + " " + strings.Repeat("─", 20))
+	}
+
+	lines := []string{
+		titleStyle.Render(o.Name),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("243")).Render("ID: " + o.ID.String()),
+		"",
+		divider("General"),
+		row("Legal Form", string(o.LegalForm)),
+		row("Activity", opt(o.Activity)),
+		row("Address", opt(o.Address)),
+		"",
+		divider("Moroccan IDs"),
+		row("ICE", opt(o.ICENum)),
+		row("IF", opt(o.IFNum)),
+		row("RC", opt(o.RCNum)),
+		row("CNSS", opt(o.CNSSNum)),
+		"",
+		divider("Banking"),
+		row("Bank RIB", opt(o.BankRIB)),
+		"",
+		divider("Metadata"),
+		row("Created", o.CreatedAt.Format("2006-01-02 15:04")),
+		row("Updated", o.UpdatedAt.Format("2006-01-02 15:04")),
+	}
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Render(strings.Join(lines, "\n"))
+
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
+	)
 }
 
 // ---------------------------------------------------------------------------
