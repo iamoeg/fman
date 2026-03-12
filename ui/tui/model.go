@@ -12,7 +12,7 @@ import (
 const (
 	sidebarWidth = 22
 	footerHeight = 1
-	headerHeight = 1
+	headerHeight = 0
 )
 
 // focusTarget identifies which pane currently has keyboard focus.
@@ -243,15 +243,6 @@ func (m Model) View() string {
 	// Sidebar
 	sidebarView := m.sidebar.view(m.height-footerHeight-headerHeight, m.focus == focusSidebar, m.activeOrgName)
 
-	// Header bar
-	headerStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Background(lipgloss.Color("235")).
-		Foreground(lipgloss.Color("252")).
-		Bold(true).
-		Padding(0, 1)
-	header := headerStyle.Render("finmgmt  —  " + sectionLabels[m.active])
-
 	// Main pane
 	focusedBorder := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
@@ -285,7 +276,7 @@ func (m Model) View() string {
 	}
 	footer := renderFooter(m.width, bindings, overlay)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
+	return lipgloss.JoinVertical(lipgloss.Left, body, footer)
 }
 
 // mainWidth returns the width available for the main content pane (inside its border).
