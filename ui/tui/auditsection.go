@@ -193,24 +193,37 @@ func renderAuditDetail(log *application.AuditLog, width, height int) string {
 		"",
 	}
 
-	if log.Before != "" && log.Before != "null" {
-		lines = append(lines, divider("Before"))
-		lines = append(lines, dimStyle.Render(formatJSON(log.Before)))
-		lines = append(lines, "")
+	hasBefore := log.Before != "" && log.Before != "null"
+	hasAfter := log.After != "" && log.After != "null"
+
+	boxWidth := width - 8
+	if boxWidth > 160 {
+		boxWidth = 160
 	}
 
-	if log.After != "" && log.After != "null" {
-		lines = append(lines, divider("After"))
-		lines = append(lines, dimStyle.Render(formatJSON(log.After)))
-		lines = append(lines, "")
+	if hasBefore && hasAfter {
+		colWidth := (boxWidth - 2) / 2
+		labelBefore := sectionStyle.Render("── Before " + strings.Repeat("─", max(0, colWidth-12)))
+		labelAfter := sectionStyle.Render("── After " + strings.Repeat("─", max(0, colWidth-11)))
+		colStyle := lipgloss.NewStyle().Width(colWidth).Foreground(lipgloss.Color("240"))
+		leftPane := lipgloss.JoinVertical(lipgloss.Left, labelBefore, colStyle.Render(formatJSON(log.Before)))
+		rightPane := lipgloss.JoinVertical(lipgloss.Left, labelAfter, colStyle.Render(formatJSON(log.After)))
+		spacer := lipgloss.NewStyle().Width(2).Render("")
+		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, leftPane, spacer, rightPane), "")
+	} else {
+		if hasBefore {
+			lines = append(lines, divider("Before"))
+			lines = append(lines, dimStyle.Render(formatJSON(log.Before)))
+			lines = append(lines, "")
+		}
+		if hasAfter {
+			lines = append(lines, divider("After"))
+			lines = append(lines, dimStyle.Render(formatJSON(log.After)))
+			lines = append(lines, "")
+		}
 	}
 
 	lines = append(lines, hintStyle.Render("            [esc] close"))
-
-	boxWidth := width - 8
-	if boxWidth > 80 {
-		boxWidth = 80
-	}
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
