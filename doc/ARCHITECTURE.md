@@ -122,6 +122,24 @@ and return errors from arithmetic operations.
 Operations that can fail (overflow, division by zero) return explicit errors
 rather than silently producing wrong values.
 
+### 1a. Currency Not Embedded in `Money`
+
+**Decision:** The `Money` struct holds only `cents int64`. Currency is not tracked
+per-value. A separate `Currency` type exists in `pkg/money/currency.go` for
+validation at system boundaries (DB, config), but is not embedded in `Money`.
+
+**Rationale:** The system is explicitly single-currency (MAD) at every layer —
+the domain enforces MAD-only compensation packages, and the DB has constraints in place.
+Embedding currency in every `Money` value would complicate all arithmetic
+(every `Add`/`Subtract` would need a currency-equality check)
+without enabling any real use case in a single-currency system.
+The correctness risk of mixing currencies does not exist here.
+
+**When to revisit:** If Phase 2+ introduces multi-currency invoicing or
+foreign-currency expense tracking, add currency to the specific domain types
+that need it (e.g. `Invoice`) rather than retrofitting `Money`. At that point,
+a `CurrencyAmount` wrapper type at system boundaries may be appropriate.
+
 ### 2. Calculated Fields in Payroll Results
 
 **Decision:** Store all calculated values in `payroll_result`, not just base values.

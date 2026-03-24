@@ -5,8 +5,8 @@
 Architectural changes first to minimize rework, then features on a stable domain,
 then polish and tooling.
 
-1. **#4** — Decide Money/currency question. Most cross-cutting change;
-   closes it early even if the answer is "no".
+1. ~**#4** — Decide Money/currency question. Most cross-cutting change;
+   closes it early even if the answer is "no".~
 2. **#6** — Clarify NumKids vs NumDependents. Affects calculator correctness and potentially DB schema.
 3. **#18 + #19** — Constrain calculations to supported year, relax hire date.
    Do together; #19 is safe only once #18 is in place.
@@ -24,10 +24,9 @@ then polish and tooling.
 
 ## Domain & Data Model
 
-4. [ ] (Medium) Currency tracking in `Money` struct: currently MAD-only but not encoded in the type.
-       Adding a `Currency` field enables validation and future multi-currency support,
-       but increases struct size and complicates all arithmetic (must assert same currency before ops).
-       Tradeoff: add it now while the model is small, or stay explicit-by-convention since we're MAD-only.
+4. [x] (Medium) Currency tracking in `Money` struct: decided NOT to embed currency in `Money`.
+       System is single-currency (MAD) by design; adding it complicates arithmetic with no real benefit.
+       `Currency` type exists in for boundary validation. See `ARCHITECTURE.md` for full rationale.
 5. [ ] (Medium) Clarify domain vocabulary (FR/EN mapping): document canonical English names
        for all FR legal terms (e.g. allocations familiales, ancienneté, IPE, AMO).
        Prevent naming drift between DB columns, domain structs, and TUI labels.
