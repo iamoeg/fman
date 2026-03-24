@@ -8,16 +8,17 @@ then polish and tooling.
 1. ~**#4** — Decide Money/currency question. Most cross-cutting change;
    closes it early even if the answer is "no".~
 2. ~**#6** — Clarify NumKids vs NumDependents. Affects calculator correctness and potentially DB schema.~
-3. ~**#18 + #19** — Constrain calculations to supported year (**done**), relax hire date (**next**).~
+3. ~**#18 + #19** — Constrain calculations to supported year, relax hire date.~
 4. **#1** — PDF payslip export. Builds on top of a now-stable domain.
 5. **#14, #13, #11** — Easy wins: CLI config flag, consistent keymaps, form dimensions.
 6. **#2** — End-to-end tests. Written last, once behavior is locked.
 
 ---
 
-## Phase 1G — Finish Line
+## Phase 1H — Finish Line
 
-1. [ ] (High) PDF payslip export: `unidoc/unipdf` already in stack
+1. [ ] (High) PDF payslip export: `unidoc/unipdf` already in stack. Also consider CSV export (one row per employee)
+       and a plain-text payslip matching the detail view layout. Trigger from the period list with a dedicated key.
 2. [ ] (Medium) End-to-end tests: full flow: org → employee → payroll → finalize
 3. [ ] (Low) Documentation polish: README + user-facing docs
 
@@ -35,11 +36,10 @@ then polish and tooling.
 7. [ ] (Low) Enum table pattern for constrained text columns: replace inline `CHECK(col IN (...))`
        constraints in schema (gender, marital_status, legal_form, status) with reference tables.
        Improves referential integrity and makes adding new values a migration rather than a schema edit + code change.
-
-8. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
+18. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
        into a `yearRates` struct and a `ratesByYear` registry. `Calculate()` returns `ErrUnsupportedPayrollYear`
        when no entry exists for `period.Year`. Adding a new year = adding one map entry to the registry.
-9. [x] (High) Relax hire date constraint: removed `MaxHireYearsInPast` constant and the past-date check
+19. [x] (High) Relax hire date constraint: removed `MaxHireYearsInPast` constant and the past-date check
        from `ValidateHireDate()`. Now only rejects future hire dates. Past dates are valid; unsupported
        payroll years are caught by the calculator's `ErrUnsupportedPayrollYear` (see #18).
 
@@ -49,6 +49,15 @@ then polish and tooling.
        show estimated net pay, taxes, and contributions before creating the employee. Read-only, no DB writes.
 9. [ ] (Medium) Filter in payroll section: filter payroll periods by year or status (DRAFT/FINALIZED).
 10. [ ] (Low) Restore soft-deleted items: UI to list and restore soft-deleted orgs/employees.
+20. [ ] (High) Bonus/overtime input: `PayrollResult.TotalOtherBonus` is always 0 today.
+        Add a per-employee per-period override (overlay on results list) before generating payroll.
+        Requires storing overrides before calculation.
+25. [ ] (Medium) First-launch experience: when no config exists, guide the user through initial setup
+        (e.g. display name, config path, default org). Avoids dropping a blank screen on first run.
+23. [ ] (Low) Payroll result: seniority details: the seniority bonus rate (5–25%) is applied silently.
+        Show calculated seniority years and applicable tier in the payroll detail view.
+24. [ ] (Low) Employee history view: `ListPayrollResultsByEmployee` exists in the service layer
+        but is never called from the TUI. Add a history tab/overlay showing payslips across months.
 
 ## TUI Polish
 
@@ -56,6 +65,13 @@ then polish and tooling.
 12. [ ] (Medium) Unified design system: audit and standardize colors, borders,
         spacing, and status row styles across all sections.
 13. [ ] (Medium) Consistent keymaps: pick one back key (`esc` or `backspace`) and apply uniformly. Audit all sections for divergence.
+21. [ ] (Medium) Empty states & onboarding hints: show contextual hints when lists are empty
+        (e.g. "Create a package before adding employees", "Add employees first" for payroll).
+        Warn before generating payroll with 0 employees.
+22. [ ] (Medium) Active org switching: switching active org requires navigating to Orgs section.
+        Consider a dedicated switch-org prompt accessible from any section, or clearer visual indicator + help text.
+26. [ ] (Medium) Error message review: audit all user-facing errors for clarity and consistency.
+        Prefer Go-idiomatic lowercase, sentence-style messages. Avoid raw sentinel error strings leaking into the UI.
 
 ## Infrastructure & Tooling
 
