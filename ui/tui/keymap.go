@@ -84,9 +84,16 @@ var mainKeys = MainKeyMap{
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
-		key.WithHelp("esc", "back"),
+		key.WithHelp("esc", "sidebar"),
 	),
 }
+
+// sectionBackKey is the within-section back key. It is never intercepted by the
+// root model, so sections can use it unconditionally regardless of IsOverlay().
+var sectionBackKey = key.NewBinding(
+	key.WithKeys("backspace"),
+	key.WithHelp("backspace", "back"),
+)
 
 // FormKeyMap holds keybindings active inside a create/edit form overlay.
 type FormKeyMap struct {
@@ -127,7 +134,7 @@ var confirmKeys = ConfirmKeyMap{
 		key.WithHelp("y", "yes"),
 	),
 	No: key.NewBinding(
-		key.WithKeys("n", "esc"),
-		key.WithHelp("n/esc", "no"),
+		key.WithKeys("n", "backspace"),
+		key.WithHelp("n/bksp", "no"),
 	),
 }

@@ -81,7 +81,7 @@ func (s *orgSection) ShortHelp() []key.Binding {
 	case orgStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case orgStateDetail:
-		return []key.Binding{mainKeys.Back}
+		return []key.Binding{sectionBackKey}
 	default:
 		return []key.Binding{
 			orgDetailKey,
@@ -247,7 +247,7 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		}
 
 	case orgStateDetail:
-		if key.Matches(msg, mainKeys.Back) {
+		if key.Matches(msg, sectionBackKey) {
 			s.state = orgStateList
 			s.detailTarget = nil
 		}
@@ -332,7 +332,7 @@ func (s *orgSection) renderDeleteConfirm(listView string, width, _ int) string {
 		Foreground(lipgloss.Color("196")).
 		Bold(true).
 		Width(width).
-		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/esc] cancel", name))
+		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/bksp] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 

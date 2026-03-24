@@ -51,7 +51,11 @@
 11. [ ] (High) Fix form vertical dimensions: forms overflow or misalign vertically in some terminal sizes.
 12. [ ] (Medium) Unified design system: audit and standardize colors, borders,
         spacing, and status row styles across all sections.
-13. [ ] (Medium) Consistent keymaps: pick one back key (`esc` or `backspace`) and apply uniformly. Audit all sections for divergence.
+13. [x] (Medium) Consistent keymaps: two-key back model. `backspace` = within-section back
+        (`sectionBackKey`, never intercepted by root model — no conflict with drill-down states
+        that return `IsOverlay() = false`). `esc` = return to sidebar from any list view (root
+        model intercepts when `!IsOverlay()`). Forms keep `esc` = cancel (`IsOverlay() = true`
+        so root never sees it). Confirm dialogs use `n` / `backspace` to dismiss.
 21. [x] (Medium) Empty states & onboarding hints: each section shows a contextual hint in
         the status row when its list is empty (org-dependency hints for comp/employees/payroll).
         Generating payroll with 0 employees now shows an error instead of "Generated 0 employee(s)".

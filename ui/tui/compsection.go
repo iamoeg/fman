@@ -211,7 +211,7 @@ func (s *compSection) ShortHelp() []key.Binding {
 	case compStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case compStateDetail:
-		return []key.Binding{mainKeys.Back}
+		return []key.Binding{sectionBackKey}
 	default:
 		return []key.Binding{compDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
 	}
@@ -349,7 +349,7 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		return s, cmd
 
 	case compStateDetail:
-		if key.Matches(msg, mainKeys.Back) {
+		if key.Matches(msg, sectionBackKey) {
 			s.state = compStateList
 		}
 		return s, nil
@@ -493,7 +493,7 @@ func (s *compSection) renderDeleteConfirm(listView string, width int) string {
 		Foreground(lipgloss.Color("196")).
 		Bold(true).
 		Width(width).
-		Render(fmt.Sprintf("  Delete package %q? [y] yes  [n/esc] cancel", name))
+		Render(fmt.Sprintf("  Delete package %q? [y] yes  [n/bksp] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 

@@ -124,9 +124,19 @@ Four sections fully wired to application services, all with CRUD and validation.
 
 - `sectionModel` interface: `Init`, `Update`, `View(w,h)`, `ShortHelp`, `IsOverlay`
 - Root model routes key messages to the focused pane (sidebar or main)
-- `IsOverlay() = true` suppresses all global keys (`q`, `tab`, `esc`) — section owns all input
+- `IsOverlay() = true` suppresses global keys (`q`, `tab`) — section owns all input
 - Footer renders `ShortHelp()` of the active pane + global bindings when not in overlay/filter mode
 - All service calls are async; sections handle result messages and reload the list
+
+**Keymap model (two-key back):**
+
+- `esc` (`mainKeys.Back`) — root model returns focus to the sidebar when `!IsOverlay()`
+- `backspace` (`sectionBackKey`) — within-section back; the root model **never** intercepts
+  this key, so sections receive it unconditionally regardless of `IsOverlay()`
+- `esc` inside a form — `formKeys.Cancel`; safe because `IsOverlay() = true` means root's
+  `esc` handler never fires
+- This two-key split avoids conflicts with full-screen drill-down states
+  (e.g. `empStateHistory`, `payrollStateResults`) that intentionally return `IsOverlay() = false`
 
 **Sections:**
 
@@ -138,7 +148,7 @@ Four sections fully wired to application services, all with CRUD and validation.
 **Notable patterns:**
 
 - Form overlay: `lipgloss.Place(w, h, Center, Center, box)` centered over a dimmed list background
-- `IsOverlay()` also returns `true` when the list filter is active — prevents `q`/`esc`/`tab` from firing global actions while the user is typing a search
+- `IsOverlay()` also returns `true` when the list filter is active — prevents `q`/`tab` from firing global actions while the user is typing a search
 - `activeOrgLoadedMsg{name, orgID}` — root model updates the sidebar AND forwards to all org-scoped sections so they reload for the new org
 - One status row reserved at the bottom of each list view for error and success messages
 

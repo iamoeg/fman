@@ -41,7 +41,6 @@ type payrollKeyMap struct {
 	ViewResults key.Binding
 	Finalize    key.Binding
 	Unfinalize  key.Binding
-	Back        key.Binding
 }
 
 var payrollKeys = payrollKeyMap{
@@ -60,10 +59,6 @@ var payrollKeys = payrollKeyMap{
 	Unfinalize: key.NewBinding(
 		key.WithKeys("u"),
 		key.WithHelp("u", "unfinalize"),
-	),
-	Back: key.NewBinding(
-		key.WithKeys("backspace"),
-		key.WithHelp("backspace", "back"),
 	),
 }
 
@@ -235,9 +230,9 @@ func (s *payrollSection) ShortHelp() []key.Binding {
 	case payrollStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case payrollStateResults:
-		return []key.Binding{payrollKeys.ViewResults, payrollKeys.Back}
+		return []key.Binding{payrollKeys.ViewResults, sectionBackKey}
 	case payrollStateResultDetail:
-		return []key.Binding{payrollKeys.Back}
+		return []key.Binding{sectionBackKey}
 	default:
 		return []key.Binding{
 			mainKeys.New,
@@ -483,7 +478,7 @@ func (s *payrollSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 
 	case payrollStateResults:
 		switch {
-		case key.Matches(msg, payrollKeys.Back):
+		case key.Matches(msg, sectionBackKey):
 			s.state = payrollStateList
 			s.selectedPeriod = nil
 			s.errMsg = ""
@@ -502,7 +497,7 @@ func (s *payrollSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		return s, cmd
 
 	case payrollStateResultDetail:
-		if key.Matches(msg, payrollKeys.Back) {
+		if key.Matches(msg, sectionBackKey) {
 			s.state = payrollStateResults
 			s.selectedResult = nil
 			s.selectedResultName = ""
@@ -610,7 +605,7 @@ func (s *payrollSection) renderDeleteConfirm(mainView string, width int) string 
 		Foreground(lipgloss.Color("196")).
 		Bold(true).
 		Width(width).
-		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/esc] cancel", name))
+		Render(fmt.Sprintf("  Delete %q? [y] yes  [n/bksp] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, mainView, prompt)
 }
 

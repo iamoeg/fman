@@ -512,11 +512,11 @@ func (s *empSection) ShortHelp() []key.Binding {
 	case empStateDeleting:
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case empStateDetail:
-		return []key.Binding{empHistoryKey, payrollKeys.Back}
+		return []key.Binding{empHistoryKey, sectionBackKey}
 	case empStateHistory:
-		return []key.Binding{payrollKeys.ViewResults, payrollKeys.Back}
+		return []key.Binding{payrollKeys.ViewResults, sectionBackKey}
 	case empStateHistoryDetail:
-		return []key.Binding{payrollKeys.Back}
+		return []key.Binding{sectionBackKey}
 	default:
 		return []key.Binding{empDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
 	}
@@ -725,7 +725,7 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.historyList.Title = s.detailTarget.FullName + " — Payroll History"
 			s.state = empStateHistory
 			return s, loadEmpHistoryCmd(s.payrollSvc, s.detailTarget.ID)
-		case key.Matches(msg, payrollKeys.Back):
+		case key.Matches(msg, sectionBackKey):
 			s.state = empStateList
 			s.detailTarget = nil
 			s.detailPkgName = ""
@@ -735,7 +735,7 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 
 	case empStateHistory:
 		switch {
-		case key.Matches(msg, payrollKeys.Back):
+		case key.Matches(msg, sectionBackKey):
 			s.state = empStateDetail
 			return s, nil
 		case key.Matches(msg, payrollKeys.ViewResults):
@@ -751,7 +751,7 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		return s, cmd
 
 	case empStateHistoryDetail:
-		if key.Matches(msg, payrollKeys.Back) {
+		if key.Matches(msg, sectionBackKey) {
 			s.state = empStateHistory
 			s.selectedHistResult = nil
 			s.selectedHistPeriod = nil
@@ -857,7 +857,7 @@ func (s *empSection) renderDeleteConfirm(listView string, width int) string {
 		Foreground(lipgloss.Color("196")).
 		Bold(true).
 		Width(width).
-		Render(fmt.Sprintf("  Delete employee %q? [y] yes  [n/esc] cancel", name))
+		Render(fmt.Sprintf("  Delete employee %q? [y] yes  [n/bksp] cancel", name))
 	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 

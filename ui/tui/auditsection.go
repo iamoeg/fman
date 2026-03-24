@@ -69,7 +69,7 @@ func (s *auditSection) IsOverlay() bool {
 
 func (s *auditSection) ShortHelp() []key.Binding {
 	if s.state == auditStateDetail {
-		return []key.Binding{mainKeys.Back, auditScrollKey}
+		return []key.Binding{sectionBackKey, auditScrollKey}
 	}
 	return []key.Binding{auditDetailKey, auditRefreshKey, mainKeys.Filter}
 }
@@ -140,7 +140,7 @@ func (s *auditSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 		return s, cmd
 
 	case auditStateDetail:
-		if key.Matches(msg, mainKeys.Back) {
+		if key.Matches(msg, sectionBackKey) {
 			s.state = auditStateList
 			return s, nil
 		}
@@ -229,7 +229,7 @@ func (s *auditSection) renderAuditDetail(log *application.AuditLog, width, heigh
 	}
 
 	scrollPct := fmt.Sprintf("  %3d%%", int(s.viewport.ScrollPercent()*100))
-	hint := hintStyle.Render("  [esc] close  ↑↓/jk scroll") + scrollPct
+	hint := hintStyle.Render("  [backspace] back  ↑↓/jk scroll") + scrollPct
 
 	lines := []string{
 		titleStyle.Render("Audit Entry"),

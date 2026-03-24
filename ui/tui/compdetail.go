@@ -57,7 +57,7 @@ func renderCompDetail(
 		row("Created", pkg.CreatedAt.Format("2006-01-02")),
 		row("Updated", pkg.UpdatedAt.Format("2006-01-02")),
 		"",
-		hintStyle.Render("             [esc] close"),
+		hintStyle.Render("        [backspace] back"),
 	}
 
 	box := lipgloss.NewStyle().

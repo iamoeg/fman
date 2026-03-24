@@ -33,9 +33,9 @@ type sectionModel interface {
 	View(width, height int) string
 	ShortHelp() []key.Binding
 	// IsOverlay returns true when the section has a form or modal open.
-	// The root model skips ALL global key bindings (q, tab/shift+tab, esc) in
+	// The root model skips ALL global key bindings (q, tab/shift+tab) in
 	// that state so the section owns every keystroke — including tab for
-	// field navigation and esc to cancel.
+	// field navigation, esc to cancel forms, and backspace to close views.
 	IsOverlay() bool
 }
 
@@ -218,8 +218,9 @@ func (m Model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Check for Esc to return focus to sidebar — but only when the section is
-	// not capturing input, so sections can use Esc internally (e.g. cancel form).
+	// Check for esc to return focus to sidebar — only when the section is not
+	// capturing input. Sections use sectionBackKey (backspace) for within-section
+	// navigation; esc is never handled by sections at the list level.
 	if km, ok := msg.(tea.KeyMsg); ok {
 		if key.Matches(km, mainKeys.Back) && !m.sections[m.active].IsOverlay() {
 			m.focus = focusSidebar
