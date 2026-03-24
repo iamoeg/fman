@@ -96,7 +96,7 @@ Moroccan payroll calculator adapter and integration into PayrollService.
 
 **Calculator implementation notes:**
 
-- All rates are named constants — no magic numbers in logic
+- All year-specific values (rates, ceilings, brackets) live in `yearRates` struct entries in `ratesByYear` — no magic numbers in logic
 - `completedYears()` uses truncated arithmetic (4y 11m = 4 completed years)
 - Professional expense rate evaluated monthly using `gross × 12` as annual proxy; avoids needing year-to-date state
 - `capAt()` helper keeps ceiling logic explicit and reusable
@@ -144,7 +144,32 @@ Four sections fully wired to application services, all with CRUD and validation.
 
 ---
 
-## Phase 1G — Export & Polish
+## Phase 1G — Domain Hardening ✅
+
+Year-keyed rate tables in the calculator and relaxed hire date validation.
+
+### Calculator: year-keyed rate tables
+
+- Introduced `yearRates` struct holding all legislation-specific values:
+  CNSS rates, AMO rates, CNSS ceiling, professional expense thresholds,
+  family allowance tiers, SMIG, IR brackets
+- Replaced the flat `const` block with a `ratesByYear map[int]yearRates` registry;
+  2026 is the sole entry
+- `Calculate()` fails fast with `ErrUnsupportedPayrollYear` if no entry exists for `period.Year`
+- All private helpers now accept `r yearRates` and read `r.Xyz` — algorithm is unchanged
+- Seniority tiers stay package-level (structural, not year-specific)
+- Adding a new year: one map entry in `ratesByYear`, no other code changes
+
+### Employee: relaxed hire date constraint
+
+- Removed `MaxHireYearsInPast` constant and the corresponding past-date check from `ValidateHireDate()`
+- `ValidateHireDate()` now only rejects future hire dates
+- Past hire dates are valid regardless of how far back;
+  year correctness is enforced at the calculator level via `ErrUnsupportedPayrollYear`
+
+---
+
+## Phase 1H — Export & Polish
 
 **Status:** Planned
 
@@ -163,7 +188,7 @@ Four sections fully wired to application services, all with CRUD and validation.
 ### Moroccan Payroll
 
 - CNSS and AMO are legally distinct — keep them separate in `PayrollResult`; combine only via helpers
-- Tax rates and brackets change yearly — see `DOMAIN.md` for the update workflow
+- Tax rates and brackets change yearly — add a new `yearRates` entry to `ratesByYear` in the calculator; see `DOMAIN.md` for the update workflow
 - Professional expense rate switches at 78,000 MAD annual gross, evaluated monthly using `gross × 12`
 
 ### TUI Layer
@@ -174,7 +199,7 @@ Four sections fully wired to application services, all with CRUD and validation.
 
 ### Adding a New Year's Calculator
 
-1. Create `internal/adapter/payroll/<year>/` alongside the existing package
-2. Update constants (rates, brackets) — the `DOMAIN.md` update workflow covers which constants to change
-3. Wire the new calculator in `cmd/tui/main.go`
-4. `PayrollService` requires no changes
+1. Update `doc/DOMAIN.md` with the new rates and brackets
+2. Add a new entry to `ratesByYear` in `internal/adapter/payroll/calculator.go` with the updated `yearRates` values
+3. Add integration tests in `calculator_test.go` with the new year's worked examples
+4. `PayrollService`, `cmd/tui/main.go`, and the `payrollCalculator` interface require no changes

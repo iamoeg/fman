@@ -39,10 +39,9 @@ then polish and tooling.
 8. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
        into a `yearRates` struct and a `ratesByYear` registry. `Calculate()` returns `ErrUnsupportedPayrollYear`
        when no entry exists for `period.Year`. Adding a new year = adding one map entry to the registry.
-9. [ ] (High) Relax hire date constraint (`MaxHireYearsInPast`): currently `MaxHireYearsInPast = 1`,
-       blocking employees hired more than a year ago. This was tied to payroll calculation limits,
-       but since we're constraining calculations to the current year (see #18),
-       the hire date can safely be any date in the past. Remove or greatly increase this limit.
+9. [x] (High) Relax hire date constraint: removed `MaxHireYearsInPast` constant and the past-date check
+       from `ValidateHireDate()`. Now only rejects future hire dates. Past dates are valid; unsupported
+       payroll years are caught by the calculator's `ErrUnsupportedPayrollYear` (see #18).
 
 ## Features
 

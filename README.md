@@ -13,7 +13,8 @@ focusing on payroll compliance and business operations.
 - ✅ Application services (1D)
 - ✅ Moroccan payroll engine — CNSS, AMO, IR (1E)
 - ✅ Full TUI implementation — all CRUD sections (1F)
-- ⏳ Export (payslip PDF), end-to-end tests, documentation polish (1G)
+- ⏳ Domain hardening (1G)
+- ⏳ Export (payslip PDF), end-to-end tests, documentation polish (1H)
 
 ## Overview
 

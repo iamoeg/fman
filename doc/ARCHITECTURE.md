@@ -258,16 +258,20 @@ finalize an already-finalized period or clear `finalized_at`.
 **Rationale:** Workflow queries enforce business rules at the SQL level, are
 self-documenting, and generate type-safe sqlc functions.
 
-### 14. Calculation Engine as Versioned Adapter
+### 14. Calculation Engine with Year-Keyed Rate Tables
 
-**Decision:** Implement the payroll calculator as a versioned adapter package
+**Decision:** Implement the payroll calculator as a single adapter package
 (`internal/adapter/payroll/`) with an interface defined by `PayrollService`,
-not by the calculator itself.
+not by the calculator itself. Year-specific legislation (rates, ceilings, brackets)
+is isolated in a `yearRates` struct stored in a `ratesByYear` registry map.
+`Calculate()` looks up `period.Year` in the registry and returns
+`ErrUnsupportedPayrollYear` if no entry exists.
 
-**Rationale:** Moroccan payroll rates change yearly. A new year's calculator is
-a new package alongside the existing one, not a modification. `PayrollService`
-never needs to change when rates change. The composition root (`cmd/tui/main.go`)
-wires the correct version together.
+**Rationale:** Moroccan payroll rates change yearly. Rather than creating a new
+package per year (high overhead, wiring churn), all year-specific *data* lives
+in one place — the `ratesByYear` map. Adding 2027 support means adding one map
+entry; the calculation *algorithm* never changes. `PayrollService` never needs
+to change when rates change.
 
 The calculator is intentionally stateless and pure: inputs in, result out.
 This makes it trivially testable and avoids any need for year-to-date accumulation state.

@@ -5,8 +5,9 @@ the Moroccan payroll engine (`internal/adapter/payroll/`).
 All rates are verified against real payslips and reflect 2026 legislation.
 
 > **Important:** When any rate or bracket changes, update this document first,
-> then update the corresponding constants in the calculator. Never hardcode
-> values directly in calculation logic.
+> then update the corresponding entry in `ratesByYear` in the calculator.
+> To add a new year, add a new `yearRates` entry to the registry map.
+> Never hardcode values directly in calculation logic.
 
 ---
 
