@@ -93,6 +93,7 @@ type PayrollResult struct {
 	GrossSalaryCents                        int64          `json:"gross_salary_cents"`
 	TotalOtherBonusCents                    int64          `json:"total_other_bonus_cents"`
 	GrossSalaryGrandTotalCents              int64          `json:"gross_salary_grand_total_cents"`
+	FamilyAllowanceCents                    int64          `json:"family_allowance_cents"`
 	TotalExemptionsCents                    int64          `json:"total_exemptions_cents"`
 	TaxableGrossSalaryCents                 int64          `json:"taxable_gross_salary_cents"`
 	SocialAllowanceEmployeeContribCents     int64          `json:"social_allowance_employee_contrib_cents"`

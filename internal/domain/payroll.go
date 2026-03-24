@@ -298,6 +298,7 @@ type PayrollResult struct {
 	GrossSalary           money.Money // Base + Seniority
 	TotalOtherBonus       money.Money // Other bonuses (overtime, etc.)
 	GrossSalaryGrandTotal money.Money // Total gross including all bonuses
+	FamilyAllowance       money.Money // Allocations Familiales (CNSS, tax-exempt, paid to employee)
 
 	// Tax Calculations
 	TotalExemptions    money.Money // Professional expenses, etc.
@@ -429,6 +430,7 @@ func (pr *PayrollResult) ValidatePositiveMoneyValues() error {
 		pr.GrossSalary.IsNegative() ||
 		pr.TotalOtherBonus.IsNegative() ||
 		pr.GrossSalaryGrandTotal.IsNegative() ||
+		pr.FamilyAllowance.IsNegative() ||
 		pr.TotalExemptions.IsNegative() ||
 		pr.TaxableGrossSalary.IsNegative() ||
 		pr.SocialAllowanceEmployeeContrib.IsNegative() ||
@@ -479,7 +481,7 @@ func (pr *PayrollResult) ValidateRoundingAmount() error {
 //   - TotalCNSSEmployerContrib = SocialAllowance + JobLoss + Training + Family (NO AMO)
 //   - TaxableGrossSalary = GrossSalaryGrandTotal - TotalExemptions
 //   - TaxableNetSalary = TaxableGrossSalary - TotalCNSSEmployee - AMOEmployee
-//   - NetToPay = TaxableNetSalary - IncomeTax + RoundingAmount
+//   - NetToPay = TaxableNetSalary - IncomeTax + FamilyAllowance + RoundingAmount
 func (pr *PayrollResult) ValidateMathConsistency() error {
 	// GrossSalary = BaseSalary + SeniorityBonus
 	grossSalaryExpected, err := pr.BaseSalary.Add(pr.SeniorityBonus)
@@ -592,11 +594,19 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 		)
 	}
 
-	// NetToPay = TaxableNetSalary - IncomeTax + RoundingAmount
+	// NetToPay = TaxableNetSalary - IncomeTax + FamilyAllowance + RoundingAmount
 	netToPayExpected, err := pr.TaxableNetSalary.Subtract(pr.IncomeTax)
 	if err != nil {
 		return fmt.Errorf(
 			"%w: could not subtract .IncomeTax from .TaxableNetSalary",
+			err,
+		)
+	}
+
+	netToPayExpected, err = netToPayExpected.Add(pr.FamilyAllowance)
+	if err != nil {
+		return fmt.Errorf(
+			"%w: could not add .FamilyAllowance to expected net to pay",
 			err,
 		)
 	}
@@ -611,7 +621,7 @@ func (pr *PayrollResult) ValidateMathConsistency() error {
 
 	if !pr.NetToPay.Equals(netToPayExpected) {
 		return fmt.Errorf(
-			"%w: .NetToPay must equal .TaxableNetSalary - .IncomeTax + .RoundingAmount",
+			"%w: .NetToPay must equal .TaxableNetSalary - .IncomeTax + .FamilyAllowance + .RoundingAmount",
 			ErrInconsistentPayrollResultCalculation,
 		)
 	}

@@ -424,6 +424,15 @@ func newTestEmployee(hireDate time.Time, numDependents int) *domain.Employee {
 	}
 }
 
+func newTestEmployeeWithChildren(hireDate time.Time, numDependents, numChildren int) *domain.Employee {
+	return &domain.Employee{
+		ID:            uuid.New(),
+		HireDate:      hireDate,
+		NumDependents: numDependents,
+		NumChildren:   numChildren,
+	}
+}
+
 func newTestPackage(baseSalaryMAD float64) *domain.EmployeeCompensationPackage {
 	return &domain.EmployeeCompensationPackage{
 		ID:         uuid.New(),
@@ -470,6 +479,9 @@ func TestCalculate_WorkedExample1(t *testing.T) {
 
 	// Income Tax
 	assert.Equal(t, cents(95736), result.IncomeTax, "monthly income tax")
+
+	// Family allowance (0 children)
+	assert.Equal(t, mad(0), result.FamilyAllowance, "family allowance: 0 children")
 
 	// Net to pay
 	assert.Equal(t, int64(16), result.RoundingAmount.Cents(), "rounding amount: +16 cents")
@@ -525,6 +537,9 @@ func TestCalculate_WorkedExample2(t *testing.T) {
 	// Income Tax — top bracket 37%
 	assert.Equal(t, cents(428239), result.IncomeTax, "monthly income tax")
 
+	// Family allowance (0 children)
+	assert.Equal(t, mad(0), result.FamilyAllowance, "family allowance: 0 children")
+
 	// Net to pay
 	assert.Equal(t, int64(19), result.RoundingAmount.Cents(), "rounding amount: +19 cents")
 	assert.Equal(t, mad(15_963), result.NetToPay, "net to pay")
@@ -538,6 +553,34 @@ func TestCalculate_WorkedExample2(t *testing.T) {
 
 	// AMO employer
 	assert.Equal(t, mad(863.10), result.AMOEmployerContrib, "amo employer: 21,000 × 4.11%")
+}
+
+// TestCalculate_FamilyAllowance verifies that allocations familiales are
+// correctly calculated and added to net pay.
+// Employee: base 10,000 MAD, no seniority, 4 children.
+// Allowance: 3 × 300 + 1 × 36 = 936 MAD.
+func TestCalculate_FamilyAllowance(t *testing.T) {
+	t.Parallel()
+
+	period := newTestPeriod(2026, 1)
+	hireDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) // 0 years seniority
+	emp := newTestEmployeeWithChildren(hireDate, 0, 4)
+	pkg := newTestPackage(10_000)
+
+	calc := New()
+	result, err := calc.Calculate(context.Background(), period, emp, pkg)
+	require.NoError(t, err)
+
+	assert.Equal(t, mad(936), result.FamilyAllowance, "family allowance: 3×300 + 1×36")
+
+	// NetToPay should include the allowance
+	noAllowanceEmp := newTestEmployee(hireDate, 0)
+	baseResult, err := calc.Calculate(context.Background(), period, noAllowanceEmp, pkg)
+	require.NoError(t, err)
+
+	expectedNetToPay, err := baseResult.NetToPay.Add(mad(936))
+	require.NoError(t, err)
+	assert.Equal(t, expectedNetToPay, result.NetToPay, "net to pay includes family allowance")
 }
 
 // TestCalculate_GrossSalaryBelowSMIG verifies that Calculate rejects a

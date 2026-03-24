@@ -61,6 +61,7 @@ INSERT INTO payroll_result(
     gross_salary_cents,
     total_other_bonus_cents,
     gross_salary_grand_total_cents,
+    family_allowance_cents,
     total_exemptions_cents,
     taxable_gross_salary_cents,
     social_allowance_employee_contrib_cents,
@@ -82,7 +83,7 @@ INSERT INTO payroll_result(
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?, ?
 ) RETURNING *;
 
 -- name: DeletePayrollResult :one

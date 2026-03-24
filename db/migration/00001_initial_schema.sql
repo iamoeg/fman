@@ -96,6 +96,7 @@ CREATE TABLE payroll_result(
     gross_salary_cents INTEGER NOT NULL CHECK(gross_salary_cents >= 0),
     total_other_bonus_cents INTEGER NOT NULL DEFAULT 0 CHECK(total_other_bonus_cents >= 0),
     gross_salary_grand_total_cents INTEGER NOT NULL CHECK(gross_salary_grand_total_cents >= 0),
+    family_allowance_cents INTEGER NOT NULL DEFAULT 0 CHECK(family_allowance_cents >= 0),
     total_exemptions_cents INTEGER NOT NULL DEFAULT 0 CHECK(total_exemptions_cents >= 0),
     taxable_gross_salary_cents INTEGER NOT NULL CHECK(taxable_gross_salary_cents >= 0),
     social_allowance_employee_contrib_cents INTEGER NOT NULL CHECK(social_allowance_employee_contrib_cents >= 0),

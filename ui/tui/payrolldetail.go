@@ -48,6 +48,7 @@ func renderPayrollResultDetail(
 		row("Gross Salary", r.GrossSalary.String()),
 		row("Other Bonuses", r.TotalOtherBonus.String()),
 		totalRow("Gross (Grand Total)", r.GrossSalaryGrandTotal.String()),
+		row("Family Allowance (CNSS)", r.FamilyAllowance.String()),
 		"",
 		divider("Employee Deductions"),
 		row("CNSS - Social Allowance", r.SocialAllowanceEmployeeContrib.String()),

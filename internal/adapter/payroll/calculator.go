@@ -47,9 +47,16 @@ const (
 	profExpenseAnnualThreshold    = 78_000_00 // 78,000.00 MAD in cents
 	profExpenseMonthlyCap         = 2_500_00  // 2,500.00 MAD in cents
 
-	// Family charge deduction
+	// Family charge deduction (IR)
 	familyChargePerDependentMAD = 40_00 // 40.00 MAD in cents
 	familyChargeMaxDependents   = 6
+
+	// CNSS family allowance (Allocations Familiales) — cash allowance paid to employee, tax-exempt
+	// Funded by the employer's CNSS family benefits contribution.
+	familyAllowanceLowTierPerChild  = 300_00 // 300.00 MAD/month, children 1–3
+	familyAllowanceHighTierPerChild = 36_00  // 36.00 MAD/month, children 4–6
+	familyAllowanceLowTierLimit     = 3
+	familyAllowanceMaxChildren      = 6
 
 	// SMIG
 	smigMonthlyMAD = 3_422_00 // 3,422.00 MAD in cents
@@ -175,13 +182,17 @@ func (c *Calculator) Calculate(
 		return nil, fmt.Errorf("ir: %w", err)
 	}
 
-	// ── Step 10: Net to pay ───────────────────────────────────────────────
-	netToPay, roundingAmount, err := calculateNetToPay(grossSalary, cnssEmp.total, amoEmp, ir)
+	// ── Step 10: Family allowance (Allocations Familiales) ────────────────
+	// Tax-exempt cash payment to employee; does not affect CNSS or IR base.
+	familyAllowance := calculateFamilyAllowance(emp.NumChildren)
+
+	// ── Step 11: Net to pay ───────────────────────────────────────────────
+	netToPay, roundingAmount, err := calculateNetToPay(grossSalary, cnssEmp.total, amoEmp, ir, familyAllowance)
 	if err != nil {
 		return nil, fmt.Errorf("net to pay: %w", err)
 	}
 
-	// ── Step 11: Employer contributions ──────────────────────────────────
+	// ── Step 12: Employer contributions ──────────────────────────────────
 	cnssEmr, err := calculateCNSSEmployer(grossSalary)
 	if err != nil {
 		return nil, fmt.Errorf("cnss employer: %w", err)
@@ -258,6 +269,9 @@ func (c *Calculator) Calculate(
 		FamilyBenefitsEmployerContrib:      cnssEmr.familyBenefits,
 		TotalCNSSEmployerContrib:           totalCNSSEmr,
 		AMOEmployerContrib:                 amoEmr,
+
+		// Family allowance (income to employee, tax-exempt)
+		FamilyAllowance: familyAllowance,
 
 		// Tax
 		TotalExemptions:    totalExemptions,
@@ -437,6 +451,27 @@ func calculateFamilyChargeDeduction(numDependents int) (money.Money, error) {
 	return money.FromCents(int64(capped) * familyChargePerDependentMAD), nil
 }
 
+// calculateFamilyAllowance returns the monthly CNSS family allowance (allocations familiales)
+// paid to the employee based on their number of qualifying children.
+// Rates: 300 MAD/month for children 1–3, 36 MAD/month for children 4–6, capped at 6.
+// This amount is tax-exempt and increases net pay directly.
+func calculateFamilyAllowance(numChildren int) money.Money {
+	if numChildren <= 0 {
+		return money.FromCents(0)
+	}
+	capped := numChildren
+	if capped > familyAllowanceMaxChildren {
+		capped = familyAllowanceMaxChildren
+	}
+	lowTier := capped
+	if lowTier > familyAllowanceLowTierLimit {
+		lowTier = familyAllowanceLowTierLimit
+	}
+	highTier := capped - lowTier
+	total := int64(lowTier)*familyAllowanceLowTierPerChild + int64(highTier)*familyAllowanceHighTierPerChild
+	return money.FromCents(total)
+}
+
 // calculateNetTaxableSalary computes the net taxable salary used as the IR base.
 func calculateNetTaxableSalary(
 	gross, cnssEmployee, amoEmployee, profExpense, familyCharge money.Money,
@@ -511,8 +546,10 @@ func findIncomeTaxBracket(annualTaxableCents int64) incomeTaxBracket {
 }
 
 // calculateNetToPay returns the net to pay and the rounding adjustment applied.
+// familyAllowance (allocations familiales) is added after deductions — it is
+// tax-exempt and not subject to CNSS contributions.
 func calculateNetToPay(
-	gross, cnssEmployee, amoEmployee, incomeTax money.Money,
+	gross, cnssEmployee, amoEmployee, incomeTax, familyAllowance money.Money,
 ) (netToPay, roundingAmount money.Money, err error) {
 	raw, err := gross.Subtract(cnssEmployee)
 	if err != nil {
@@ -523,6 +560,10 @@ func calculateNetToPay(
 		return money.Money{}, money.Money{}, err
 	}
 	raw, err = raw.Subtract(incomeTax)
+	if err != nil {
+		return money.Money{}, money.Money{}, err
+	}
+	raw, err = raw.Add(familyAllowance)
 	if err != nil {
 		return money.Money{}, money.Money{}, err
 	}
