@@ -2,10 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/iamoeg/bootdev-capstone/db/migration"
@@ -16,42 +18,63 @@ import (
 	"github.com/iamoeg/bootdev-capstone/ui/tui"
 )
 
+var cfgPath string
+
+var rootCmd = &cobra.Command{
+	Use:   "finmgmt",
+	Short: "Moroccan payroll manager",
+	RunE:  runTUI,
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVar(
+		&cfgPath, "config", "",
+		"path to config file (default: ~/.config/finmgmt/config.yaml)",
+	)
+}
+
 func main() {
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func runTUI(cmd *cobra.Command, args []string) error {
 	// Debug logging — set DEBUG=1 to enable.
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
-			log.Fatal("fatal: could not open debug log:", err)
+			return fmt.Errorf("could not open debug log: %w", err)
 		}
 		defer f.Close()
 	}
 
 	// 1. Load (or create) config.
-	cfg, err := config.LoadOrCreate("")
+	cfg, err := config.LoadOrCreate(cfgPath)
 	if err != nil {
-		log.Fatal("fatal: could not load config:", err)
+		return fmt.Errorf("could not load config: %w", err)
 	}
 
 	// 2. Resolve database path and open SQLite.
 	dbPath, err := cfg.ResolveDatabasePath()
 	if err != nil {
-		log.Fatal("fatal: could not resolve database path:", err)
+		return fmt.Errorf("could not resolve database path: %w", err)
 	}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatal("fatal: could not open database:", err)
+		return fmt.Errorf("could not open database: %w", err)
 	}
 	defer db.Close()
 
 	// CRITICAL: enable foreign key enforcement on every connection.
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		log.Fatal("fatal: could not enable foreign keys:", err)
+		return fmt.Errorf("could not enable foreign keys: %w", err)
 	}
 
 	// 3. Run migrations.
 	if err := migration.RunMigrations(db); err != nil {
-		log.Fatal("fatal: could not run migrations:", err)
+		return fmt.Errorf("could not run migrations: %w", err)
 	}
 
 	// 4. Build repositories.
@@ -83,6 +106,8 @@ func main() {
 	// 7. Start the TUI.
 	p := tea.NewProgram(tui.NewModel(app), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		log.Fatal("fatal: TUI error:", err)
+		return fmt.Errorf("TUI error: %w", err)
 	}
+
+	return nil
 }

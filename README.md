@@ -73,6 +73,7 @@ complying with Moroccan tax law (CNSS, AMO, IR).
 - **Query Builder:** sqlc (type-safe SQL)
 - **Migrations:** goose
 - **PDF Generation:** unidoc/unipdf
+- **CLI:** Cobra
 
 ## Architecture Principles
 
@@ -130,7 +131,7 @@ goose -dir db/migration sqlite3 ~/.local/share/finmgmt/data.db up
 sqlc generate
 
 # Run TUI
-go run cmd/tui/main.go
+go run ./cmd/tui/
 ```
 
 ## Configuration
@@ -139,6 +140,12 @@ Configuration follows XDG Base Directory specification:
 
 - **Config:** `~/.config/finmgmt/config.yaml`
 - **Data:** `~/.local/share/finmgmt/data.db`
+
+A custom config path can be passed at startup:
+
+```bash
+go run ./cmd/tui/ --config /path/to/config.yaml
+```
 
 ## Documentation
 

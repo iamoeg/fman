@@ -62,8 +62,8 @@
 
 ## Infrastructure & Tooling
 
-14. [ ] (High) Fix config file path via CLI argument: `main.go` calls `config.LoadOrCreate("")`,
-        ignoring any CLI-provided path. Wire up a `--config` flag.
+14. [x] (High) Fix config file path via CLI argument: introduced Cobra as the CLI framework;
+        `--config` flag wired to `config.LoadOrCreate`. Startup logic moved to `runTUI()`.
 15. [ ] (Medium) Configure `golangci-lint`: add `.golangci.yml` and lint the codebase.
 16. [ ] (Medium) Set up CI/CD pipeline: build, test, and lint on push.
 17. [ ] (Low) Rename the project: decide on final name before publishing.
