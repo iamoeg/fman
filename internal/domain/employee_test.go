@@ -105,7 +105,7 @@ func TestEmployee_Validate(t *testing.T) {
 				now := time.Now().UTC()
 				// Employee is 79 years old (born 79 years ago)
 				emp.BirthDate = now.AddDate(-79, 0, 0)
-				// Hired last year (within MaxHireYearsInPast)
+				// Hired last year
 				emp.HireDate = now.AddDate(-1, 0, 0)
 				return emp
 			}(),
@@ -384,14 +384,13 @@ func TestEmployee_Validate(t *testing.T) {
 			wantErr: domain.ErrInvalidEmployeeHireDate,
 		},
 		{
-			name: "hire date too far in the past (> MaxHireYearsInPast)",
+			name: "hire date far in the past (now valid)",
 			emp: func() *domain.Employee {
 				emp := validEmployee()
-				now := time.Now().UTC()
-				emp.HireDate = time.Date(now.Year()-domain.MaxHireYearsInPast-1, 1, 1, 0, 0, 0, 0, time.UTC)
+				emp.HireDate = time.Now().UTC().AddDate(-10, 0, 0) // 10 years ago, well after birth
 				return emp
 			}(),
-			wantErr: domain.ErrInvalidEmployeeHireDate,
+			wantErr: nil,
 		},
 		{
 			name: "hired before minimum working age",
@@ -921,8 +920,13 @@ func TestEmployee_ValidateHireDate(t *testing.T) {
 			wantErr:  nil,
 		},
 		{
-			name:     "hired last year (within MaxHireYearsInPast)",
+			name:     "hired last year",
 			hireDate: time.Date(currentYear-1, 12, 31, 0, 0, 0, 0, time.UTC),
+			wantErr:  nil,
+		},
+		{
+			name:     "hired many years ago",
+			hireDate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 			wantErr:  nil,
 		},
 
@@ -935,11 +939,6 @@ func TestEmployee_ValidateHireDate(t *testing.T) {
 		{
 			name:     "in the future (next month)",
 			hireDate: now.AddDate(0, 1, 0),
-			wantErr:  domain.ErrInvalidEmployeeHireDate,
-		},
-		{
-			name:     "too far in past (beyond MaxHireYearsInPast)",
-			hireDate: time.Date(currentYear-domain.MaxHireYearsInPast-1, 12, 31, 0, 0, 0, 0, time.UTC),
 			wantErr:  domain.ErrInvalidEmployeeHireDate,
 		},
 	}

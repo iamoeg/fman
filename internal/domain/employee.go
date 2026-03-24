@@ -23,7 +23,7 @@ import (
 //   - Must belong to an organization (OrgID)
 //   - Must have a unique serial number within the organization
 //   - Must be between MinWorkLegalAge and MaxWorkLegalAge years old
-//   - Hire date must be within the last MaxHireYearsInPast years
+//   - Hire date must not be in the future
 //   - Must have a valid compensation package
 type Employee struct {
 	// Identity
@@ -250,30 +250,14 @@ func (e *Employee) ValidateNumChildren() error {
 	return nil
 }
 
-// ValidateHireDate ensures the hire date is within supported range.
-// Hire dates must be:
-//   - Within the last MaxHireYearsInPast years (payroll calculation limitation)
-//   - Not in the future
+// ValidateHireDate ensures the hire date is not in the future.
 func (e *Employee) ValidateHireDate() error {
-	now := time.Now()
-	currentYear := now.Year()
-	minAllowedYear := currentYear - MaxHireYearsInPast
-
-	if e.HireDate.Year() < minAllowedYear {
-		return fmt.Errorf(
-			"%w: payroll calculations only supported for %d and later",
-			ErrInvalidEmployeeHireDate,
-			minAllowedYear,
-		)
-	}
-
-	if e.HireDate.After(now) {
+	if e.HireDate.After(time.Now()) {
 		return fmt.Errorf(
 			"%w: cannot be in the future",
 			ErrInvalidEmployeeHireDate,
 		)
 	}
-
 	return nil
 }
 
@@ -391,11 +375,6 @@ const (
 
 	// MaxWorkLegalAge is the maximum reasonable working age (80 years).
 	MaxWorkLegalAge = 80
-
-	// MaxHireYearsInPast limits how far back hire dates can be.
-	// This is due to payroll calculation rules changing over time.
-	// Currently set to 1, meaning only current year and previous year are supported.
-	MaxHireYearsInPast = 1
 )
 
 // ============================================================================
