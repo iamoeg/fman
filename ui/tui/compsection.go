@@ -427,6 +427,16 @@ func (s *compSection) View(width, height int) string {
 			Width(width).
 			Render("  " + s.errMsg)
 	}
+	if statusRow == "" && len(s.list.Items()) == 0 {
+		hint := "Press n to create your first compensation package."
+		if s.orgID == uuid.Nil {
+			hint = "Select an active organization first."
+		}
+		statusRow = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")).
+			Width(width).
+			Render("  " + hint)
+	}
 	if statusRow != "" {
 		listView = lipgloss.JoinVertical(lipgloss.Left, listView, statusRow)
 	}

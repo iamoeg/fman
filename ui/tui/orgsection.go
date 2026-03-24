@@ -271,6 +271,12 @@ func (s *orgSection) View(width, height int) string {
 			Width(width).
 			Render("  " + s.errMsg)
 	}
+	if statusRow == "" && len(s.list.Items()) == 0 {
+		statusRow = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")).
+			Width(width).
+			Render("  Press n to create your first organization.")
+	}
 	if statusRow != "" {
 		listView = lipgloss.JoinVertical(lipgloss.Left, listView, statusRow)
 	}

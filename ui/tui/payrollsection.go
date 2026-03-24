@@ -314,6 +314,11 @@ func (s *payrollSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 			s.errMsg = userFriendlyPayrollError(msg.err)
 			return s, nil
 		}
+		if msg.count == 0 {
+			s.statusMsg = ""
+			s.errMsg = "No employees in this organization — nothing was generated."
+			return s, nil
+		}
 		s.errMsg = ""
 		s.statusMsg = fmt.Sprintf("Generated payroll for %d employee(s)", msg.count)
 		return s, loadPeriodsCmd(s.payrollSvc, s.orgID)
@@ -532,6 +537,28 @@ func (s *payrollSection) View(width, height int) string {
 			Foreground(lipgloss.Color("114")).
 			Width(width).
 			Render("  " + s.statusMsg)
+	}
+	if statusRow == "" {
+		switch s.state {
+		case payrollStateResults:
+			if len(s.resultList.Items()) == 0 {
+				statusRow = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("241")).
+					Width(width).
+					Render("  Press g to generate payroll for this period.")
+			}
+		default:
+			if len(s.list.Items()) == 0 {
+				hint := "Press n to create a payroll period."
+				if s.orgID == uuid.Nil {
+					hint = "Select an active organization first."
+				}
+				statusRow = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("241")).
+					Width(width).
+					Render("  " + hint)
+			}
+		}
 	}
 	if statusRow != "" {
 		mainView = lipgloss.JoinVertical(lipgloss.Left, mainView, statusRow)

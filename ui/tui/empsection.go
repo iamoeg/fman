@@ -788,6 +788,21 @@ func (s *empSection) View(width, height int) string {
 			Width(width).
 			Render("  " + s.errMsg)
 	}
+	if statusRow == "" && len(s.list.Items()) == 0 {
+		var hint string
+		switch {
+		case s.orgID == uuid.Nil:
+			hint = "Select an active organization first."
+		case len(s.pkgs) == 0:
+			hint = "Create a compensation package before adding employees."
+		default:
+			hint = "Press n to add your first employee."
+		}
+		statusRow = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")).
+			Width(width).
+			Render("  " + hint)
+	}
 	if statusRow != "" {
 		listView = lipgloss.JoinVertical(lipgloss.Left, listView, statusRow)
 	}

@@ -52,9 +52,9 @@
 12. [ ] (Medium) Unified design system: audit and standardize colors, borders,
         spacing, and status row styles across all sections.
 13. [ ] (Medium) Consistent keymaps: pick one back key (`esc` or `backspace`) and apply uniformly. Audit all sections for divergence.
-21. [ ] (Medium) Empty states & onboarding hints: show contextual hints when lists are empty
-        (e.g. "Create a package before adding employees", "Add employees first" for payroll).
-        Warn before generating payroll with 0 employees.
+21. [x] (Medium) Empty states & onboarding hints: each section shows a contextual hint in
+        the status row when its list is empty (org-dependency hints for comp/employees/payroll).
+        Generating payroll with 0 employees now shows an error instead of "Generated 0 employee(s)".
 22. [ ] (Medium) Active org switching: switching active org requires navigating to Orgs section.
         Consider a dedicated switch-org prompt accessible from any section, or clearer visual indicator + help text.
 26. [ ] (Medium) Error message review: audit all user-facing errors for clarity and consistency.
