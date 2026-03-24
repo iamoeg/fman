@@ -33,9 +33,11 @@ then polish and tooling.
 6. [x] (High) Clarify `NumKids` vs `NumDependents` in IR calculation: renamed `NumKids` → `NumChildren`;
        documented distinction (`NumDependents` = IR family charge deduction, `NumChildren` = CNSS family allowance);
        implemented missing family allowance calculation in the payroll engine.
-7. [ ] (Low) Enum table pattern for constrained text columns: replace inline `CHECK(col IN (...))`
-       constraints in schema (gender, marital_status, legal_form, status) with reference tables.
-       Improves referential integrity and makes adding new values a migration rather than a schema edit + code change.
+7. [x] (Low) Enum table pattern for constrained text columns: replaced all inline `CHECK(col IN (...))`
+       constraints with reference tables (`gender`, `marital_status`, `legal_form`, `currency`,
+       `payroll_period_status`, `audit_action`). Each has a single `code TEXT PRIMARY KEY` and is
+       seeded in the migration. Enum columns now carry bare FK references. Adding a new value = one
+       INSERT migration, no schema edit.
 18. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
        into a `yearRates` struct and a `ratesByYear` registry. `Calculate()` returns `ErrUnsupportedPayrollYear`
        when no entry exists for `period.Year`. Adding a new year = adding one map entry to the registry.

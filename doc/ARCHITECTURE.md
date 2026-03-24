@@ -218,11 +218,20 @@ The database unique constraint on `(org_id, serial_num)` catches any race condit
 
 ### 10. Enum Pattern
 
-**Decision:** Use typed string constants with a map for O(1) validation and pre-computed
-error strings.
+**Decision:** Enums are enforced at two independent layers:
 
-**Rationale:** Avoids linear scans for validation, produces clean error messages,
-and is easy to extend. All enums follow the same pattern for consistency.
+- **Domain layer:** Typed string constants (`GenderEnum`, `MaritalStatusEnum`, …)
+  with a map for O(1) `IsSupported()` validation and pre-computed error strings.
+  Catches invalid values before any DB round-trip.
+- **Database layer:** Reference tables (`gender`, `marital_status`, …) with a single
+  `code TEXT PRIMARY KEY` column, seeded in the migration. Enum columns
+  carry a bare FK (`REFERENCES gender(code)`) instead of an inline `CHECK` constraint.
+  Adding a new valid value is a single `INSERT` migration — no schema edit required.
+
+**Rationale:** Dual enforcement: domain validation gives clear error messages;
+the FK gives hard guarantees even if the domain layer is bypassed.
+The reference-table pattern is consistent across all enum columns
+and makes the valid-value set inspectable at runtime.
 
 ### 11. Primitive SQL Queries, Filtering at Repository Level
 

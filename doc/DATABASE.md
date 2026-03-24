@@ -20,7 +20,7 @@ The canonical DBML diagram is in `doc/db-schema.dbml`.
 
 ## Schema Overview
 
-The database consists of 5 core tables plus an audit log:
+The database consists of 5 core tables, 1 audit log, and 6 reference tables:
 
 ```text
 organization (1) ──< (N) employee
@@ -32,6 +32,10 @@ employee_compensation_package (1) ──< (N) employee
 
 payroll_period (1) ──< (N) payroll_result (N) >── employee
 ```
+
+Reference tables (`gender`, `marital_status`, `legal_form`, `currency`,
+`payroll_period_status`, `audit_action`) are seeded once in the migration
+and act as FK targets for enum columns across the core tables.
 
 **Key Principles:**
 
@@ -49,21 +53,21 @@ payroll_period (1) ──< (N) payroll_result (N) >── employee
 
 Represents a company in the system. Root of the multi-tenant hierarchy.
 
-| Column       | Type | Constraints       | Description                       |
-| ------------ | ---- | ----------------- | --------------------------------- |
-| `id`         | TEXT | PRIMARY KEY       | UUID                              |
-| `name`       | TEXT | NOT NULL          | Organization name                 |
-| `address`    | TEXT |                   | Physical address                  |
-| `activity`   | TEXT |                   | Business activity description     |
-| `legal_form` | TEXT | CHECK IN ('SARL') | Legal structure                   |
-| `ice_num`    | TEXT | UNIQUE            | ICE number (Moroccan business ID) |
-| `if_num`     | TEXT | UNIQUE            | IF number (tax ID)                |
-| `rc_num`     | TEXT | UNIQUE            | RC number (commerce registry)     |
-| `cnss_num`   | TEXT | UNIQUE            | CNSS registration number          |
-| `bank_rib`   | TEXT | UNIQUE            | Bank account RIB                  |
-| `created_at` | TEXT | NOT NULL          | ISO 8601 timestamp                |
-| `updated_at` | TEXT | NOT NULL          | ISO 8601 timestamp                |
-| `deleted_at` | TEXT |                   | Soft delete timestamp             |
+| Column       | Type | Constraints     | Description                       |
+| ------------ | ---- | --------------- | --------------------------------- |
+| `id`         | TEXT | PRIMARY KEY     | UUID                              |
+| `name`       | TEXT | NOT NULL        | Organization name                 |
+| `address`    | TEXT |                 | Physical address                  |
+| `activity`   | TEXT |                 | Business activity description     |
+| `legal_form` | TEXT | FK → legal_form | Legal structure                   |
+| `ice_num`    | TEXT | UNIQUE          | ICE number (Moroccan business ID) |
+| `if_num`     | TEXT | UNIQUE          | IF number (tax ID)                |
+| `rc_num`     | TEXT | UNIQUE          | RC number (commerce registry)     |
+| `cnss_num`   | TEXT | UNIQUE          | CNSS registration number          |
+| `bank_rib`   | TEXT | UNIQUE          | Bank account RIB                  |
+| `created_at` | TEXT | NOT NULL        | ISO 8601 timestamp                |
+| `updated_at` | TEXT | NOT NULL        | ISO 8601 timestamp                |
+| `deleted_at` | TEXT |                 | Soft delete timestamp             |
 
 ---
 
@@ -82,7 +86,7 @@ payroll calculation.
 | `org_id`            | TEXT    | FK → organization, NOT NULL | Owning organization           |
 | `name`              | TEXT    | NOT NULL                    | Human-readable package name   |
 | `base_salary_cents` | INTEGER | NOT NULL, >= 0              | Monthly salary in cents (MAD) |
-| `currency`          | TEXT    | NOT NULL, CHECK IN ('MAD')  | Currency code                 |
+| `currency`          | TEXT    | NOT NULL, FK → currency     | Currency code                 |
 | `created_at`        | TEXT    | NOT NULL                    | ISO 8601 timestamp            |
 | `updated_at`        | TEXT    | NOT NULL                    | ISO 8601 timestamp            |
 | `deleted_at`        | TEXT    |                             | Soft delete timestamp         |
@@ -95,30 +99,30 @@ payroll calculation.
 
 Employee records with demographic and payroll-relevant information.
 
-| Column                    | Type    | Constraints                           | Description                                                              |
-| ------------------------- | ------- | ------------------------------------- | ------------------------------------------------------------------------ |
-| `id`                      | TEXT    | PRIMARY KEY                           | UUID                                                                     |
-| `org_id`                  | TEXT    | FK → organization, NOT NULL           | Owning organization                                                      |
-| `serial_num`              | INTEGER | NOT NULL, >= 1                        | Employee number within org                                               |
-| `full_name`               | TEXT    | NOT NULL                              | Full legal name                                                          |
-| `display_name`            | TEXT    |                                       | Preferred name                                                           |
-| `address`                 | TEXT    |                                       | Home address                                                             |
-| `email_address`           | TEXT    |                                       | Email                                                                    |
-| `phone_number`            | TEXT    |                                       | Phone                                                                    |
-| `birth_date`              | TEXT    | NOT NULL                              | Date of birth                                                            |
-| `gender`                  | TEXT    | NOT NULL, CHECK IN ('MALE', 'FEMALE') | Gender                                                                   |
-| `marital_status`          | TEXT    | NOT NULL, CHECK IN (...)              | Marital status                                                           |
-| `num_dependents`          | INTEGER | NOT NULL, >= 0                        | Tax dependents (spouse + children) — used for IR family charge deduction |
-| `num_children`            | INTEGER | NOT NULL, >= 0                        | Qualifying children — used for CNSS allocations familiales               |
-| `cin_num`                 | TEXT    | NOT NULL, UNIQUE                      | Moroccan National ID (CIN)                                               |
-| `cnss_num`                | TEXT    | UNIQUE                                | Social security number                                                   |
-| `hire_date`               | TEXT    | NOT NULL                              | Date of hire                                                             |
-| `position`                | TEXT    | NOT NULL                              | Job position/title                                                       |
-| `compensation_package_id` | TEXT    | FK → compensation_package, NOT NULL   | Current compensation                                                     |
-| `bank_rib`                | TEXT    |                                       | Employee's bank account                                                  |
-| `created_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp                                                       |
-| `updated_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp                                                       |
-| `deleted_at`              | TEXT    |                                       | Soft delete timestamp                                                    |
+| Column                    | Type    | Constraints                         | Description                                                              |
+| ------------------------- | ------- | ----------------------------------- | ------------------------------------------------------------------------ |
+| `id`                      | TEXT    | PRIMARY KEY                         | UUID                                                                     |
+| `org_id`                  | TEXT    | FK → organization, NOT NULL         | Owning organization                                                      |
+| `serial_num`              | INTEGER | NOT NULL, >= 1                      | Employee number within org                                               |
+| `full_name`               | TEXT    | NOT NULL                            | Full legal name                                                          |
+| `display_name`            | TEXT    |                                     | Preferred name                                                           |
+| `address`                 | TEXT    |                                     | Home address                                                             |
+| `email_address`           | TEXT    |                                     | Email                                                                    |
+| `phone_number`            | TEXT    |                                     | Phone                                                                    |
+| `birth_date`              | TEXT    | NOT NULL                            | Date of birth                                                            |
+| `gender`                  | TEXT    | NOT NULL, FK → gender               | Gender                                                                   |
+| `marital_status`          | TEXT    | NOT NULL, FK → marital_status       | Marital status                                                           |
+| `num_dependents`          | INTEGER | NOT NULL, >= 0                      | Tax dependents (spouse + children) — used for IR family charge deduction |
+| `num_children`            | INTEGER | NOT NULL, >= 0                      | Qualifying children — used for CNSS allocations familiales               |
+| `cin_num`                 | TEXT    | NOT NULL, UNIQUE                    | Moroccan National ID (CIN)                                               |
+| `cnss_num`                | TEXT    | UNIQUE                              | Social security number                                                   |
+| `hire_date`               | TEXT    | NOT NULL                            | Date of hire                                                             |
+| `position`                | TEXT    | NOT NULL                            | Job position/title                                                       |
+| `compensation_package_id` | TEXT    | FK → compensation_package, NOT NULL | Current compensation                                                     |
+| `bank_rib`                | TEXT    |                                     | Employee's bank account                                                  |
+| `created_at`              | TEXT    | NOT NULL                            | ISO 8601 timestamp                                                       |
+| `updated_at`              | TEXT    | NOT NULL                            | ISO 8601 timestamp                                                       |
+| `deleted_at`              | TEXT    |                                     | Soft delete timestamp                                                    |
 
 **Constraints:**
 
@@ -132,17 +136,17 @@ Employee records with demographic and payroll-relevant information.
 
 Represents a monthly payroll cycle for an organization.
 
-| Column         | Type    | Constraints                               | Description           |
-| -------------- | ------- | ----------------------------------------- | --------------------- |
-| `id`           | TEXT    | PRIMARY KEY                               | UUID                  |
-| `org_id`       | TEXT    | FK → organization, NOT NULL               | Organization          |
-| `year`         | INTEGER | NOT NULL, 2020–2050                       | Year                  |
-| `month`        | INTEGER | NOT NULL, 1–12                            | Month                 |
-| `status`       | TEXT    | NOT NULL, CHECK IN ('DRAFT', 'FINALIZED') | Processing status     |
-| `finalized_at` | TEXT    |                                           | When finalized        |
-| `created_at`   | TEXT    | NOT NULL                                  | ISO 8601 timestamp    |
-| `updated_at`   | TEXT    | NOT NULL                                  | ISO 8601 timestamp    |
-| `deleted_at`   | TEXT    |                                           | Soft delete timestamp |
+| Column         | Type    | Constraints                          | Description           |
+| -------------- | ------- | ------------------------------------ | --------------------- |
+| `id`           | TEXT    | PRIMARY KEY                          | UUID                  |
+| `org_id`       | TEXT    | FK → organization, NOT NULL          | Organization          |
+| `year`         | INTEGER | NOT NULL, 2020–2050                  | Year                  |
+| `month`        | INTEGER | NOT NULL, 1–12                       | Month                 |
+| `status`       | TEXT    | NOT NULL, FK → payroll_period_status | Processing status     |
+| `finalized_at` | TEXT    |                                      | When finalized        |
+| `created_at`   | TEXT    | NOT NULL                             | ISO 8601 timestamp    |
+| `updated_at`   | TEXT    | NOT NULL                             | ISO 8601 timestamp    |
+| `deleted_at`   | TEXT    |                                      | Soft delete timestamp |
 
 **Constraints:**
 
@@ -225,15 +229,34 @@ There is **no UPDATE query** for this table — corrections require deleting and
 Append-only change tracking for compliance and debugging.
 Entries are created automatically inside other repositories' transactions — never directly.
 
-| Column       | Type | Constraints              | Description                                  |
-| ------------ | ---- | ------------------------ | -------------------------------------------- |
-| `id`         | TEXT | PRIMARY KEY              | UUID                                         |
-| `table_name` | TEXT | NOT NULL                 | Which table was modified                     |
-| `record_id`  | TEXT | NOT NULL                 | Which record (UUID)                          |
-| `action`     | TEXT | NOT NULL, CHECK IN (...) | CREATE, UPDATE, DELETE, RESTORE, HARD_DELETE |
-| `before`     | TEXT | json_valid()             | JSON snapshot before (null for CREATE)       |
-| `after`      | TEXT | NOT NULL, json_valid()   | JSON snapshot after                          |
-| `timestamp`  | TEXT | NOT NULL                 | When the change occurred                     |
+| Column       | Type | Constraints                 | Description                                  |
+| ------------ | ---- | --------------------------- | -------------------------------------------- |
+| `id`         | TEXT | PRIMARY KEY                 | UUID                                         |
+| `table_name` | TEXT | NOT NULL                    | Which table was modified                     |
+| `record_id`  | TEXT | NOT NULL                    | Which record (UUID)                          |
+| `action`     | TEXT | NOT NULL, FK → audit_action | CREATE, UPDATE, DELETE, RESTORE, HARD_DELETE |
+| `before`     | TEXT | json_valid()                | JSON snapshot before (null for CREATE)       |
+| `after`      | TEXT | NOT NULL, json_valid()      | JSON snapshot after                          |
+| `timestamp`  | TEXT | NOT NULL                    | When the change occurred                     |
+
+---
+
+### Reference Tables
+
+Six read-only tables act as FK targets for enum columns. Each has a single
+`code TEXT PRIMARY KEY` column and is seeded in the migration. No application
+query reads from them — enforcement is purely at the database level.
+
+| Table                   | Valid codes                                   | Used by                                                             |
+| ----------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| `legal_form`            | SARL                                          | `organization.legal_form`                                           |
+| `currency`              | MAD                                           | `employee_compensation_package.currency`, `payroll_result.currency` |
+| `gender`                | MALE, FEMALE                                  | `employee.gender`                                                   |
+| `marital_status`        | SINGLE, MARRIED, SEPARATED, DIVORCED, WIDOWED | `employee.marital_status`                                           |
+| `payroll_period_status` | DRAFT, FINALIZED                              | `payroll_period.status`                                             |
+| `audit_action`          | CREATE, UPDATE, DELETE, RESTORE, HARD_DELETE  | `audit_log.action`                                                  |
+
+Adding a new valid value requires a migration that inserts a new row — no schema edit needed.
 
 ---
 
@@ -317,8 +340,9 @@ Avoids floating-point precision errors. Use the `pkg/money` type in application 
 
 ### Enums
 
-Stored as TEXT with CHECK constraints (SQLite has no native ENUM type).
-Example: `gender TEXT CHECK(gender IN ('MALE', 'FEMALE'))`.
+Stored as TEXT, enforced via foreign keys to reference tables (SQLite has no native ENUM type).
+Example: `gender TEXT NOT NULL REFERENCES gender(code)`, where the `gender` table
+is seeded with all valid codes. Adding a new value is a single-row INSERT migration.
 
 ### Soft Deletes
 

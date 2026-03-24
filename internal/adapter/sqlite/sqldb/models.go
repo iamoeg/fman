@@ -8,6 +8,10 @@ import (
 	"database/sql"
 )
 
+type AuditAction struct {
+	Code string `json:"code"`
+}
+
 type AuditLog struct {
 	ID        string         `json:"id"`
 	TableName string         `json:"table_name"`
@@ -16,6 +20,10 @@ type AuditLog struct {
 	Before    sql.NullString `json:"before"`
 	After     string         `json:"after"`
 	Timestamp string         `json:"timestamp"`
+}
+
+type Currency struct {
+	Code string `json:"code"`
 }
 
 type Employee struct {
@@ -54,6 +62,18 @@ type EmployeeCompensationPackage struct {
 	DeletedAt       sql.NullString `json:"deleted_at"`
 }
 
+type Gender struct {
+	Code string `json:"code"`
+}
+
+type LegalForm struct {
+	Code string `json:"code"`
+}
+
+type MaritalStatus struct {
+	Code string `json:"code"`
+}
+
 type Organization struct {
 	ID        string         `json:"id"`
 	Name      string         `json:"name"`
@@ -80,6 +100,10 @@ type PayrollPeriod struct {
 	CreatedAt   string         `json:"created_at"`
 	UpdatedAt   string         `json:"updated_at"`
 	DeletedAt   sql.NullString `json:"deleted_at"`
+}
+
+type PayrollPeriodStatus struct {
+	Code string `json:"code"`
 }
 
 type PayrollResult struct {

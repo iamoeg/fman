@@ -2,12 +2,31 @@
 -- +goose StatementBegin
 PRAGMA foreign_keys = ON;
 
+-- Reference tables (enum enforcement via FK instead of inline CHECK)
+CREATE TABLE legal_form(code TEXT PRIMARY KEY);
+INSERT INTO legal_form(code) VALUES ('SARL');
+
+CREATE TABLE currency(code TEXT PRIMARY KEY);
+INSERT INTO currency(code) VALUES ('MAD');
+
+CREATE TABLE gender(code TEXT PRIMARY KEY);
+INSERT INTO gender(code) VALUES ('MALE'), ('FEMALE');
+
+CREATE TABLE marital_status(code TEXT PRIMARY KEY);
+INSERT INTO marital_status(code) VALUES ('SINGLE'), ('MARRIED'), ('SEPARATED'), ('DIVORCED'), ('WIDOWED');
+
+CREATE TABLE payroll_period_status(code TEXT PRIMARY KEY);
+INSERT INTO payroll_period_status(code) VALUES ('DRAFT'), ('FINALIZED');
+
+CREATE TABLE audit_action(code TEXT PRIMARY KEY);
+INSERT INTO audit_action(code) VALUES ('CREATE'), ('UPDATE'), ('DELETE'), ('RESTORE'), ('HARD_DELETE');
+
 CREATE TABLE organization(
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     address TEXT,
     activity TEXT,
-    legal_form TEXT CHECK(legal_form IN ('SARL')),
+    legal_form TEXT REFERENCES legal_form(code),
     ice_num TEXT UNIQUE,
     if_num TEXT UNIQUE,
     rc_num TEXT UNIQUE,
@@ -23,7 +42,7 @@ CREATE TABLE employee_compensation_package(
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'MAD' CHECK(currency IN ('MAD')),
+    currency TEXT NOT NULL DEFAULT 'MAD' REFERENCES currency(code),
     base_salary_cents INTEGER NOT NULL CHECK(base_salary_cents >= 0),
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -43,8 +62,8 @@ CREATE TABLE employee(
     email_address TEXT,
     phone_number TEXT,
     birth_date TEXT NOT NULL,
-    gender TEXT NOT NULL CHECK(gender IN ('MALE', 'FEMALE')),
-    marital_status TEXT NOT NULL CHECK(marital_status IN ('SINGLE', 'MARRIED', 'SEPARATED', 'DIVORCED', 'WIDOWED')),
+    gender TEXT NOT NULL REFERENCES gender(code),
+    marital_status TEXT NOT NULL REFERENCES marital_status(code),
     num_dependents INTEGER NOT NULL DEFAULT 0 CHECK(num_dependents >= 0),
     num_children INTEGER NOT NULL DEFAULT 0 CHECK(num_children >= 0),
     cin_num TEXT NOT NULL UNIQUE,
@@ -68,7 +87,7 @@ CREATE TABLE payroll_period(
     org_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     year INTEGER NOT NULL CHECK(year BETWEEN 2020 AND 2050),
     month INTEGER NOT NULL CHECK(month BETWEEN 1 AND 12),
-    status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT', 'FINALIZED')),
+    status TEXT NOT NULL DEFAULT 'DRAFT' REFERENCES payroll_period_status(code),
     finalized_at TEXT,
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -90,7 +109,7 @@ CREATE TABLE payroll_result(
     payroll_period_id TEXT NOT NULL REFERENCES payroll_period(id) ON DELETE CASCADE,
     employee_id TEXT NOT NULL REFERENCES employee(id) ON DELETE CASCADE,
     compensation_package_id TEXT NOT NULL REFERENCES employee_compensation_package(id) ON DELETE RESTRICT,
-    currency TEXT NOT NULL DEFAULT 'MAD' CHECK(currency IN ('MAD')),
+    currency TEXT NOT NULL DEFAULT 'MAD' REFERENCES currency(code),
     base_salary_cents INTEGER NOT NULL CHECK(base_salary_cents >= 0),
     seniority_bonus_cents INTEGER NOT NULL DEFAULT 0 CHECK(seniority_bonus_cents >= 0),
     gross_salary_cents INTEGER NOT NULL CHECK(gross_salary_cents >= 0),
@@ -129,7 +148,7 @@ CREATE TABLE audit_log(
     id TEXT PRIMARY KEY,
     table_name TEXT NOT NULL,
     record_id TEXT NOT NULL,
-    action TEXT NOT NULL CHECK(action IN ('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'HARD_DELETE')),
+    action TEXT NOT NULL REFERENCES audit_action(code),
     before TEXT CHECK(json_valid(before)),
     after TEXT NOT NULL CHECK(json_valid(after)),
     timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -167,4 +186,11 @@ DROP INDEX idx_comp_package_org_id;
 DROP TABLE employee_compensation_package;
 
 DROP TABLE organization;
+
+DROP TABLE audit_action;
+DROP TABLE payroll_period_status;
+DROP TABLE marital_status;
+DROP TABLE gender;
+DROP TABLE currency;
+DROP TABLE legal_form;
 -- +goose StatementEnd
