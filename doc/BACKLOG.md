@@ -43,7 +43,7 @@
         (e.g. display name, config path, default org). Avoids dropping a blank screen on first run.
 23. [ ] (Low) Payroll result: seniority details: the seniority bonus rate (5–25%) is applied silently.
         Show calculated seniority years and applicable tier in the payroll detail view.
-24. [ ] (Low) Employee history view: `ListPayrollResultsByEmployee` exists in the service layer
+24. [x] (Low) Employee history view: `ListPayrollResultsByEmployee` exists in the service layer
         but is never called from the TUI. Add a history tab/overlay showing payslips across months.
 
 ## TUI Polish
