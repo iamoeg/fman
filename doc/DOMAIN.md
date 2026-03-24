@@ -18,8 +18,9 @@ All rates are verified against real payslips and reflect 2026 legislation.
 4. [CNSS Contributions](#cnss-contributions)
 5. [AMO Contributions](#amo-contributions)
 6. [IR (Income Tax)](#ir-impôt-sur-le-revenu)
-7. [Rounding](#rounding)
-8. [Net to Pay Formula](#net-to-pay-formula)
+7. [CNSS Family Allowance (Allocations Familiales)](#cnss-family-allowance-allocations-familiales)
+8. [Rounding](#rounding)
+9. [Net to Pay Formula](#net-to-pay-formula)
 
 ---
 
@@ -29,17 +30,18 @@ The following order must be respected exactly. Each step depends on the result
 of the previous one.
 
 ```text
-1. Base salary                        (from compensation package)
-2. Seniority bonus                    (% of base, tiered by years of service)
-3. Gross salary                       (base + seniority bonus)
-4. CNSS employee deductions           (applied to gross, IPE is capped)
-5. AMO employee deduction             (applied to gross, no ceiling)
-6. Professional expense deduction     (applied to gross, capped)
-7. Family charge deductions           (fixed per dependent, capped at 6)
-8. Net taxable salary                 (gross − CNSS employee − AMO employee − professional expenses − family charges)
-9. IR (income tax)                    (progressive brackets applied to annual net taxable, divided by 12)
-10. Net to pay                        (gross − CNSS employee − AMO employee − IR ± rounding)
-11. Employer contributions            (calculated separately, do not affect net to pay)
+1.  Base salary                        (from compensation package)
+2.  Seniority bonus                    (% of base, tiered by years of service)
+3.  Gross salary                       (base + seniority bonus)
+4.  CNSS employee deductions           (applied to gross, IPE is capped)
+5.  AMO employee deduction             (applied to gross, no ceiling)
+6.  Professional expense deduction     (applied to gross, capped)
+7.  Family charge deduction            (fixed per tax dependent, capped at 6) — IR input only
+8.  Net taxable salary                 (gross − CNSS employee − AMO employee − professional expenses − family charges)
+9.  IR (income tax)                    (progressive brackets applied to annual net taxable, divided by 12)
+10. Family allowance                   (CNSS allocations familiales, based on num_children, tax-exempt)
+11. Net to pay                         (gross − CNSS employee − AMO employee − IR + family allowance ± rounding)
+12. Employer contributions             (calculated separately, do not affect net to pay)
 ```
 
 ---
@@ -220,7 +222,11 @@ professional_expense_deduction = min(gross_salary × rate, 2_500 MAD)
 > close to 78,000 MAD (i.e. monthly gross ~6,500 MAD) that the rate switches
 > correctly at the boundary.
 
-### Step 2 — Family Charge Deductions
+### Step 2 — Family Charge Deduction (IR input only)
+
+This deduction reduces the **IR taxable base** only. It does not appear as a
+line in the net-to-pay calculation. It is based on `num_dependents` (spouse +
+qualifying children), not `num_children`.
 
 | Parameter               | Value           |
 | ----------------------- | --------------- |
@@ -271,6 +277,37 @@ If `annual_taxable` falls in the 0% bracket, IR is 0.
 
 ---
 
+## CNSS Family Allowance (Allocations Familiales)
+
+Allocations familiales are a **cash allowance paid directly to the employee**
+based on the number of qualifying children (`num_children`). They are funded
+by the employer's CNSS family benefits contribution
+but appear as a separate income line on the payslip.
+
+- **Tax-exempt** — does not affect the IR base
+- **Not subject to CNSS social contributions** — does not affect the CNSS base
+- **Increases net to pay directly**
+
+| Children | Rate per child   |
+| -------- | ---------------- |
+| 1 – 3    | 300.00 MAD/month |
+| 4 – 6    | 36.00 MAD/month  |
+| > 6      | capped at 6      |
+
+```text
+low_tier  = min(num_children, 3)
+high_tier = max(min(num_children, 6) − 3, 0)
+
+family_allowance = (low_tier × 300) + (high_tier × 36)
+```
+
+**Important distinction:**
+
+- `num_dependents` (spouse + children) → used for the IR family charge **deduction**
+- `num_children` (qualifying children only) → used for the CNSS allocations **familiales**
+
+---
+
 ## Rounding
 
 | Rule                | Detail                                       |
@@ -299,13 +336,15 @@ net_to_pay_before_rounding = gross_salary
                            − cnss_employee_contrib
                            − amo_employee_contrib
                            − monthly_ir
+                           + family_allowance
 
 net_to_pay = round_to_nearest_dirham(net_to_pay_before_rounding)
 ```
 
-Note that professional expense deduction and family charge deductions affect
-the IR base but do **not** appear as separate deduction lines in the net to pay
-formula. They are IR inputs only.
+Note that professional expense deduction and family charge deduction affect
+the IR base but do **not** appear as deduction lines in the net-to-pay formula.
+They are IR inputs only. The family allowance, by contrast, is **added** to
+net pay — it is tax-exempt income funded by the CNSS pool.
 
 ---
 
@@ -339,8 +378,10 @@ annual_taxable                  = 8,191.20 × 12            = 98,294.40 MAD
 annual_ir                       = (98,294.40 × 30%) − 18,000 =  11,488.32 MAD
 monthly_ir                      = 11,488.32 / 12           =    957.36 MAD
 
+family_allowance                = 0 children → 0 MAD
+
 net_to_pay_before_rounding      = 11,000 − 280.20 − 248.60
-                                  − 957.36                 =  9,513.84 MAD
+                                  − 957.36 + 0             =  9,513.84 MAD
 net_to_pay (rounded)            = 9,514.00 MAD
 rounding_amount                 = +0.16 MAD (= +16 cents)
 
@@ -385,8 +426,10 @@ annual_taxable                  = 17,745.20 × 12          = 212,942.40 MAD
 annual_ir                       = (212,942.40 × 37%) − 27,400 = 51,388.69 MAD
 monthly_ir                      = 51,388.69 / 12          =  4,282.39 MAD
 
+family_allowance                = 0 children → 0 MAD
+
 net_to_pay_before_rounding      = 21,000 − 280.20 − 474.60
-                                  − 4,282.39              = 15,962.81 MAD
+                                  − 4,282.39 + 0          = 15,962.81 MAD
 net_to_pay (rounded)            = 15,963.00 MAD
 rounding_amount                 = +0.19 MAD (= +19 cents)
 

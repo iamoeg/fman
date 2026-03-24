@@ -7,7 +7,7 @@ then polish and tooling.
 
 1. ~**#4** — Decide Money/currency question. Most cross-cutting change;
    closes it early even if the answer is "no".~
-2. **#6** — Clarify NumKids vs NumDependents. Affects calculator correctness and potentially DB schema.
+2. ~**#6** — Clarify NumKids vs NumDependents. Affects calculator correctness and potentially DB schema.~
 3. **#18 + #19** — Constrain calculations to supported year, relax hire date.
    Do together; #19 is safe only once #18 is in place.
 4. **#1** — PDF payslip export. Builds on top of a now-stable domain.
@@ -30,9 +30,7 @@ then polish and tooling.
 5. [ ] (Medium) Clarify domain vocabulary (FR/EN mapping): document canonical English names
        for all FR legal terms (e.g. allocations familiales, ancienneté, IPE, AMO).
        Prevent naming drift between DB columns, domain structs, and TUI labels.
-6. [ ] (High) Clarify `NumKids` vs `NumDependents` in IR calculation: both fields exist
-       in `Employee` and DB, but their distinct roles in the IR deduction formula are not clearly documented or enforced.
-       Need to align with the actual Moroccan tax code rules and add validation.
+6. [x] (High) Clarify `NumKids` vs `NumDependents` in IR calculation: renamed `NumKids` → `NumChildren`; documented distinction (`NumDependents` = IR family charge deduction, `NumChildren` = CNSS allocations familiales); implemented missing allocations familiales calculation in the payroll engine. See DOMAIN.md §CNSS Allocations Familiales.
 7. [ ] (Low) Enum table pattern for constrained text columns: replace inline `CHECK(col IN (...))`
        constraints in schema (gender, marital_status, legal_form, status) with reference tables.
        Improves referential integrity and makes adding new values a migration rather than a schema edit + code change.

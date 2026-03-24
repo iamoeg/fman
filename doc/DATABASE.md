@@ -95,30 +95,30 @@ payroll calculation.
 
 Employee records with demographic and payroll-relevant information.
 
-| Column                    | Type    | Constraints                           | Description                |
-| ------------------------- | ------- | ------------------------------------- | -------------------------- |
-| `id`                      | TEXT    | PRIMARY KEY                           | UUID                       |
-| `org_id`                  | TEXT    | FK → organization, NOT NULL           | Owning organization        |
-| `serial_num`              | INTEGER | NOT NULL, >= 1                        | Employee number within org |
-| `full_name`               | TEXT    | NOT NULL                              | Full legal name            |
-| `display_name`            | TEXT    |                                       | Preferred name             |
-| `address`                 | TEXT    |                                       | Home address               |
-| `email_address`           | TEXT    |                                       | Email                      |
-| `phone_number`            | TEXT    |                                       | Phone                      |
-| `birth_date`              | TEXT    | NOT NULL                              | Date of birth              |
-| `gender`                  | TEXT    | NOT NULL, CHECK IN ('MALE', 'FEMALE') | Gender                     |
-| `marital_status`          | TEXT    | NOT NULL, CHECK IN (...)              | Marital status             |
-| `num_dependents`          | INTEGER | NOT NULL, >= 0                        | Number of dependents       |
-| `num_children`            | INTEGER | NOT NULL, >= 0                        | Number of children         |
-| `cin_num`                 | TEXT    | NOT NULL, UNIQUE                      | Moroccan National ID (CIN) |
-| `cnss_num`                | TEXT    | UNIQUE                                | Social security number     |
-| `hire_date`               | TEXT    | NOT NULL                              | Date of hire               |
-| `position`                | TEXT    | NOT NULL                              | Job position/title         |
-| `compensation_package_id` | TEXT    | FK → compensation_package, NOT NULL   | Current compensation       |
-| `bank_rib`                | TEXT    |                                       | Employee's bank account    |
-| `created_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp         |
-| `updated_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp         |
-| `deleted_at`              | TEXT    |                                       | Soft delete timestamp      |
+| Column                    | Type    | Constraints                           | Description                                                              |
+| ------------------------- | ------- | ------------------------------------- | ------------------------------------------------------------------------ |
+| `id`                      | TEXT    | PRIMARY KEY                           | UUID                                                                     |
+| `org_id`                  | TEXT    | FK → organization, NOT NULL           | Owning organization                                                      |
+| `serial_num`              | INTEGER | NOT NULL, >= 1                        | Employee number within org                                               |
+| `full_name`               | TEXT    | NOT NULL                              | Full legal name                                                          |
+| `display_name`            | TEXT    |                                       | Preferred name                                                           |
+| `address`                 | TEXT    |                                       | Home address                                                             |
+| `email_address`           | TEXT    |                                       | Email                                                                    |
+| `phone_number`            | TEXT    |                                       | Phone                                                                    |
+| `birth_date`              | TEXT    | NOT NULL                              | Date of birth                                                            |
+| `gender`                  | TEXT    | NOT NULL, CHECK IN ('MALE', 'FEMALE') | Gender                                                                   |
+| `marital_status`          | TEXT    | NOT NULL, CHECK IN (...)              | Marital status                                                           |
+| `num_dependents`          | INTEGER | NOT NULL, >= 0                        | Tax dependents (spouse + children) — used for IR family charge deduction |
+| `num_children`            | INTEGER | NOT NULL, >= 0                        | Qualifying children — used for CNSS allocations familiales               |
+| `cin_num`                 | TEXT    | NOT NULL, UNIQUE                      | Moroccan National ID (CIN)                                               |
+| `cnss_num`                | TEXT    | UNIQUE                                | Social security number                                                   |
+| `hire_date`               | TEXT    | NOT NULL                              | Date of hire                                                             |
+| `position`                | TEXT    | NOT NULL                              | Job position/title                                                       |
+| `compensation_package_id` | TEXT    | FK → compensation_package, NOT NULL   | Current compensation                                                     |
+| `bank_rib`                | TEXT    |                                       | Employee's bank account                                                  |
+| `created_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp                                                       |
+| `updated_at`              | TEXT    | NOT NULL                              | ISO 8601 timestamp                                                       |
+| `deleted_at`              | TEXT    |                                       | Soft delete timestamp                                                    |
 
 **Constraints:**
 
@@ -169,13 +169,14 @@ There is **no UPDATE query** for this table — corrections require deleting and
 
 **Salary components (cents):**
 
-| Column                           | Description         |
-| -------------------------------- | ------------------- |
-| `base_salary_cents`              | Base monthly salary |
-| `seniority_bonus_cents`          | Seniority bonus     |
-| `gross_salary_cents`             | base + seniority    |
-| `total_extra_bonus_cents`        | Other bonuses       |
-| `gross_salary_grand_total_cents` | Total gross         |
+| Column                           | Description                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| `base_salary_cents`              | Base monthly salary                                         |
+| `seniority_bonus_cents`          | Seniority bonus                                             |
+| `gross_salary_cents`             | base + seniority                                            |
+| `total_extra_bonus_cents`        | Other bonuses                                               |
+| `gross_salary_grand_total_cents` | Total gross                                                 |
+| `family_allowance_cents`         | CNSS allocations familiales (tax-exempt income to employee) |
 
 **Employee deductions (cents):**
 
