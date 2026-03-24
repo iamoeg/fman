@@ -213,7 +213,7 @@ func TestCalculateCNSSEmployee(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := calculateCNSSEmployee(tt.gross)
+			got, err := calculateCNSSEmployee(tt.gross, ratesByYear[2026])
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantSocialAllowance, got.socialAllowance, "social allowance")
 			assert.Equal(t, tt.wantJobLossComp, got.jobLossCompensation, "job loss compensation")
@@ -231,7 +231,7 @@ func TestCalculateCNSSEmployer(t *testing.T) {
 
 	// Gross 11,000 MAD (capped base = 6,000)
 	gross := mad(11_000)
-	got, err := calculateCNSSEmployer(gross)
+	got, err := calculateCNSSEmployer(gross, ratesByYear[2026])
 	require.NoError(t, err)
 
 	assert.Equal(t, mad(704), got.familyBenefits, "family benefits: 11,000 × 6.40%")
@@ -247,7 +247,7 @@ func TestCalculateCNSSEmployer(t *testing.T) {
 func TestCalculateAMOEmployee(t *testing.T) {
 	t.Parallel()
 
-	got, err := calculateAMOEmployee(mad(11_000))
+	got, err := calculateAMOEmployee(mad(11_000), ratesByYear[2026])
 	require.NoError(t, err)
 	assert.Equal(t, mad(248.60), got) // 11,000 × 2.26%
 }
@@ -289,7 +289,7 @@ func TestCalculateProfessionalExpenseDeduction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := calculateProfessionalExpenseDeduction(tt.gross)
+			got, err := calculateProfessionalExpenseDeduction(tt.gross, ratesByYear[2026])
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
@@ -318,7 +318,7 @@ func TestCalculateFamilyChargeDeduction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
-			got, err := calculateFamilyChargeDeduction(tt.dependents)
+			got, err := calculateFamilyChargeDeduction(tt.dependents, ratesByYear[2026])
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got, "dependents=%d", tt.dependents)
 		})
@@ -367,7 +367,7 @@ func TestCalculateIncomeTax(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := calculateIncomeTax(tt.monthlyNetTaxable)
+			got, err := calculateIncomeTax(tt.monthlyNetTaxable, ratesByYear[2026])
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantMonthlyIncomeTax, got)
 		})
@@ -605,4 +605,20 @@ func TestCalculate_GrossSalaryBelowSMIG(t *testing.T) {
 	_, err := calc.Calculate(context.Background(), period, emp, pkg)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrGrossSalaryBelowSMIG)
+}
+
+// TestCalculate_UnsupportedYear verifies that Calculate returns ErrUnsupportedPayrollYear
+// when the payroll period year has no rate table entry.
+func TestCalculate_UnsupportedYear(t *testing.T) {
+	t.Parallel()
+
+	period := newTestPeriod(2025, 1)
+	hireDate := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	emp := newTestEmployee(hireDate, 0)
+	pkg := newTestPackage(10_000)
+
+	calc := New()
+	result, err := calc.Calculate(context.Background(), period, emp, pkg)
+	require.ErrorIs(t, err, ErrUnsupportedPayrollYear)
+	require.Nil(t, result)
 }

@@ -13,70 +13,128 @@ import (
 )
 
 // ============================================================================
-// Constants
+// Year-specific rate tables
 // ============================================================================
-// All rates and thresholds from DOMAIN.md (2026 legislation).
-// Update this section when rates change — never hardcode values in logic.
+// yearRates holds all legislation-specific values for a calendar year.
+// Add a new entry to ratesByYear when a new fiscal year is supported.
+// Structural constants (seniority tier thresholds, rounding rules) live below.
 
-const (
-	// CNSS — Social Allowance (Prestations Sociales), capped at cnssMonthlyBaseCeiling
-	cnssSocialAllowanceEmployeeRate = 0.0448
-	cnssSocialAllowanceEmployerRate = 0.0898
+type yearRates struct {
+	// CNSS employee contributions
+	CnssSocialAllowanceEmployee float64
+	CnssJobLossCompEmployee     float64
 
-	// CNSS — Job Loss Compensation (Indemnité de Perte d'Emploi — IPE), capped at cnssMonthlyBaseCeiling
-	cnssJobLossCompEmployeeRate = 0.0019
-	cnssJobLossCompEmployerRate = 0.0038
+	// CNSS employer contributions
+	CnssSocialAllowanceEmployer float64
+	CnssJobLossCompEmployer     float64
+	CnssTrainingTaxEmployer     float64
+	CnssFamilyBenefitsEmployer  float64
 
-	// CNSS — Training Tax (Taxe de Formation Professionnelle), no ceiling, employer only
-	cnssTrainingTaxEmployerRate = 0.016
+	// CNSS monthly base ceiling for capped components (cents)
+	CnssMonthlyBaseCeiling int64
 
-	// CNSS — Family Benefits (Prestations Familiales), no ceiling, employer only
-	cnssFamilyBenefitsEmployerRate = 0.064
+	// AMO
+	AmoEmployee float64
+	AmoEmployer float64
 
-	// Monthly ceiling for capped CNSS components (Prestations Sociales + IPE)
-	cnssMonthlyBaseCeilingMAD = 6_000_00 // 6,000.00 MAD in cents
-
-	// AMO (no ceiling)
-	amoEmployeeRate = 0.0226
-	amoEmployerRate = 0.0411
-
-	// Professional expense deduction.
-	// Lower-income employees get the higher deduction rate (35%).
-	profExpenseRateAboveThreshold = 0.20      // annual gross > 78,000 MAD
-	profExpenseRateBelowThreshold = 0.35      // annual gross <= 78,000 MAD
-	profExpenseAnnualThreshold    = 78_000_00 // 78,000.00 MAD in cents
-	profExpenseMonthlyCap         = 2_500_00  // 2,500.00 MAD in cents
+	// Professional expense deduction
+	ProfExpenseRateAbove       float64
+	ProfExpenseRateBelow       float64
+	ProfExpenseAnnualThreshold int64 // cents; annual gross threshold
+	ProfExpenseMonthlyCap      int64 // cents
 
 	// Family charge deduction (IR)
-	familyChargePerDependentMAD = 40_00 // 40.00 MAD in cents
-	familyChargeMaxDependents   = 6
+	FamilyChargePerDependent  int64 // cents per dependent
+	FamilyChargeMaxDependents int
 
-	// CNSS family allowance (Allocations Familiales) — cash allowance paid to employee, tax-exempt
-	// Funded by the employer's CNSS family benefits contribution.
-	familyAllowanceLowTierPerChild  = 300_00 // 300.00 MAD/month, children 1–3
-	familyAllowanceHighTierPerChild = 36_00  // 36.00 MAD/month, children 4–6
-	familyAllowanceLowTierLimit     = 3
-	familyAllowanceMaxChildren      = 6
+	// Family allowance (CNSS cash payment, tax-exempt)
+	FamilyAllowanceLowTierPerChild  int64 // cents, children 1–FamilyAllowanceLowTierLimit
+	FamilyAllowanceHighTierPerChild int64 // cents, remaining children up to max
+	FamilyAllowanceLowTierLimit     int
+	FamilyAllowanceMaxChildren      int
 
-	// SMIG
-	smigMonthlyMAD = 3_422_00 // 3,422.00 MAD in cents
-)
+	// Legal minimum wage (SMIG)
+	SmigMonthly int64 // cents
 
-// Income tax brackets (2026). Applied to annualized net taxable salary.
-// Formula: annual_ir = (annual_taxable × rate) − deduction
+	// Progressive income tax (IR) brackets
+	IncomeTaxBrackets []incomeTaxBracket
+}
+
+// ratesByYear maps a calendar year to its legislation-specific rate table.
+// Add a new entry here when a new fiscal year is supported.
+var ratesByYear = map[int]yearRates{
+	2026: {
+		// CNSS employee
+		CnssSocialAllowanceEmployee: 0.0448,
+		CnssJobLossCompEmployee:     0.0019,
+
+		// CNSS employer
+		CnssSocialAllowanceEmployer: 0.0898,
+		CnssJobLossCompEmployer:     0.0038,
+		CnssTrainingTaxEmployer:     0.016,
+		CnssFamilyBenefitsEmployer:  0.064,
+
+		// CNSS ceiling
+		CnssMonthlyBaseCeiling: 6_000_00,
+
+		// AMO
+		AmoEmployee: 0.0226,
+		AmoEmployer: 0.0411,
+
+		// Professional expense
+		ProfExpenseRateAbove:       0.20,
+		ProfExpenseRateBelow:       0.35,
+		ProfExpenseAnnualThreshold: 78_000_00,
+		ProfExpenseMonthlyCap:      2_500_00,
+
+		// Family charge deduction
+		FamilyChargePerDependent:  40_00,
+		FamilyChargeMaxDependents: 6,
+
+		// Family allowance
+		FamilyAllowanceLowTierPerChild:  300_00,
+		FamilyAllowanceHighTierPerChild: 36_00,
+		FamilyAllowanceLowTierLimit:     3,
+		FamilyAllowanceMaxChildren:      6,
+
+		// SMIG
+		SmigMonthly: 3_422_00,
+
+		// IR brackets
+		IncomeTaxBrackets: []incomeTaxBracket{
+			{upperBound: 40_000_00, rate: 0.00, deduction: 0},
+			{upperBound: 60_000_00, rate: 0.10, deduction: 4_000_00},
+			{upperBound: 80_000_00, rate: 0.20, deduction: 10_000_00},
+			{upperBound: 100_000_00, rate: 0.30, deduction: 18_000_00},
+			{upperBound: 180_000_00, rate: 0.34, deduction: 22_000_00},
+			{upperBound: -1, rate: 0.37, deduction: 27_400_00},
+		},
+	},
+}
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+// ErrUnsupportedPayrollYear is returned when no rate table exists for period.Year.
+var ErrUnsupportedPayrollYear = errors.New("calculator: no rate table for this payroll year")
+
+// ErrGrossSalaryBelowSMIG is returned when the computed gross salary falls
+// below the legal minimum wage (SMIG). This should not happen if domain
+// validation is enforced, but the calculator checks it as a second line of
+// defense against bypassed validation or stale compensation packages.
+var ErrGrossSalaryBelowSMIG = errors.New("calculator: gross salary is below the legal minimum wage (SMIG)")
+
+// ============================================================================
+// Structural types and constants
+// ============================================================================
+// These are algorithm-structural and do not vary by year.
+
+// Income tax bracket type.
 type incomeTaxBracket struct {
 	upperBound int64 // inclusive upper bound in cents; -1 means no upper bound
 	rate       float64
 	deduction  int64 // fixed deduction in cents
-}
-
-var incomeTaxBrackets = []incomeTaxBracket{
-	{upperBound: 40_000_00, rate: 0.00, deduction: 0},
-	{upperBound: 60_000_00, rate: 0.10, deduction: 4_000_00},
-	{upperBound: 80_000_00, rate: 0.20, deduction: 10_000_00},
-	{upperBound: 100_000_00, rate: 0.30, deduction: 18_000_00},
-	{upperBound: 180_000_00, rate: 0.34, deduction: 22_000_00},
-	{upperBound: -1, rate: 0.37, deduction: 27_400_00},
 }
 
 // Seniority bonus tiers. Lower bound inclusive, upper bound exclusive.
@@ -96,19 +154,11 @@ var seniorityTiers = []seniorityTier{
 }
 
 // ============================================================================
-// Errors
-// ============================================================================
-// ErrGrossSalaryBelowSMIG is returned when the computed gross salary falls
-// below the legal minimum wage (SMIG). This should not happen if domain
-// validation is enforced, but the calculator checks it as a second line of
-// defense against bypassed validation or stale compensation packages.
-var ErrGrossSalaryBelowSMIG = errors.New("calculator: gross salary is below the legal minimum wage (SMIG)")
-
-// ============================================================================
 // Public API
 // ============================================================================
 
-// Calculator implements Moroccan payroll calculations for 2026.
+// Calculator implements Moroccan payroll calculations.
+// Supported years are defined in ratesByYear.
 // It satisfies the payrollCalculator interface in application/payroll_service.go.
 type Calculator struct{}
 
@@ -126,6 +176,11 @@ func (c *Calculator) Calculate(
 	emp *domain.Employee,
 	pkg *domain.EmployeeCompensationPackage,
 ) (*domain.PayrollResult, error) {
+	rates, ok := ratesByYear[period.Year]
+	if !ok {
+		return nil, fmt.Errorf("%w: %d", ErrUnsupportedPayrollYear, period.Year)
+	}
+
 	// ── Step 1: Base salary ───────────────────────────────────────────────
 	baseSalary := pkg.BaseSalary
 
@@ -141,31 +196,31 @@ func (c *Calculator) Calculate(
 	if err != nil {
 		return nil, fmt.Errorf("gross salary: %w", err)
 	}
-	if grossSalary.Cents() < smigMonthlyMAD {
+	if grossSalary.Cents() < rates.SmigMonthly {
 		return nil, fmt.Errorf("%w: got %v, minimum is %v",
-			ErrGrossSalaryBelowSMIG, grossSalary, money.FromCents(smigMonthlyMAD))
+			ErrGrossSalaryBelowSMIG, grossSalary, money.FromCents(rates.SmigMonthly))
 	}
 
 	// ── Step 4: CNSS employee ─────────────────────────────────────────────
-	cnssEmp, err := calculateCNSSEmployee(grossSalary)
+	cnssEmp, err := calculateCNSSEmployee(grossSalary, rates)
 	if err != nil {
 		return nil, fmt.Errorf("cnss employee: %w", err)
 	}
 
 	// ── Step 5: AMO employee ──────────────────────────────────────────────
-	amoEmp, err := calculateAMOEmployee(grossSalary)
+	amoEmp, err := calculateAMOEmployee(grossSalary, rates)
 	if err != nil {
 		return nil, fmt.Errorf("amo employee: %w", err)
 	}
 
 	// ── Step 6: Professional expense deduction ────────────────────────────
-	profExpense, err := calculateProfessionalExpenseDeduction(grossSalary)
+	profExpense, err := calculateProfessionalExpenseDeduction(grossSalary, rates)
 	if err != nil {
 		return nil, fmt.Errorf("professional expense deduction: %w", err)
 	}
 
 	// ── Step 7: Family charge deduction ───────────────────────────────────
-	familyCharge, err := calculateFamilyChargeDeduction(emp.NumDependents)
+	familyCharge, err := calculateFamilyChargeDeduction(emp.NumDependents, rates)
 	if err != nil {
 		return nil, fmt.Errorf("family charge deduction: %w", err)
 	}
@@ -177,14 +232,14 @@ func (c *Calculator) Calculate(
 	}
 
 	// ── Step 9: IR ────────────────────────────────────────────────────────
-	ir, err := calculateIncomeTax(netTaxable)
+	ir, err := calculateIncomeTax(netTaxable, rates)
 	if err != nil {
 		return nil, fmt.Errorf("ir: %w", err)
 	}
 
 	// ── Step 10: Family allowance (Allocations Familiales) ────────────────
 	// Tax-exempt cash payment to employee; does not affect CNSS or IR base.
-	familyAllowance := calculateFamilyAllowance(emp.NumChildren)
+	familyAllowance := calculateFamilyAllowance(emp.NumChildren, rates)
 
 	// ── Step 11: Net to pay ───────────────────────────────────────────────
 	netToPay, roundingAmount, err := calculateNetToPay(grossSalary, cnssEmp.total, amoEmp, ir, familyAllowance)
@@ -193,11 +248,11 @@ func (c *Calculator) Calculate(
 	}
 
 	// ── Step 12: Employer contributions ──────────────────────────────────
-	cnssEmr, err := calculateCNSSEmployer(grossSalary)
+	cnssEmr, err := calculateCNSSEmployer(grossSalary, rates)
 	if err != nil {
 		return nil, fmt.Errorf("cnss employer: %w", err)
 	}
-	amoEmr, err := calculateAMOEmployer(grossSalary)
+	amoEmr, err := calculateAMOEmployer(grossSalary, rates)
 	if err != nil {
 		return nil, fmt.Errorf("amo employer: %w", err)
 	}
@@ -351,15 +406,15 @@ func seniorityRate(years int) float64 {
 
 // calculateCNSSEmployee returns the employee's CNSS contributions broken down
 // by component. Both Prestations Sociales and IPE are applied to the capped base.
-func calculateCNSSEmployee(gross money.Money) (cnssEmployeeResult, error) {
-	cappedBase := capAt(gross, cnssMonthlyBaseCeilingMAD)
+func calculateCNSSEmployee(gross money.Money, r yearRates) (cnssEmployeeResult, error) {
+	cappedBase := capAt(gross, r.CnssMonthlyBaseCeiling)
 
-	socialAllowance, err := cappedBase.Multiply(cnssSocialAllowanceEmployeeRate)
+	socialAllowance, err := cappedBase.Multiply(r.CnssSocialAllowanceEmployee)
 	if err != nil {
 		return cnssEmployeeResult{}, fmt.Errorf("social allowance (employee): %w", err)
 	}
 
-	jobLossComp, err := cappedBase.Multiply(cnssJobLossCompEmployeeRate)
+	jobLossComp, err := cappedBase.Multiply(r.CnssJobLossCompEmployee)
 	if err != nil {
 		return cnssEmployeeResult{}, fmt.Errorf("job loss compensation (employee): %w", err)
 	}
@@ -378,25 +433,25 @@ func calculateCNSSEmployee(gross money.Money) (cnssEmployeeResult, error) {
 
 // calculateCNSSEmployer returns the employer's CNSS contributions broken down
 // by component.
-func calculateCNSSEmployer(gross money.Money) (cnssEmployerResult, error) {
-	cappedBase := capAt(gross, cnssMonthlyBaseCeilingMAD)
+func calculateCNSSEmployer(gross money.Money, r yearRates) (cnssEmployerResult, error) {
+	cappedBase := capAt(gross, r.CnssMonthlyBaseCeiling)
 
-	familyBenefits, err := gross.Multiply(cnssFamilyBenefitsEmployerRate)
+	familyBenefits, err := gross.Multiply(r.CnssFamilyBenefitsEmployer)
 	if err != nil {
 		return cnssEmployerResult{}, fmt.Errorf("family benefits (employer): %w", err)
 	}
 
-	socialAllowance, err := cappedBase.Multiply(cnssSocialAllowanceEmployerRate)
+	socialAllowance, err := cappedBase.Multiply(r.CnssSocialAllowanceEmployer)
 	if err != nil {
 		return cnssEmployerResult{}, fmt.Errorf("social allowance (employer): %w", err)
 	}
 
-	jobLossComp, err := cappedBase.Multiply(cnssJobLossCompEmployerRate)
+	jobLossComp, err := cappedBase.Multiply(r.CnssJobLossCompEmployer)
 	if err != nil {
 		return cnssEmployerResult{}, fmt.Errorf("job loss compensation (employer): %w", err)
 	}
 
-	trainingTax, err := gross.Multiply(cnssTrainingTaxEmployerRate)
+	trainingTax, err := gross.Multiply(r.CnssTrainingTaxEmployer)
 	if err != nil {
 		return cnssEmployerResult{}, fmt.Errorf("training tax employer: %w", err)
 	}
@@ -410,27 +465,27 @@ func calculateCNSSEmployer(gross money.Money) (cnssEmployerResult, error) {
 }
 
 // calculateAMOEmployee returns the employee's AMO contribution.
-func calculateAMOEmployee(gross money.Money) (money.Money, error) {
-	return gross.Multiply(amoEmployeeRate)
+func calculateAMOEmployee(gross money.Money, r yearRates) (money.Money, error) {
+	return gross.Multiply(r.AmoEmployee)
 }
 
 // calculateAMOEmployer returns the employer's AMO contribution.
-func calculateAMOEmployer(gross money.Money) (money.Money, error) {
-	return gross.Multiply(amoEmployerRate)
+func calculateAMOEmployer(gross money.Money, r yearRates) (money.Money, error) {
+	return gross.Multiply(r.AmoEmployer)
 }
 
 // calculateProfessionalExpenseDeduction returns the professional expense
-// deduction. The rate depends on whether annualised gross exceeds 78,000 MAD.
+// deduction. The rate depends on whether annualized gross exceeds the threshold.
 // Evaluated monthly using gross × 12 as the annual proxy.
-func calculateProfessionalExpenseDeduction(gross money.Money) (money.Money, error) {
+func calculateProfessionalExpenseDeduction(gross money.Money, r yearRates) (money.Money, error) {
 	annualGross, err := gross.Multiply(12)
 	if err != nil {
-		return money.Money{}, fmt.Errorf("annualize gross: %w", err)
+		return money.Money{}, fmt.Errorf("annualized gross: %w", err)
 	}
 
-	rate := profExpenseRateAboveThreshold
-	if annualGross.Cents() <= profExpenseAnnualThreshold {
-		rate = profExpenseRateBelowThreshold
+	rate := r.ProfExpenseRateAbove
+	if annualGross.Cents() <= r.ProfExpenseAnnualThreshold {
+		rate = r.ProfExpenseRateBelow
 	}
 
 	deduction, err := gross.Multiply(rate)
@@ -438,37 +493,36 @@ func calculateProfessionalExpenseDeduction(gross money.Money) (money.Money, erro
 		return money.Money{}, fmt.Errorf("professional expense deduction: %w", err)
 	}
 
-	return capAt(deduction, profExpenseMonthlyCap), nil
+	return capAt(deduction, r.ProfExpenseMonthlyCap), nil
 }
 
 // calculateFamilyChargeDeduction returns the family charge deduction based on
-// the number of dependents, capped at familyChargeMaxDependents.
-func calculateFamilyChargeDeduction(numDependents int) (money.Money, error) {
+// the number of dependents, capped at r.FamilyChargeMaxDependents.
+func calculateFamilyChargeDeduction(numDependents int, r yearRates) (money.Money, error) {
 	capped := numDependents
-	if capped > familyChargeMaxDependents {
-		capped = familyChargeMaxDependents
+	if capped > r.FamilyChargeMaxDependents {
+		capped = r.FamilyChargeMaxDependents
 	}
-	return money.FromCents(int64(capped) * familyChargePerDependentMAD), nil
+	return money.FromCents(int64(capped) * r.FamilyChargePerDependent), nil
 }
 
 // calculateFamilyAllowance returns the monthly CNSS family allowance (allocations familiales)
 // paid to the employee based on their number of qualifying children.
-// Rates: 300 MAD/month for children 1–3, 36 MAD/month for children 4–6, capped at 6.
 // This amount is tax-exempt and increases net pay directly.
-func calculateFamilyAllowance(numChildren int) money.Money {
+func calculateFamilyAllowance(numChildren int, r yearRates) money.Money {
 	if numChildren <= 0 {
 		return money.FromCents(0)
 	}
 	capped := numChildren
-	if capped > familyAllowanceMaxChildren {
-		capped = familyAllowanceMaxChildren
+	if capped > r.FamilyAllowanceMaxChildren {
+		capped = r.FamilyAllowanceMaxChildren
 	}
 	lowTier := capped
-	if lowTier > familyAllowanceLowTierLimit {
-		lowTier = familyAllowanceLowTierLimit
+	if lowTier > r.FamilyAllowanceLowTierLimit {
+		lowTier = r.FamilyAllowanceLowTierLimit
 	}
 	highTier := capped - lowTier
-	total := int64(lowTier)*familyAllowanceLowTierPerChild + int64(highTier)*familyAllowanceHighTierPerChild
+	total := int64(lowTier)*r.FamilyAllowanceLowTierPerChild + int64(highTier)*r.FamilyAllowanceHighTierPerChild
 	return money.FromCents(total)
 }
 
@@ -496,14 +550,14 @@ func calculateNetTaxableSalary(
 }
 
 // calculateIncomeTax returns the monthly IR (income tax) for the given monthly net
-// taxable salary, using annualised progressive brackets.
-func calculateIncomeTax(monthlyNetTaxable money.Money) (money.Money, error) {
+// taxable salary, using annualized progressive brackets from r.
+func calculateIncomeTax(monthlyNetTaxable money.Money, r yearRates) (money.Money, error) {
 	annualTaxable, err := monthlyNetTaxable.Multiply(12)
 	if err != nil {
-		return money.Money{}, fmt.Errorf("annualize net taxable: %w", err)
+		return money.Money{}, fmt.Errorf("annualized net taxable: %w", err)
 	}
 
-	bracket := findIncomeTaxBracket(annualTaxable.Cents())
+	bracket := findIncomeTaxBracket(annualTaxable.Cents(), r.IncomeTaxBrackets)
 
 	if bracket.rate == 0 {
 		return money.FromCents(0), nil
@@ -535,14 +589,14 @@ func calculateIncomeTax(monthlyNetTaxable money.Money) (money.Money, error) {
 
 // findIncomeTaxBracket returns the IR bracket applicable to the given annual taxable
 // income in cents.
-func findIncomeTaxBracket(annualTaxableCents int64) incomeTaxBracket {
-	for _, b := range incomeTaxBrackets {
+func findIncomeTaxBracket(annualTaxableCents int64, brackets []incomeTaxBracket) incomeTaxBracket {
+	for _, b := range brackets {
 		if b.upperBound == -1 || annualTaxableCents <= b.upperBound {
 			return b
 		}
 	}
 	// Unreachable: last bracket has no upper bound
-	return incomeTaxBrackets[len(incomeTaxBrackets)-1]
+	return brackets[len(brackets)-1]
 }
 
 // calculateNetToPay returns the net to pay and the rounding adjustment applied.
