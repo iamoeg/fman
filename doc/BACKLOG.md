@@ -1,20 +1,5 @@
 # Backlog
 
-## Execution Order
-
-Architectural changes first to minimize rework, then features on a stable domain,
-then polish and tooling.
-
-1. ~**#4** — Decide Money/currency question. Most cross-cutting change;
-   closes it early even if the answer is "no".~
-2. ~**#6** — Clarify NumKids vs NumDependents. Affects calculator correctness and potentially DB schema.~
-3. ~**#18 + #19** — Constrain calculations to supported year, relax hire date.~
-4. **#1** — PDF payslip export. Builds on top of a now-stable domain.
-5. **#14, #13, #11** — Easy wins: CLI config flag, consistent keymaps, form dimensions.
-6. **#2** — End-to-end tests. Written last, once behavior is locked.
-
----
-
 ## Phase 1H — Finish Line
 
 1. [ ] (High) PDF payslip export: `unidoc/unipdf` already in stack. Also consider CSV export (one row per employee)
