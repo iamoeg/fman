@@ -76,16 +76,16 @@ A separate table (rather than inline fields on `employee`) allows tracking
 compensation changes over time and preserves the exact package used for each
 payroll calculation.
 
-| Column              | Type    | Constraints                         | Description                        |
-| ------------------- | ------- | ----------------------------------- | ---------------------------------- |
-| `id`                | TEXT    | PRIMARY KEY                         | UUID                               |
-| `org_id`            | TEXT    | FK → organization, NOT NULL         | Owning organization                |
-| `name`              | TEXT    | NOT NULL                            | Human-readable package name        |
-| `base_salary_cents` | INTEGER | NOT NULL, >= 0                      | Monthly salary in cents (MAD)      |
-| `currency`          | TEXT    | NOT NULL, CHECK IN ('MAD')          | Currency code                      |
-| `created_at`        | TEXT    | NOT NULL                            | ISO 8601 timestamp                 |
-| `updated_at`        | TEXT    | NOT NULL                            | ISO 8601 timestamp                 |
-| `deleted_at`        | TEXT    |                                     | Soft delete timestamp              |
+| Column              | Type    | Constraints                 | Description                   |
+| ------------------- | ------- | --------------------------- | ----------------------------- |
+| `id`                | TEXT    | PRIMARY KEY                 | UUID                          |
+| `org_id`            | TEXT    | FK → organization, NOT NULL | Owning organization           |
+| `name`              | TEXT    | NOT NULL                    | Human-readable package name   |
+| `base_salary_cents` | INTEGER | NOT NULL, >= 0              | Monthly salary in cents (MAD) |
+| `currency`          | TEXT    | NOT NULL, CHECK IN ('MAD')  | Currency code                 |
+| `created_at`        | TEXT    | NOT NULL                    | ISO 8601 timestamp            |
+| `updated_at`        | TEXT    | NOT NULL                    | ISO 8601 timestamp            |
+| `deleted_at`        | TEXT    |                             | Soft delete timestamp         |
 
 **Index:** `idx_comp_package_org_id` on `(org_id)` for efficient org-scoped lookups.
 
@@ -109,7 +109,7 @@ Employee records with demographic and payroll-relevant information.
 | `gender`                  | TEXT    | NOT NULL, CHECK IN ('MALE', 'FEMALE') | Gender                     |
 | `marital_status`          | TEXT    | NOT NULL, CHECK IN (...)              | Marital status             |
 | `num_dependents`          | INTEGER | NOT NULL, >= 0                        | Number of dependents       |
-| `num_kids`                | INTEGER | NOT NULL, >= 0                        | Number of children         |
+| `num_children`            | INTEGER | NOT NULL, >= 0                        | Number of children         |
 | `cin_num`                 | TEXT    | NOT NULL, UNIQUE                      | Moroccan National ID (CIN) |
 | `cnss_num`                | TEXT    | UNIQUE                                | Social security number     |
 | `hire_date`               | TEXT    | NOT NULL                              | Date of hire               |

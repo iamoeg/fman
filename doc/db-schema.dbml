@@ -36,7 +36,7 @@ Table employee {
   gender person_gender_enum [not null]
   marital_status marital_status_enum [not null]
   num_dependents int [not null, default: 0, check: `num_dependents >= 0`]
-  num_kids int [not null, default: 0, check: `num_kids >= 0`]
+  num_children int [not null, default: 0, check: `num_children >= 0`]
   cin_num text [not null, unique]
   cnss_num text [unique]
   hire_date timestampz [not null]

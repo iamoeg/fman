@@ -46,7 +46,7 @@ CREATE TABLE employee(
     gender TEXT NOT NULL CHECK(gender IN ('MALE', 'FEMALE')),
     marital_status TEXT NOT NULL CHECK(marital_status IN ('SINGLE', 'MARRIED', 'SEPARATED', 'DIVORCED', 'WIDOWED')),
     num_dependents INTEGER NOT NULL DEFAULT 0 CHECK(num_dependents >= 0),
-    num_kids INTEGER NOT NULL DEFAULT 0 CHECK(num_kids >= 0),
+    num_children INTEGER NOT NULL DEFAULT 0 CHECK(num_children >= 0),
     cin_num TEXT NOT NULL UNIQUE,
     cnss_num TEXT UNIQUE,
     hire_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

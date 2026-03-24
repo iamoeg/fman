@@ -51,8 +51,8 @@ type Employee struct {
 
 	// Tax-Relevant Information
 	MaritalStatus MaritalStatusEnum
-	NumDependents int // Number of dependents for tax calculations
-	NumKids       int // Number of children for tax calculations
+	NumDependents int // Number of tax dependents (spouse + children) for IR family charge deduction
+	NumChildren   int // Number of qualifying children (enfants à charge) for CNSS allocations familiales
 
 	// Banking
 	BankRIB string // RIB (Relevé d'Identité Bancaire) - bank account number
@@ -99,7 +99,7 @@ func (e *Employee) Validate() error {
 		return err
 	}
 
-	if err := e.ValidateNumKids(); err != nil {
+	if err := e.ValidateNumChildren(); err != nil {
 		return err
 	}
 
@@ -238,13 +238,13 @@ func (e *Employee) ValidateNumDependents() error {
 	return nil
 }
 
-// ValidateNumKids ensures the number of children is non-negative.
-func (e *Employee) ValidateNumKids() error {
-	if e.NumKids < MinEmployeeNumKids {
+// ValidateNumChildren ensures the number of children is non-negative.
+func (e *Employee) ValidateNumChildren() error {
+	if e.NumChildren < MinEmployeeNumChildren {
 		return fmt.Errorf(
 			"%w: must be >= %v",
-			ErrInvalidEmployeeNumKids,
-			MinEmployeeNumKids,
+			ErrInvalidEmployeeNumChildren,
+			MinEmployeeNumChildren,
 		)
 	}
 	return nil
@@ -383,8 +383,8 @@ const (
 	// MinEmployeeNumDependents is the minimum number of dependents (0).
 	MinEmployeeNumDependents = 0
 
-	// MinEmployeeNumKids is the minimum number of children (0).
-	MinEmployeeNumKids = 0
+	// MinEmployeeNumChildren is the minimum number of children (0).
+	MinEmployeeNumChildren = 0
 
 	// MinWorkLegalAge is the minimum legal working age in Morocco (16 years).
 	MinWorkLegalAge = 16
@@ -411,7 +411,7 @@ var (
 	ErrEmployeeCompensationPackageIDRequired = errors.New("domain: employee: compensation package id (uuid) required")
 	ErrInvalidEmployeeSerialNum              = errors.New("domain: employee: invalid serial number")
 	ErrInvalidEmployeeNumDependents          = errors.New("domain: employee: invalid number of dependents")
-	ErrInvalidEmployeeNumKids                = errors.New("domain: employee: invalid number of kids")
+	ErrInvalidEmployeeNumChildren            = errors.New("domain: employee: invalid number of children")
 	ErrInvalidEmployeeBirthDate              = errors.New("domain: employee: invalid birth date")
 	ErrInvalidEmployeeHireDate               = errors.New("domain: employee: invalid hire date")
 	ErrGenderNotSupported                    = errors.New("domain: employee: gender not supported")

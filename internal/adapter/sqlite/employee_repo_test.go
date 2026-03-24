@@ -45,7 +45,7 @@ func createTestEmployee(orgID, compPackID uuid.UUID, serialNum int) *domain.Empl
 		Gender:                domain.GenderMale,
 		MaritalStatus:         domain.MaritalStatusSingle,
 		NumDependents:         0,
-		NumKids:               0,
+		NumChildren:           0,
 		CINNum:                fmt.Sprintf("AA%06d", counter), // Unique CIN
 		CNSSNum:               fmt.Sprintf("%09d", counter),   // Unique CNSS
 		HireDate:              hireDate,

@@ -31,7 +31,7 @@ type Employee struct {
 	Gender                string         `json:"gender"`
 	MaritalStatus         string         `json:"marital_status"`
 	NumDependents         int64          `json:"num_dependents"`
-	NumKids               int64          `json:"num_kids"`
+	NumChildren           int64          `json:"num_children"`
 	CinNum                string         `json:"cin_num"`
 	CnssNum               sql.NullString `json:"cnss_num"`
 	HireDate              string         `json:"hire_date"`

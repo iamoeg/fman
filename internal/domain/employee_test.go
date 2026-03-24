@@ -35,7 +35,7 @@ func TestEmployee_Validate(t *testing.T) {
 			Gender:                domain.GenderMale,
 			MaritalStatus:         domain.MaritalStatusSingle,
 			NumDependents:         0,
-			NumKids:               0,
+			NumChildren:           0,
 			CINNum:                "AB123456",
 			CNSSNum:               "1234567890",
 			HireDate:              hireDate,
@@ -80,7 +80,7 @@ func TestEmployee_Validate(t *testing.T) {
 				emp.Gender = domain.GenderFemale
 				emp.MaritalStatus = domain.MaritalStatusMarried
 				emp.NumDependents = 2
-				emp.NumKids = 3
+				emp.NumChildren = 3
 				return emp
 			}(),
 			wantErr: nil,
@@ -326,16 +326,16 @@ func TestEmployee_Validate(t *testing.T) {
 		},
 
 		// ====================================================================
-		// NumKids Validation Errors
+		// NumChildren Validation Errors
 		// ====================================================================
 		{
-			name: "negative number of kids",
+			name: "negative number of children",
 			emp: func() *domain.Employee {
 				emp := validEmployee()
-				emp.NumKids = -1
+				emp.NumChildren = -1
 				return emp
 			}(),
-			wantErr: domain.ErrInvalidEmployeeNumKids,
+			wantErr: domain.ErrInvalidEmployeeNumChildren,
 		},
 
 		// ====================================================================
@@ -758,38 +758,38 @@ func TestEmployee_ValidateNumDependents(t *testing.T) {
 	}
 }
 
-func TestEmployee_ValidateNumKids(t *testing.T) {
+func TestEmployee_ValidateNumChildren(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		numKids int
-		wantErr error
+		name        string
+		numChildren int
+		wantErr     error
 	}{
 		{
-			name:    "zero kids",
-			numKids: 0,
-			wantErr: nil,
+			name:        "zero children",
+			numChildren: 0,
+			wantErr:     nil,
 		},
 		{
-			name:    "one kid",
-			numKids: 1,
-			wantErr: nil,
+			name:        "one kid",
+			numChildren: 1,
+			wantErr:     nil,
 		},
 		{
-			name:    "multiple kids",
-			numKids: 6,
-			wantErr: nil,
+			name:        "multiple children",
+			numChildren: 6,
+			wantErr:     nil,
 		},
 		{
-			name:    "large number of kids",
-			numKids: 15,
-			wantErr: nil,
+			name:        "large number of children",
+			numChildren: 15,
+			wantErr:     nil,
 		},
 		{
-			name:    "negative kids",
-			numKids: -1,
-			wantErr: domain.ErrInvalidEmployeeNumKids,
+			name:        "negative children",
+			numChildren: -1,
+			wantErr:     domain.ErrInvalidEmployeeNumChildren,
 		},
 	}
 
@@ -797,16 +797,16 @@ func TestEmployee_ValidateNumKids(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			emp := &domain.Employee{NumKids: tt.numKids}
-			err := emp.ValidateNumKids()
+			emp := &domain.Employee{NumChildren: tt.numChildren}
+			err := emp.ValidateNumChildren()
 
 			if tt.wantErr == nil {
 				if err != nil {
-					t.Errorf("ValidateNumKids() error = %v, wantErr nil", err)
+					t.Errorf("ValidateNumChildren() error = %v, wantErr nil", err)
 				}
 			} else {
 				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("ValidateNumKids() error = %v, wantErr %v", err, tt.wantErr)
+					t.Errorf("ValidateNumChildren() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 		})
@@ -1302,7 +1302,7 @@ func BenchmarkEmployee_Validate(b *testing.B) {
 		Gender:                domain.GenderMale,
 		MaritalStatus:         domain.MaritalStatusSingle,
 		NumDependents:         0,
-		NumKids:               0,
+		NumChildren:           0,
 		CINNum:                "AB123456",
 		HireDate:              now.AddDate(0, -6, 0),
 		Position:              "Developer",

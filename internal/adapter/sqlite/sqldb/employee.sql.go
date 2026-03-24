@@ -39,7 +39,7 @@ INSERT INTO employee(
     gender,
     marital_status,
     num_dependents,
-    num_kids,
+    num_children,
     cin_num,
     cnss_num,
     hire_date,
@@ -52,7 +52,7 @@ INSERT INTO employee(
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?
-) RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+) RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 `
 
 type CreateEmployeeParams struct {
@@ -68,7 +68,7 @@ type CreateEmployeeParams struct {
 	Gender                string         `json:"gender"`
 	MaritalStatus         string         `json:"marital_status"`
 	NumDependents         int64          `json:"num_dependents"`
-	NumKids               int64          `json:"num_kids"`
+	NumChildren           int64          `json:"num_children"`
 	CinNum                string         `json:"cin_num"`
 	CnssNum               sql.NullString `json:"cnss_num"`
 	HireDate              string         `json:"hire_date"`
@@ -93,7 +93,7 @@ func (q *Queries) CreateEmployee(ctx context.Context, arg CreateEmployeeParams) 
 		arg.Gender,
 		arg.MaritalStatus,
 		arg.NumDependents,
-		arg.NumKids,
+		arg.NumChildren,
 		arg.CinNum,
 		arg.CnssNum,
 		arg.HireDate,
@@ -117,7 +117,7 @@ func (q *Queries) CreateEmployee(ctx context.Context, arg CreateEmployeeParams) 
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -139,7 +139,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
-RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 `
 
 type DeleteEmployeeParams struct {
@@ -164,7 +164,7 @@ func (q *Queries) DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) 
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -179,7 +179,7 @@ func (q *Queries) DeleteEmployee(ctx context.Context, arg DeleteEmployeeParams) 
 }
 
 const getEmployee = `-- name: GetEmployee :one
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE
     id = ?
@@ -202,7 +202,7 @@ func (q *Queries) GetEmployee(ctx context.Context, id string) (Employee, error) 
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -217,7 +217,7 @@ func (q *Queries) GetEmployee(ctx context.Context, id string) (Employee, error) 
 }
 
 const getEmployeeByOrgAndSerialNum = `-- name: GetEmployeeByOrgAndSerialNum :one
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE
     org_id = ?
@@ -245,7 +245,7 @@ func (q *Queries) GetEmployeeByOrgAndSerialNum(ctx context.Context, arg GetEmplo
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -260,7 +260,7 @@ func (q *Queries) GetEmployeeByOrgAndSerialNum(ctx context.Context, arg GetEmplo
 }
 
 const getEmployeeIncludingDeleted = `-- name: GetEmployeeIncludingDeleted :one
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE id = ?
 `
@@ -281,7 +281,7 @@ func (q *Queries) GetEmployeeIncludingDeleted(ctx context.Context, id string) (E
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -319,7 +319,7 @@ func (q *Queries) HardDeleteEmployee(ctx context.Context, id string) error {
 }
 
 const listEmployees = `-- name: ListEmployees :many
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE deleted_at IS NULL
 ORDER BY org_id, serial_num
@@ -347,7 +347,7 @@ func (q *Queries) ListEmployees(ctx context.Context) ([]Employee, error) {
 			&i.Gender,
 			&i.MaritalStatus,
 			&i.NumDependents,
-			&i.NumKids,
+			&i.NumChildren,
 			&i.CinNum,
 			&i.CnssNum,
 			&i.HireDate,
@@ -372,7 +372,7 @@ func (q *Queries) ListEmployees(ctx context.Context) ([]Employee, error) {
 }
 
 const listEmployeesByOrganization = `-- name: ListEmployeesByOrganization :many
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE
     org_id = ?
@@ -402,7 +402,7 @@ func (q *Queries) ListEmployeesByOrganization(ctx context.Context, orgID string)
 			&i.Gender,
 			&i.MaritalStatus,
 			&i.NumDependents,
-			&i.NumKids,
+			&i.NumChildren,
 			&i.CinNum,
 			&i.CnssNum,
 			&i.HireDate,
@@ -427,7 +427,7 @@ func (q *Queries) ListEmployeesByOrganization(ctx context.Context, orgID string)
 }
 
 const listEmployeesByOrganizationIncludingDeleted = `-- name: ListEmployeesByOrganizationIncludingDeleted :many
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 WHERE org_id = ?
 ORDER BY serial_num
@@ -455,7 +455,7 @@ func (q *Queries) ListEmployeesByOrganizationIncludingDeleted(ctx context.Contex
 			&i.Gender,
 			&i.MaritalStatus,
 			&i.NumDependents,
-			&i.NumKids,
+			&i.NumChildren,
 			&i.CinNum,
 			&i.CnssNum,
 			&i.HireDate,
@@ -480,7 +480,7 @@ func (q *Queries) ListEmployeesByOrganizationIncludingDeleted(ctx context.Contex
 }
 
 const listEmployeesIncludingDeleted = `-- name: ListEmployeesIncludingDeleted :many
-SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+SELECT id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 FROM employee
 ORDER BY org_id, serial_num
 `
@@ -507,7 +507,7 @@ func (q *Queries) ListEmployeesIncludingDeleted(ctx context.Context) ([]Employee
 			&i.Gender,
 			&i.MaritalStatus,
 			&i.NumDependents,
-			&i.NumKids,
+			&i.NumChildren,
 			&i.CinNum,
 			&i.CnssNum,
 			&i.HireDate,
@@ -539,7 +539,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NOT NULL
-RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 `
 
 type RestoreEmployeeParams struct {
@@ -563,7 +563,7 @@ func (q *Queries) RestoreEmployee(ctx context.Context, arg RestoreEmployeeParams
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,
@@ -589,7 +589,7 @@ SET
     gender = ?,
     marital_status = ?,
     num_dependents = ?,
-    num_kids = ?,
+    num_children = ?,
     cin_num = ?,
     cnss_num = ?,
     hire_date = ?,
@@ -600,7 +600,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
-RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_kids, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
+RETURNING id, org_id, serial_num, full_name, display_name, address, email_address, phone_number, birth_date, gender, marital_status, num_dependents, num_children, cin_num, cnss_num, hire_date, position, compensation_package_id, bank_rib, created_at, updated_at, deleted_at
 `
 
 type UpdateEmployeeParams struct {
@@ -613,7 +613,7 @@ type UpdateEmployeeParams struct {
 	Gender                string         `json:"gender"`
 	MaritalStatus         string         `json:"marital_status"`
 	NumDependents         int64          `json:"num_dependents"`
-	NumKids               int64          `json:"num_kids"`
+	NumChildren           int64          `json:"num_children"`
 	CinNum                string         `json:"cin_num"`
 	CnssNum               sql.NullString `json:"cnss_num"`
 	HireDate              string         `json:"hire_date"`
@@ -635,7 +635,7 @@ func (q *Queries) UpdateEmployee(ctx context.Context, arg UpdateEmployeeParams) 
 		arg.Gender,
 		arg.MaritalStatus,
 		arg.NumDependents,
-		arg.NumKids,
+		arg.NumChildren,
 		arg.CinNum,
 		arg.CnssNum,
 		arg.HireDate,
@@ -659,7 +659,7 @@ func (q *Queries) UpdateEmployee(ctx context.Context, arg UpdateEmployeeParams) 
 		&i.Gender,
 		&i.MaritalStatus,
 		&i.NumDependents,
-		&i.NumKids,
+		&i.NumChildren,
 		&i.CinNum,
 		&i.CnssNum,
 		&i.HireDate,

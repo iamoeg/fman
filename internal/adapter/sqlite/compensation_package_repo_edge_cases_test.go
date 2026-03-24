@@ -467,7 +467,7 @@ func TestCompensationPackageRepository_UsageGuards(t *testing.T) {
 		_, err = db.Exec(`
 			INSERT INTO employee (
 				id, org_id, serial_num, full_name, birth_date, gender,
-				marital_status, num_dependents, num_kids, cin_num, hire_date,
+				marital_status, num_dependents, num_children, cin_num, hire_date,
 				position, compensation_package_id, created_at, updated_at
 			) VALUES (?, ?, 1, 'Test', '1990-01-01', 'MALE', 'SINGLE', 0, 0, 'CIN001', '2025-01-01', 'Dev', ?, ?, ?)
 		`, createTestOrganization().ID.String(), org.ID.String(), pkg.ID.String(),

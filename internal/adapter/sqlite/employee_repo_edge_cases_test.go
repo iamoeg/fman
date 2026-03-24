@@ -458,7 +458,7 @@ func TestEmployeeRepository_DataIntegrity(t *testing.T) {
 		emp.BankRIB = "123456789012345678901234"
 		emp.MaritalStatus = domain.MaritalStatusMarried
 		emp.NumDependents = 2
-		emp.NumKids = 1
+		emp.NumChildren = 1
 
 		err := repo.Create(ctx, emp)
 		require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestEmployeeRepository_DataIntegrity(t *testing.T) {
 		require.Equal(t, emp.Gender, found.Gender)
 		require.Equal(t, emp.MaritalStatus, found.MaritalStatus)
 		require.Equal(t, emp.NumDependents, found.NumDependents)
-		require.Equal(t, emp.NumKids, found.NumKids)
+		require.Equal(t, emp.NumChildren, found.NumChildren)
 		require.Equal(t, emp.SerialNum, found.SerialNum)
 		require.Equal(t, emp.OrgID, found.OrgID)
 		require.Equal(t, emp.CompensationPackageID, found.CompensationPackageID)

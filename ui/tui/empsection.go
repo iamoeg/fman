@@ -57,7 +57,7 @@ const (
 	empFieldDisplayName          // 8 — optional, text
 	empFieldMaritalStatus        // 9 — required, cycle
 	empFieldNumDependents        // 10 — optional, int
-	empFieldNumKids              // 11 — optional, int
+	empFieldNumChildren          // 11 — optional, int
 	empFieldPhoneNumber          // 12 — optional, text
 	empFieldEmailAddress         // 13 — optional, text
 	empFieldAddress              // 14 — optional, text
@@ -83,18 +83,18 @@ var (
 		label    string
 		required bool
 	}{
-		empFieldFullName:     {"Full Name", true},
-		empFieldCINNum:       {"CIN Number", true},
-		empFieldCNSSNum:      {"CNSS Number", false},
-		empFieldBirthDate:    {"Birth Date", true},
-		empFieldGender:       {"Gender", true},
-		empFieldHireDate:     {"Hire Date", true},
-		empFieldPosition:     {"Position", true},
-		empFieldCompPkg:      {"Comp Package", true},
-		empFieldDisplayName:  {"Display Name", false},
+		empFieldFullName:      {"Full Name", true},
+		empFieldCINNum:        {"CIN Number", true},
+		empFieldCNSSNum:       {"CNSS Number", false},
+		empFieldBirthDate:     {"Birth Date", true},
+		empFieldGender:        {"Gender", true},
+		empFieldHireDate:      {"Hire Date", true},
+		empFieldPosition:      {"Position", true},
+		empFieldCompPkg:       {"Comp Package", true},
+		empFieldDisplayName:   {"Display Name", false},
 		empFieldMaritalStatus: {"Marital Status", true},
 		empFieldNumDependents: {"Dependents", false},
-		empFieldNumKids:       {"Kids", false},
+		empFieldNumChildren:   {"Children", false},
 		empFieldPhoneNumber:   {"Phone", false},
 		empFieldEmailAddress:  {"Email", false},
 		empFieldAddress:       {"Address", false},
@@ -133,7 +133,7 @@ func newEmpForm(pkgs []*domain.EmployeeCompensationPackage) empForm {
 		empFieldDisplayName:   "(optional)",
 		empFieldMaritalStatus: "", // cycle field — no placeholder
 		empFieldNumDependents: "0",
-		empFieldNumKids:       "0",
+		empFieldNumChildren:   "0",
 		empFieldPhoneNumber:   "(optional)",
 		empFieldEmailAddress:  "(optional)",
 		empFieldAddress:       "(optional)",
@@ -151,7 +151,7 @@ func newEmpForm(pkgs []*domain.EmployeeCompensationPackage) empForm {
 		empFieldDisplayName:   64,
 		empFieldMaritalStatus: 0, // unused
 		empFieldNumDependents: 4,
-		empFieldNumKids:       4,
+		empFieldNumChildren:   4,
 		empFieldPhoneNumber:   32,
 		empFieldEmailAddress:  128,
 		empFieldAddress:       256,
@@ -186,7 +186,7 @@ func newEmpFormFromEmployee(pkgs []*domain.EmployeeCompensationPackage, emp *dom
 	f.inputs[empFieldPosition].SetValue(emp.Position)
 	f.inputs[empFieldDisplayName].SetValue(emp.DisplayName)
 	f.inputs[empFieldNumDependents].SetValue(strconv.Itoa(emp.NumDependents))
-	f.inputs[empFieldNumKids].SetValue(strconv.Itoa(emp.NumKids))
+	f.inputs[empFieldNumChildren].SetValue(strconv.Itoa(emp.NumChildren))
 	f.inputs[empFieldPhoneNumber].SetValue(emp.PhoneNumber)
 	f.inputs[empFieldEmailAddress].SetValue(emp.EmailAddress)
 	f.inputs[empFieldAddress].SetValue(emp.Address)
@@ -317,11 +317,11 @@ func (f empForm) toDomain(orgID uuid.UUID) (*domain.Employee, error) {
 		}
 	}
 
-	numKids := 0
-	if kidsStr := strings.TrimSpace(f.inputs[empFieldNumKids].Value()); kidsStr != "" {
-		numKids, err = strconv.Atoi(kidsStr)
-		if err != nil || numKids < 0 {
-			return nil, errors.New("Kids must be a non-negative integer")
+	numChildren := 0
+	if childrenStr := strings.TrimSpace(f.inputs[empFieldNumChildren].Value()); childrenStr != "" {
+		numChildren, err = strconv.Atoi(childrenStr)
+		if err != nil || numChildren < 0 {
+			return nil, errors.New("Children must be a non-negative integer")
 		}
 	}
 
@@ -338,7 +338,7 @@ func (f empForm) toDomain(orgID uuid.UUID) (*domain.Employee, error) {
 		DisplayName:           strings.TrimSpace(f.inputs[empFieldDisplayName].Value()),
 		MaritalStatus:         maritalValues[f.maritalIdx],
 		NumDependents:         numDependents,
-		NumKids:               numKids,
+		NumChildren:           numChildren,
 		PhoneNumber:           strings.TrimSpace(f.inputs[empFieldPhoneNumber].Value()),
 		EmailAddress:          strings.TrimSpace(f.inputs[empFieldEmailAddress].Value()),
 		Address:               strings.TrimSpace(f.inputs[empFieldAddress].Value()),
@@ -482,11 +482,11 @@ func newEmpSection(
 	hl.Styles.NoItems = hl.Styles.NoItems.PaddingLeft(2)
 
 	return &empSection{
-		empSvc:     empSvc,
-		compSvc:    compSvc,
-		payrollSvc: payrollSvc,
-		orgID:      orgID,
-		list:       l,
+		empSvc:      empSvc,
+		compSvc:     compSvc,
+		payrollSvc:  payrollSvc,
+		orgID:       orgID,
+		list:        l,
 		historyList: hl,
 	}
 }
@@ -888,7 +888,7 @@ func (s *empSection) renderEmpDetail(width, height int) string {
 		divider("Tax Info"),
 		row("Marital Status", string(e.MaritalStatus)),
 		row("Dependents", fmt.Sprintf("%d", e.NumDependents)),
-		row("Children", fmt.Sprintf("%d", e.NumKids)),
+		row("Children", fmt.Sprintf("%d", e.NumChildren)),
 		"",
 		divider("Banking"),
 		row("Bank RIB", opt(e.BankRIB)),

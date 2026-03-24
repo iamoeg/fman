@@ -143,7 +143,7 @@ func createTestEmployee(orgID, compPackID uuid.UUID) *domain.Employee {
 		Gender:                domain.GenderMale,
 		MaritalStatus:         domain.MaritalStatusSingle,
 		NumDependents:         0,
-		NumKids:               0,
+		NumChildren:           0,
 		CINNum:                "AB123456",
 		CNSSNum:               "123456789",
 		HireDate:              time.Now().UTC().AddDate(0, -1, 0), // Hired 1 month ago
