@@ -29,6 +29,8 @@ const (
 	empStateDetail                 // read-only detail overlay
 	empStateHistory                // full-screen payroll history list
 	empStateHistoryDetail          // result detail overlay (shared renderer)
+	empStateDeleted                // browsing soft-deleted employees
+	empStateHardDeleting           // hard-delete confirmation overlay
 )
 
 var empDetailKey = key.NewBinding(
@@ -500,9 +502,10 @@ func (s *empSection) Init() tea.Cmd {
 }
 
 func (s *empSection) IsOverlay() bool {
-	return s.state == empStateCreating || s.state == empStateEditing || s.state == empStateDeleting ||
-		s.state == empStateDetail || s.state == empStateHistoryDetail ||
-		s.list.FilterState() == list.Filtering
+	if s.state == empStateList || s.state == empStateDeleted || s.state == empStateHistory {
+		return s.list.FilterState() == list.Filtering
+	}
+	return true
 }
 
 func (s *empSection) ShortHelp() []key.Binding {
@@ -517,8 +520,16 @@ func (s *empSection) ShortHelp() []key.Binding {
 		return []key.Binding{payrollKeys.ViewResults, sectionBackKey}
 	case empStateHistoryDetail:
 		return []key.Binding{sectionBackKey}
+	case empStateDeleted:
+		return []key.Binding{
+			mainKeys.ToggleDeleted,
+			mainKeys.Restore,
+			mainKeys.HardDelete,
+		}
+	case empStateHardDeleting:
+		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	default:
-		return []key.Binding{empDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
+		return []key.Binding{empDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter, mainKeys.ToggleDeleted}
 	}
 }
 
@@ -534,6 +545,9 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case activeOrgLoadedMsg:
 		s.orgID = msg.orgID
+		if s.state == empStateDeleted {
+			return s, loadDeletedEmpsCmd(s.empSvc, s.orgID)
+		}
 		return s, loadEmpsCmd(s.empSvc, s.compSvc, s.orgID)
 
 	case compsLoadedMsg:
@@ -602,12 +616,44 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.errMsg = ""
 		return s, cmd
 
+	case empsDeletedLoadedMsg:
+		if msg.err != nil {
+			s.errMsg = "Could not load deleted employees — try again"
+			return s, nil
+		}
+		var items []list.Item
+		for _, e := range msg.emps {
+			if e.DeletedAt != nil {
+				items = append(items, empItem{emp: e, pkgName: ""})
+			}
+		}
+		cmd := s.list.SetItems(items)
+		s.errMsg = ""
+		return s, cmd
+
+	case restoreEmpDoneMsg:
+		if msg.err != nil {
+			s.errMsg = "Restore failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedEmpsCmd(s.empSvc, s.orgID)
+
+	case hardDeleteEmpDoneMsg:
+		s.pendingDeleteID = uuid.Nil
+		if msg.err != nil {
+			s.errMsg = "Hard delete failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedEmpsCmd(s.empSvc, s.orgID)
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
 
 	switch s.state {
-	case empStateList:
+	case empStateList, empStateDeleted:
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
 		return s, cmd
@@ -621,6 +667,53 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
+
+	case empStateDeleted:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
+		switch {
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Employees"
+			s.state = empStateList
+			s.errMsg = ""
+			return s, loadEmpsCmd(s.empSvc, s.compSvc, s.orgID)
+
+		case key.Matches(msg, mainKeys.Restore):
+			selected, ok := s.list.SelectedItem().(empItem)
+			if !ok {
+				return s, nil
+			}
+			return s, restoreEmpCmd(s.empSvc, selected.emp.ID)
+
+		case key.Matches(msg, mainKeys.HardDelete):
+			selected, ok := s.list.SelectedItem().(empItem)
+			if !ok {
+				return s, nil
+			}
+			s.pendingDeleteID = selected.emp.ID
+			s.state = empStateHardDeleting
+			return s, nil
+		}
+		var cmd tea.Cmd
+		s.list, cmd = s.list.Update(msg)
+		return s, cmd
+
+	case empStateHardDeleting:
+		switch {
+		case key.Matches(msg, confirmKeys.Yes):
+			id := s.pendingDeleteID
+			s.pendingDeleteID = uuid.Nil
+			s.state = empStateDeleted
+			return s, hardDeleteEmpCmd(s.empSvc, id)
+		case key.Matches(msg, confirmKeys.No):
+			s.pendingDeleteID = uuid.Nil
+			s.state = empStateDeleted
+			return s, nil
+		}
+		return s, nil
 
 	case empStateList:
 		if s.list.FilterState() == list.Filtering {
@@ -670,6 +763,12 @@ func (s *empSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 				s.state = empStateDetail
 			}
 			return s, nil
+
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Employees [DELETED]"
+			s.state = empStateDeleted
+			s.errMsg = ""
+			return s, loadDeletedEmpsCmd(s.empSvc, s.orgID)
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
@@ -791,6 +890,8 @@ func (s *empSection) View(width, height int) string {
 	if statusRow == "" && len(s.list.Items()) == 0 {
 		var hint string
 		switch {
+		case s.state == empStateDeleted:
+			hint = "No deleted employees."
 		case s.orgID == uuid.Nil:
 			hint = "Select an active organization first."
 		case len(s.pkgs) == 0:
@@ -810,6 +911,8 @@ func (s *empSection) View(width, height int) string {
 	switch s.state {
 	case empStateDeleting:
 		return s.renderDeleteConfirm(listView, width)
+	case empStateHardDeleting:
+		return s.renderHardDeleteConfirm(listView, width)
 	case empStateCreating:
 		return s.renderFormOverlay("New Employee", width, height)
 	case empStateEditing:
@@ -846,6 +949,19 @@ func (s *empSection) renderFormOverlay(title string, width, height int) string {
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
 	)
+}
+
+func (s *empSection) renderHardDeleteConfirm(listView string, width int) string {
+	name := ""
+	if selected, ok := s.list.SelectedItem().(empItem); ok {
+		name = selected.Title()
+	}
+	prompt := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("196")).
+		Bold(true).
+		Width(width).
+		Render(fmt.Sprintf("  Hard-delete employee %q? This is permanent and cannot be undone. [y] yes  [n/bksp] cancel", name))
+	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 
 func (s *empSection) renderDeleteConfirm(listView string, width int) string {

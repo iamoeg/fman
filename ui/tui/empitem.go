@@ -19,7 +19,11 @@ func (i empItem) Title() string {
 }
 
 func (i empItem) Description() string {
-	return fmt.Sprintf("%s · %s", i.emp.Position, i.pkgName)
+	desc := fmt.Sprintf("%s · %s", i.emp.Position, i.pkgName)
+	if i.emp.DeletedAt != nil {
+		desc += "  ·  deleted: " + i.emp.DeletedAt.Format(time.DateOnly)
+	}
+	return desc
 }
 
 func (i empItem) FilterValue() string {

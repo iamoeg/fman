@@ -47,6 +47,14 @@ type empsLoadedMsg struct {
 type saveEmpDoneMsg struct{ err error }
 type deleteEmpDoneMsg struct{ err error }
 
+type empsDeletedLoadedMsg struct {
+	emps []*domain.Employee
+	err  error
+}
+
+type restoreEmpDoneMsg struct{ err error }
+type hardDeleteEmpDoneMsg struct{ err error }
+
 func loadEmpsCmd(
 	empSvc *application.EmployeeService,
 	compSvc *application.CompensationPackageService,
@@ -83,5 +91,29 @@ func deleteEmpCmd(svc *application.EmployeeService, id uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
 		err := svc.DeleteEmployee(context.Background(), id)
 		return deleteEmpDoneMsg{err: err}
+	}
+}
+
+func loadDeletedEmpsCmd(svc *application.EmployeeService, orgID uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		if orgID == uuid.Nil {
+			return empsDeletedLoadedMsg{}
+		}
+		emps, err := svc.ListEmployeesByOrganizationIncludingDeleted(context.Background(), orgID)
+		return empsDeletedLoadedMsg{emps: emps, err: err}
+	}
+}
+
+func restoreEmpCmd(svc *application.EmployeeService, id uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		err := svc.RestoreEmployee(context.Background(), id)
+		return restoreEmpDoneMsg{err: err}
+	}
+}
+
+func hardDeleteEmpCmd(svc *application.EmployeeService, id uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		err := svc.HardDeleteEmployee(context.Background(), id)
+		return hardDeleteEmpDoneMsg{err: err}
 	}
 }
