@@ -4,11 +4,16 @@ import "github.com/charmbracelet/bubbles/key"
 
 // GlobalKeyMap holds keybindings that are always active.
 type GlobalKeyMap struct {
+	SwitchOrg  key.Binding
 	SwitchPane key.Binding
 	Quit       key.Binding
 }
 
 var globalKeys = GlobalKeyMap{
+	SwitchOrg: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "switch org"),
+	),
 	SwitchPane: key.NewBinding(
 		key.WithKeys("tab", "shift+tab"),
 		key.WithHelp("tab", "switch pane"),

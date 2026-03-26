@@ -71,6 +71,8 @@ type Model struct {
 	sections      [sectionCount]sectionModel
 	sidebar       sidebar
 	activeOrgName string
+	switcherOpen  bool
+	switcher      orgSwitcher
 }
 
 // NewModel constructs the root model. Call this from cmd/tui/main.go.
@@ -146,6 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
+	case orgsForSwitcherLoadedMsg:
+		m.switcher.loaded(msg)
+		return m, nil
+
 	case auditLogsLoadedMsg:
 		next, cmd := m.sections[sectionAuditLog].Update(msg)
 		m.sections[sectionAuditLog] = next
@@ -174,6 +180,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.KeyMsg:
+		// When the switcher overlay is open it owns all keystrokes.
+		if m.switcherOpen {
+			return m.updateSwitcher(msg)
+		}
+
 		// Global bindings are skipped when the active section has a form or modal
 		// open — the section owns every keystroke including tab and esc.
 		capturing := m.focus == focusMain && m.sections[m.active].IsOverlay()
@@ -189,6 +200,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focus = focusSidebar
 				}
 				return m, nil
+
+			case key.Matches(msg, globalKeys.SwitchOrg):
+				var activeID uuid.UUID
+				if m.app.Config != nil {
+					activeID, _ = uuid.Parse(m.app.Config.DefaultOrgID)
+				}
+				m.switcher = newOrgSwitcher(m.app.Config, activeID)
+				m.switcherOpen = true
+				return m, loadOrgsForSwitcherCmd(m.app)
 			}
 		}
 
@@ -217,6 +237,15 @@ func (m Model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) updateSwitcher(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switcher, cmd, done := m.switcher.update(msg)
+	m.switcher = switcher
+	if done {
+		m.switcherOpen = false
+	}
+	return m, cmd
+}
+
 func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for esc to return focus to sidebar — only when the section is not
 	// capturing input. Sections use sectionBackKey (backspace) for within-section
@@ -236,6 +265,10 @@ func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	if m.width == 0 {
 		return "Loading…"
+	}
+
+	if m.switcherOpen {
+		return m.switcher.view(m.width, m.height)
 	}
 
 	mainW := m.mainWidth()

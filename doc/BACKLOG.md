@@ -53,8 +53,10 @@
 21. [x] (Medium) Empty states & onboarding hints: each section shows a contextual hint in
         the status row when its list is empty (org-dependency hints for comp/employees/payroll).
         Generating payroll with 0 employees now shows an error instead of "Generated 0 employee(s)".
-22. [ ] (Medium) Active org switching: switching active org requires navigating to Orgs section.
-        Consider a dedicated switch-org prompt accessible from any section, or clearer visual indicator + help text.
+22. [x] (Medium) Active org switching: press `o` from any pane to open a global overlay listing all
+        active organizations. Navigate with `k`/`j`, confirm with `enter`, dismiss with `esc`. Active org
+        is pre-selected and marked with `•`. Suppressed when a section overlay is already open.
+        Reuses `setActiveOrgCmd` / `activeOrgLoadedMsg` — propagation to all sections unchanged.
 23. [x] (Low) Payroll result: seniority details: added `SeniorityYears` and `SeniorityRate` to
         `PayrollResult` (domain + DB). Calculator populates them at generation time. Detail view
         now renders `Seniority Bonus (Xyr · Y%)` inline so the applied tier is always visible.

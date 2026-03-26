@@ -22,12 +22,12 @@ var (
 func renderFooter(width int, bindings []key.Binding, overlay bool) string {
 	extra := 0
 	if !overlay {
-		extra = 2
+		extra = 3
 	}
 	all := make([]key.Binding, len(bindings), len(bindings)+extra)
 	copy(all, bindings)
 	if !overlay {
-		all = append(all, globalKeys.SwitchPane, globalKeys.Quit)
+		all = append(all, globalKeys.SwitchOrg, globalKeys.SwitchPane, globalKeys.Quit)
 	}
 
 	parts := make([]string, 0, len(all))
