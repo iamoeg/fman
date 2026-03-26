@@ -43,14 +43,17 @@ var sidebarKeys = SidebarKeyMap{
 
 // MainKeyMap holds keybindings active in the main pane (no modal).
 type MainKeyMap struct {
-	Up        key.Binding
-	Down      key.Binding
-	New       key.Binding
-	Edit      key.Binding
-	Delete    key.Binding
-	SetActive key.Binding
-	Filter    key.Binding
-	Back      key.Binding
+	Up            key.Binding
+	Down          key.Binding
+	New           key.Binding
+	Edit          key.Binding
+	Delete        key.Binding
+	SetActive     key.Binding
+	Filter        key.Binding
+	Back          key.Binding
+	ToggleDeleted key.Binding
+	Restore       key.Binding
+	HardDelete    key.Binding
 }
 
 var mainKeys = MainKeyMap{
@@ -85,6 +88,18 @@ var mainKeys = MainKeyMap{
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "sidebar"),
+	),
+	ToggleDeleted: key.NewBinding(
+		key.WithKeys("D"),
+		key.WithHelp("D", "deleted"),
+	),
+	Restore: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "restore"),
+	),
+	HardDelete: key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "hard delete"),
 	),
 }
 
