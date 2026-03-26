@@ -20,11 +20,13 @@ import (
 type orgState int
 
 const (
-	orgStateList     orgState = iota // browsing the list
-	orgStateCreating                 // create form open
-	orgStateEditing                  // edit form open
-	orgStateDeleting                 // delete confirmation open
-	orgStateDetail                   // read-only detail overlay
+	orgStateList         orgState = iota // browsing the list
+	orgStateCreating                     // create form open
+	orgStateEditing                      // edit form open
+	orgStateDeleting                     // delete confirmation open
+	orgStateDetail                       // read-only detail overlay
+	orgStateDeleted                      // browsing soft-deleted orgs
+	orgStateHardDeleting                 // hard-delete confirmation overlay
 )
 
 var orgDetailKey = key.NewBinding(
@@ -65,8 +67,10 @@ func (s *orgSection) Init() tea.Cmd {
 }
 
 func (s *orgSection) IsOverlay() bool {
-	return s.state != orgStateList ||
-		s.list.FilterState() == list.Filtering
+	if s.state == orgStateList || s.state == orgStateDeleted {
+		return s.list.FilterState() == list.Filtering
+	}
+	return true
 }
 
 func (s *orgSection) ShortHelp() []key.Binding {
@@ -82,6 +86,14 @@ func (s *orgSection) ShortHelp() []key.Binding {
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case orgStateDetail:
 		return []key.Binding{sectionBackKey}
+	case orgStateDeleted:
+		return []key.Binding{
+			mainKeys.ToggleDeleted,
+			mainKeys.Restore,
+			mainKeys.HardDelete,
+		}
+	case orgStateHardDeleting:
+		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	default:
 		return []key.Binding{
 			orgDetailKey,
@@ -90,6 +102,7 @@ func (s *orgSection) ShortHelp() []key.Binding {
 			mainKeys.Delete,
 			mainKeys.SetActive,
 			mainKeys.Filter,
+			mainKeys.ToggleDeleted,
 		}
 	}
 }
@@ -142,12 +155,44 @@ func (s *orgSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		}
 		return s, tea.Batch(cmds...)
 
+	case orgsDeletedLoadedMsg:
+		if msg.err != nil {
+			s.errMsg = "Could not load deleted organizations — try again"
+			return s, nil
+		}
+		var items []list.Item
+		for _, o := range msg.orgs {
+			if o.DeletedAt != nil {
+				items = append(items, orgItem{org: o})
+			}
+		}
+		cmd := s.list.SetItems(items)
+		s.errMsg = ""
+		return s, cmd
+
+	case restoreOrgDoneMsg:
+		if msg.err != nil {
+			s.errMsg = "Restore failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedOrgsCmd(s.svc)
+
+	case hardDeleteOrgDoneMsg:
+		s.pendingDeleteID = uuid.Nil
+		if msg.err != nil {
+			s.errMsg = "Hard delete failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedOrgsCmd(s.svc)
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
 
 	// Forward other messages (filter ticks, spinner, etc.) to the list.
-	if s.state == orgStateList {
+	if s.state == orgStateList || s.state == orgStateDeleted {
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
 		return s, cmd
@@ -157,6 +202,53 @@ func (s *orgSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
+
+	case orgStateDeleted:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
+		switch {
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Organizations"
+			s.state = orgStateList
+			s.errMsg = ""
+			return s, loadOrgsCmd(s.svc)
+
+		case key.Matches(msg, mainKeys.Restore):
+			selected, ok := s.list.SelectedItem().(orgItem)
+			if !ok {
+				return s, nil
+			}
+			return s, restoreOrgCmd(s.svc, selected.org.ID)
+
+		case key.Matches(msg, mainKeys.HardDelete):
+			selected, ok := s.list.SelectedItem().(orgItem)
+			if !ok {
+				return s, nil
+			}
+			s.pendingDeleteID = selected.org.ID
+			s.state = orgStateHardDeleting
+			return s, nil
+		}
+		var cmd tea.Cmd
+		s.list, cmd = s.list.Update(msg)
+		return s, cmd
+
+	case orgStateHardDeleting:
+		switch {
+		case key.Matches(msg, confirmKeys.Yes):
+			id := s.pendingDeleteID
+			s.pendingDeleteID = uuid.Nil
+			s.state = orgStateDeleted
+			return s, hardDeleteOrgCmd(s.svc, id)
+		case key.Matches(msg, confirmKeys.No):
+			s.pendingDeleteID = uuid.Nil
+			s.state = orgStateDeleted
+			return s, nil
+		}
+		return s, nil
 
 	case orgStateList:
 		if s.list.FilterState() == list.Filtering {
@@ -203,6 +295,12 @@ func (s *orgSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 				s.state = orgStateDetail
 			}
 			return s, nil
+
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Organizations [DELETED]"
+			s.state = orgStateDeleted
+			s.errMsg = ""
+			return s, loadDeletedOrgsCmd(s.svc)
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
@@ -272,10 +370,14 @@ func (s *orgSection) View(width, height int) string {
 			Render("  " + s.errMsg)
 	}
 	if statusRow == "" && len(s.list.Items()) == 0 {
+		hint := "  Press n to create your first organization."
+		if s.state == orgStateDeleted {
+			hint = "  No deleted organizations."
+		}
 		statusRow = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			Width(width).
-			Render("  Press n to create your first organization.")
+			Render(hint)
 	}
 	if statusRow != "" {
 		listView = lipgloss.JoinVertical(lipgloss.Left, listView, statusRow)
@@ -284,6 +386,8 @@ func (s *orgSection) View(width, height int) string {
 	switch s.state {
 	case orgStateDeleting:
 		return s.renderDeleteConfirm(listView, width, height)
+	case orgStateHardDeleting:
+		return s.renderHardDeleteConfirm(listView, width)
 	case orgStateCreating, orgStateEditing:
 		return s.renderFormOverlay(width, height)
 	case orgStateDetail:
@@ -321,6 +425,19 @@ func (s *orgSection) renderFormOverlay(width, height int) string {
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
 	)
+}
+
+func (s *orgSection) renderHardDeleteConfirm(listView string, width int) string {
+	name := ""
+	if selected, ok := s.list.SelectedItem().(orgItem); ok {
+		name = selected.org.Name
+	}
+	prompt := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("196")).
+		Bold(true).
+		Width(width).
+		Render(fmt.Sprintf("  Hard-delete %q? This is permanent and cannot be undone. [y] yes  [n/bksp] cancel", name))
+	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 
 func (s *orgSection) renderDeleteConfirm(listView string, width, _ int) string {

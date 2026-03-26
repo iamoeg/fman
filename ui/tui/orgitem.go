@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/iamoeg/bootdev-capstone/internal/domain"
+import (
+	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"time"
+)
 
 // orgItem wraps a domain.Organization to satisfy list.DefaultItem.
 type orgItem struct {
@@ -18,6 +21,9 @@ func (i orgItem) Description() string {
 	}
 	if i.org.ICENum != "" {
 		desc += "  ·  ICE: " + i.org.ICENum
+	}
+	if i.org.DeletedAt != nil {
+		desc += "  ·  deleted: " + i.org.DeletedAt.Format(time.DateOnly)
 	}
 	return desc
 }
