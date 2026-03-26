@@ -30,6 +30,10 @@ This is an internal tool for a solo founder managing their company in Morocco.
 The primary need is **accurate payroll calculation**
 complying with Moroccan tax law (CNSS, AMO, IR).
 
+### Motivation
+
+<TODO>
+
 ### Why TUI First?
 
 - Faster iteration during development
@@ -146,6 +150,10 @@ A custom config path can be passed at startup:
 ```bash
 go run ./cmd/tui/ --config /path/to/config.yaml
 ```
+
+## Usage
+
+<TODO>
 
 ## Documentation
 
