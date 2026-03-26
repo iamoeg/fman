@@ -121,6 +121,8 @@ Table payroll_result {
   currency currency_enum [not null, default: currency_enum.MAD]
   base_salary_cents int [not null, check: `base_salary_cents >= 0`]
   seniority_bonus_cents int [not null, default: 0, check: `seniority_bonus_cents >= 0`]
+  seniority_years int [not null, default: 0, check: `seniority_years >= 0`]
+  seniority_rate float [not null, default: 0.0, check: `seniority_rate >= 0.0 AND seniority_rate <= 1.0`]
   gross_salary_cents int [not null, check: `gross_salary_cents >= 0`]
   total_other_bonus_cents int [not null, default: 0, check: `total_extra_bonus_cents >= 0`]
   gross_salary_grand_total_cents int [not null, check: `gross_salary_grand_total_cents >= 0`]

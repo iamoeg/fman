@@ -34,6 +34,8 @@ INSERT INTO payroll_result(
     currency,
     base_salary_cents,
     seniority_bonus_cents,
+    seniority_years,
+    seniority_rate,
     gross_salary_cents,
     total_other_bonus_cents,
     gross_salary_grand_total_cents,
@@ -59,40 +61,43 @@ INSERT INTO payroll_result(
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?
-) RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?
+) RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 `
 
 type CreatePayrollResultParams struct {
-	ID                                      string `json:"id"`
-	PayrollPeriodID                         string `json:"payroll_period_id"`
-	EmployeeID                              string `json:"employee_id"`
-	CompensationPackageID                   string `json:"compensation_package_id"`
-	Currency                                string `json:"currency"`
-	BaseSalaryCents                         int64  `json:"base_salary_cents"`
-	SeniorityBonusCents                     int64  `json:"seniority_bonus_cents"`
-	GrossSalaryCents                        int64  `json:"gross_salary_cents"`
-	TotalOtherBonusCents                    int64  `json:"total_other_bonus_cents"`
-	GrossSalaryGrandTotalCents              int64  `json:"gross_salary_grand_total_cents"`
-	FamilyAllowanceCents                    int64  `json:"family_allowance_cents"`
-	TotalExemptionsCents                    int64  `json:"total_exemptions_cents"`
-	TaxableGrossSalaryCents                 int64  `json:"taxable_gross_salary_cents"`
-	SocialAllowanceEmployeeContribCents     int64  `json:"social_allowance_employee_contrib_cents"`
-	SocialAllowanceEmployerContribCents     int64  `json:"social_allowance_employer_contrib_cents"`
-	JobLossCompensationEmployeeContribCents int64  `json:"job_loss_compensation_employee_contrib_cents"`
-	JobLossCompensationEmployerContribCents int64  `json:"job_loss_compensation_employer_contrib_cents"`
-	TrainingTaxEmployerContribCents         int64  `json:"training_tax_employer_contrib_cents"`
-	FamilyBenefitsEmployerContribCents      int64  `json:"family_benefits_employer_contrib_cents"`
-	TotalCnssEmployeeContribCents           int64  `json:"total_cnss_employee_contrib_cents"`
-	TotalCnssEmployerContribCents           int64  `json:"total_cnss_employer_contrib_cents"`
-	AmoEmployeeContribCents                 int64  `json:"amo_employee_contrib_cents"`
-	AmoEmployerContribCents                 int64  `json:"amo_employer_contrib_cents"`
-	TaxableNetSalaryCents                   int64  `json:"taxable_net_salary_cents"`
-	IncomeTaxCents                          int64  `json:"income_tax_cents"`
-	RoundingAmountCents                     int64  `json:"rounding_amount_cents"`
-	NetToPayCents                           int64  `json:"net_to_pay_cents"`
-	CreatedAt                               string `json:"created_at"`
-	UpdatedAt                               string `json:"updated_at"`
+	ID                                      string  `json:"id"`
+	PayrollPeriodID                         string  `json:"payroll_period_id"`
+	EmployeeID                              string  `json:"employee_id"`
+	CompensationPackageID                   string  `json:"compensation_package_id"`
+	Currency                                string  `json:"currency"`
+	BaseSalaryCents                         int64   `json:"base_salary_cents"`
+	SeniorityBonusCents                     int64   `json:"seniority_bonus_cents"`
+	SeniorityYears                          int64   `json:"seniority_years"`
+	SeniorityRate                           float64 `json:"seniority_rate"`
+	GrossSalaryCents                        int64   `json:"gross_salary_cents"`
+	TotalOtherBonusCents                    int64   `json:"total_other_bonus_cents"`
+	GrossSalaryGrandTotalCents              int64   `json:"gross_salary_grand_total_cents"`
+	FamilyAllowanceCents                    int64   `json:"family_allowance_cents"`
+	TotalExemptionsCents                    int64   `json:"total_exemptions_cents"`
+	TaxableGrossSalaryCents                 int64   `json:"taxable_gross_salary_cents"`
+	SocialAllowanceEmployeeContribCents     int64   `json:"social_allowance_employee_contrib_cents"`
+	SocialAllowanceEmployerContribCents     int64   `json:"social_allowance_employer_contrib_cents"`
+	JobLossCompensationEmployeeContribCents int64   `json:"job_loss_compensation_employee_contrib_cents"`
+	JobLossCompensationEmployerContribCents int64   `json:"job_loss_compensation_employer_contrib_cents"`
+	TrainingTaxEmployerContribCents         int64   `json:"training_tax_employer_contrib_cents"`
+	FamilyBenefitsEmployerContribCents      int64   `json:"family_benefits_employer_contrib_cents"`
+	TotalCnssEmployeeContribCents           int64   `json:"total_cnss_employee_contrib_cents"`
+	TotalCnssEmployerContribCents           int64   `json:"total_cnss_employer_contrib_cents"`
+	AmoEmployeeContribCents                 int64   `json:"amo_employee_contrib_cents"`
+	AmoEmployerContribCents                 int64   `json:"amo_employer_contrib_cents"`
+	TaxableNetSalaryCents                   int64   `json:"taxable_net_salary_cents"`
+	IncomeTaxCents                          int64   `json:"income_tax_cents"`
+	RoundingAmountCents                     int64   `json:"rounding_amount_cents"`
+	NetToPayCents                           int64   `json:"net_to_pay_cents"`
+	CreatedAt                               string  `json:"created_at"`
+	UpdatedAt                               string  `json:"updated_at"`
 }
 
 func (q *Queries) CreatePayrollResult(ctx context.Context, arg CreatePayrollResultParams) (PayrollResult, error) {
@@ -104,6 +109,8 @@ func (q *Queries) CreatePayrollResult(ctx context.Context, arg CreatePayrollResu
 		arg.Currency,
 		arg.BaseSalaryCents,
 		arg.SeniorityBonusCents,
+		arg.SeniorityYears,
+		arg.SeniorityRate,
 		arg.GrossSalaryCents,
 		arg.TotalOtherBonusCents,
 		arg.GrossSalaryGrandTotalCents,
@@ -136,6 +143,8 @@ func (q *Queries) CreatePayrollResult(ctx context.Context, arg CreatePayrollResu
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.SeniorityBonusCents,
+		&i.SeniorityYears,
+		&i.SeniorityRate,
 		&i.GrossSalaryCents,
 		&i.TotalOtherBonusCents,
 		&i.GrossSalaryGrandTotalCents,
@@ -171,7 +180,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NULL
-RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 `
 
 type DeletePayrollResultParams struct {
@@ -191,6 +200,8 @@ func (q *Queries) DeletePayrollResult(ctx context.Context, arg DeletePayrollResu
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.SeniorityBonusCents,
+		&i.SeniorityYears,
+		&i.SeniorityRate,
 		&i.GrossSalaryCents,
 		&i.TotalOtherBonusCents,
 		&i.GrossSalaryGrandTotalCents,
@@ -219,7 +230,7 @@ func (q *Queries) DeletePayrollResult(ctx context.Context, arg DeletePayrollResu
 }
 
 const getPayrollResult = `-- name: GetPayrollResult :one
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE
     id = ?
@@ -237,6 +248,8 @@ func (q *Queries) GetPayrollResult(ctx context.Context, id string) (PayrollResul
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.SeniorityBonusCents,
+		&i.SeniorityYears,
+		&i.SeniorityRate,
 		&i.GrossSalaryCents,
 		&i.TotalOtherBonusCents,
 		&i.GrossSalaryGrandTotalCents,
@@ -265,7 +278,7 @@ func (q *Queries) GetPayrollResult(ctx context.Context, id string) (PayrollResul
 }
 
 const getPayrollResultIncludingDeleted = `-- name: GetPayrollResultIncludingDeleted :one
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE id = ?
 `
@@ -281,6 +294,8 @@ func (q *Queries) GetPayrollResultIncludingDeleted(ctx context.Context, id strin
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.SeniorityBonusCents,
+		&i.SeniorityYears,
+		&i.SeniorityRate,
 		&i.GrossSalaryCents,
 		&i.TotalOtherBonusCents,
 		&i.GrossSalaryGrandTotalCents,
@@ -319,7 +334,7 @@ func (q *Queries) HardDeletePayrollResult(ctx context.Context, id string) error 
 }
 
 const listPayrollResults = `-- name: ListPayrollResults :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -342,6 +357,8 @@ func (q *Queries) ListPayrollResults(ctx context.Context) ([]PayrollResult, erro
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -380,7 +397,7 @@ func (q *Queries) ListPayrollResults(ctx context.Context) ([]PayrollResult, erro
 }
 
 const listPayrollResultsByEmployee = `-- name: ListPayrollResultsByEmployee :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE
     employee_id = ?
@@ -405,6 +422,8 @@ func (q *Queries) ListPayrollResultsByEmployee(ctx context.Context, employeeID s
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -443,7 +462,7 @@ func (q *Queries) ListPayrollResultsByEmployee(ctx context.Context, employeeID s
 }
 
 const listPayrollResultsByEmployeeIncludingDeleted = `-- name: ListPayrollResultsByEmployeeIncludingDeleted :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE employee_id = ?
 ORDER BY created_at DESC
@@ -466,6 +485,8 @@ func (q *Queries) ListPayrollResultsByEmployeeIncludingDeleted(ctx context.Conte
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -504,7 +525,7 @@ func (q *Queries) ListPayrollResultsByEmployeeIncludingDeleted(ctx context.Conte
 }
 
 const listPayrollResultsByPayrollPeriod = `-- name: ListPayrollResultsByPayrollPeriod :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE
     payroll_period_id = ?
@@ -529,6 +550,8 @@ func (q *Queries) ListPayrollResultsByPayrollPeriod(ctx context.Context, payroll
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -567,7 +590,7 @@ func (q *Queries) ListPayrollResultsByPayrollPeriod(ctx context.Context, payroll
 }
 
 const listPayrollResultsByPayrollPeriodIncludingDeleted = `-- name: ListPayrollResultsByPayrollPeriodIncludingDeleted :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 WHERE payroll_period_id = ?
 ORDER BY employee_id
@@ -590,6 +613,8 @@ func (q *Queries) ListPayrollResultsByPayrollPeriodIncludingDeleted(ctx context.
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -628,7 +653,7 @@ func (q *Queries) ListPayrollResultsByPayrollPeriodIncludingDeleted(ctx context.
 }
 
 const listPayrollResultsIncludingDeleted = `-- name: ListPayrollResultsIncludingDeleted :many
-SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+SELECT id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 FROM payroll_result
 ORDER BY created_at DESC
 `
@@ -650,6 +675,8 @@ func (q *Queries) ListPayrollResultsIncludingDeleted(ctx context.Context) ([]Pay
 			&i.Currency,
 			&i.BaseSalaryCents,
 			&i.SeniorityBonusCents,
+			&i.SeniorityYears,
+			&i.SeniorityRate,
 			&i.GrossSalaryCents,
 			&i.TotalOtherBonusCents,
 			&i.GrossSalaryGrandTotalCents,
@@ -695,7 +722,7 @@ SET
 WHERE
     id = ?
     AND deleted_at IS NOT NULL
-RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
+RETURNING id, payroll_period_id, employee_id, compensation_package_id, currency, base_salary_cents, seniority_bonus_cents, seniority_years, seniority_rate, gross_salary_cents, total_other_bonus_cents, gross_salary_grand_total_cents, family_allowance_cents, total_exemptions_cents, taxable_gross_salary_cents, social_allowance_employee_contrib_cents, social_allowance_employer_contrib_cents, job_loss_compensation_employee_contrib_cents, job_loss_compensation_employer_contrib_cents, training_tax_employer_contrib_cents, family_benefits_employer_contrib_cents, total_cnss_employee_contrib_cents, total_cnss_employer_contrib_cents, amo_employee_contrib_cents, amo_employer_contrib_cents, taxable_net_salary_cents, income_tax_cents, rounding_amount_cents, net_to_pay_cents, created_at, updated_at, deleted_at
 `
 
 type RestorePayrollResultParams struct {
@@ -714,6 +741,8 @@ func (q *Queries) RestorePayrollResult(ctx context.Context, arg RestorePayrollRe
 		&i.Currency,
 		&i.BaseSalaryCents,
 		&i.SeniorityBonusCents,
+		&i.SeniorityYears,
+		&i.SeniorityRate,
 		&i.GrossSalaryCents,
 		&i.TotalOtherBonusCents,
 		&i.GrossSalaryGrandTotalCents,

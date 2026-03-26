@@ -176,7 +176,9 @@ There is **no UPDATE query** for this table — corrections require deleting and
 | Column                           | Description                                                 |
 | -------------------------------- | ----------------------------------------------------------- |
 | `base_salary_cents`              | Base monthly salary                                         |
-| `seniority_bonus_cents`          | Seniority bonus                                             |
+| `seniority_bonus_cents`          | Seniority bonus amount                                      |
+| `seniority_years`                | Completed years of service at calculation time              |
+| `seniority_rate`                 | Applied bonus rate (0.0–0.25); stored for auditability      |
 | `gross_salary_cents`             | base + seniority                                            |
 | `total_extra_bonus_cents`        | Other bonuses                                               |
 | `gross_salary_grand_total_cents` | Total gross                                                 |

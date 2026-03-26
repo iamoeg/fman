@@ -114,6 +114,8 @@ type PayrollResult struct {
 	Currency                                string         `json:"currency"`
 	BaseSalaryCents                         int64          `json:"base_salary_cents"`
 	SeniorityBonusCents                     int64          `json:"seniority_bonus_cents"`
+	SeniorityYears                          int64          `json:"seniority_years"`
+	SeniorityRate                           float64        `json:"seniority_rate"`
 	GrossSalaryCents                        int64          `json:"gross_salary_cents"`
 	TotalOtherBonusCents                    int64          `json:"total_other_bonus_cents"`
 	GrossSalaryGrandTotalCents              int64          `json:"gross_salary_grand_total_cents"`

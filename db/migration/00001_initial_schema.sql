@@ -112,6 +112,8 @@ CREATE TABLE payroll_result(
     currency TEXT NOT NULL DEFAULT 'MAD' REFERENCES currency(code),
     base_salary_cents INTEGER NOT NULL CHECK(base_salary_cents >= 0),
     seniority_bonus_cents INTEGER NOT NULL DEFAULT 0 CHECK(seniority_bonus_cents >= 0),
+    seniority_years INTEGER NOT NULL DEFAULT 0 CHECK(seniority_years >= 0),
+    seniority_rate REAL NOT NULL DEFAULT 0.0 CHECK(seniority_rate >= 0.0 AND seniority_rate <= 1.0),
     gross_salary_cents INTEGER NOT NULL CHECK(gross_salary_cents >= 0),
     total_other_bonus_cents INTEGER NOT NULL DEFAULT 0 CHECK(total_other_bonus_cents >= 0),
     gross_salary_grand_total_cents INTEGER NOT NULL CHECK(gross_salary_grand_total_cents >= 0),

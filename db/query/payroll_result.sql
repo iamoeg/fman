@@ -58,6 +58,8 @@ INSERT INTO payroll_result(
     currency,
     base_salary_cents,
     seniority_bonus_cents,
+    seniority_years,
+    seniority_rate,
     gross_salary_cents,
     total_other_bonus_cents,
     gross_salary_grand_total_cents,
@@ -83,7 +85,8 @@ INSERT INTO payroll_result(
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?
 ) RETURNING *;
 
 -- name: DeletePayrollResult :one

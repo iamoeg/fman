@@ -295,6 +295,8 @@ type PayrollResult struct {
 	// Salary Components
 	BaseSalary            money.Money // Monthly base salary
 	SeniorityBonus        money.Money // Seniority bonus (ancienneté)
+	SeniorityYears        int         // Completed years of service at calculation time
+	SeniorityRate         float64     // Applied seniority bonus rate (0.0–0.25)
 	GrossSalary           money.Money // Base + Seniority
 	TotalOtherBonus       money.Money // Other bonuses (overtime, etc.)
 	GrossSalaryGrandTotal money.Money // Total gross including all bonuses

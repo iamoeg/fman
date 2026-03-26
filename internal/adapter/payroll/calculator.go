@@ -307,6 +307,8 @@ func (c *Calculator) Calculate(
 		// Salary components
 		BaseSalary:            baseSalary,
 		SeniorityBonus:        seniorityBonus,
+		SeniorityYears:        yearsOfService,
+		SeniorityRate:         seniorityRate(yearsOfService),
 		GrossSalary:           grossSalary,
 		TotalOtherBonus:       totalOtherBonus,
 		GrossSalaryGrandTotal: grossSalaryGrandTotal,
