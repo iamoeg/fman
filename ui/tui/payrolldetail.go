@@ -44,7 +44,7 @@ func renderPayrollResultDetail(
 		"",
 		divider("Salary"),
 		row("Base Salary", r.BaseSalary.String()),
-		row("Seniority Bonus", r.SeniorityBonus.String()),
+		row(fmt.Sprintf("Seniority Bonus (%dyr · %.0f%%)", r.SeniorityYears, r.SeniorityRate*100), r.SeniorityBonus.String()),
 		row("Gross Salary", r.GrossSalary.String()),
 		row("Other Bonuses", r.TotalOtherBonus.String()),
 		totalRow("Gross (Grand Total)", r.GrossSalaryGrandTotal.String()),

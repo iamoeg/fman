@@ -55,8 +55,9 @@
         Generating payroll with 0 employees now shows an error instead of "Generated 0 employee(s)".
 22. [ ] (Medium) Active org switching: switching active org requires navigating to Orgs section.
         Consider a dedicated switch-org prompt accessible from any section, or clearer visual indicator + help text.
-23. [ ] (Low) Payroll result: seniority details: the seniority bonus rate (5–25%) is applied silently.
-        Show calculated seniority years and applicable tier in the payroll detail view.
+23. [x] (Low) Payroll result: seniority details: added `SeniorityYears` and `SeniorityRate` to
+        `PayrollResult` (domain + DB). Calculator populates them at generation time. Detail view
+        now renders `Seniority Bonus (Xyr · Y%)` inline so the applied tier is always visible.
 24. [x] (Low) Employee history view: `ListPayrollResultsByEmployee` exists in the service layer
         but is never called from the TUI. Add a history tab/overlay showing payslips across months.
 25. [ ] (Medium) First-launch experience: when no config exists, guide the user through initial setup
