@@ -297,4 +297,3 @@ func (m Model) mainContentHeight() int {
 	}
 	return h
 }
-

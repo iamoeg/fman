@@ -7,8 +7,8 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/spf13/cobra"
 
 	"github.com/iamoeg/bootdev-capstone/db/migration"
 	calculator "github.com/iamoeg/bootdev-capstone/internal/adapter/payroll"
