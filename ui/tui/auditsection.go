@@ -90,7 +90,7 @@ func (s *auditSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case auditLogsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load audit logs — try again"
 			return s, nil
 		}
 		items := make([]list.Item, len(msg.logs))

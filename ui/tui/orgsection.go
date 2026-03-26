@@ -108,7 +108,7 @@ func (s *orgSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case orgsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load organizations — try again"
 			return s, nil
 		}
 		items := make([]list.Item, len(msg.orgs))
@@ -132,7 +132,7 @@ func (s *orgSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		s.state = orgStateList
 		s.pendingDeleteID = uuid.Nil
 		if msg.err != nil {
-			s.errMsg = "delete failed: " + msg.err.Error()
+			s.errMsg = "Delete failed — try again"
 			return s, nil
 		}
 		s.errMsg = ""
@@ -409,6 +409,6 @@ func userFriendlyOrgError(err error) string {
 	case errors.Is(err, application.ErrOrganizationNotFound):
 		return "Organization not found"
 	default:
-		return err.Error()
+		return "Something went wrong — please try again"
 	}
 }

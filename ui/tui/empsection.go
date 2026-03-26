@@ -554,7 +554,7 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case empsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load employees — try again"
 			return s, nil
 		}
 		s.pkgs = msg.pkgs
@@ -589,7 +589,7 @@ func (s *empSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case empHistoryLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load employees — try again"
 			s.state = empStateDetail
 			return s, nil
 		}
@@ -935,6 +935,6 @@ func userFriendlyEmpError(err error) string {
 	case errors.Is(err, application.ErrEmployeeExists):
 		return "CIN or CNSS number already in use"
 	default:
-		return err.Error()
+		return "Something went wrong — please try again"
 	}
 }

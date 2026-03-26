@@ -25,11 +25,11 @@ import (
 type payrollState int
 
 const (
-	payrollStateList     payrollState = iota
-	payrollStateCreating              // new period form overlay
-	payrollStateDeleting              // delete confirm inline
-	payrollStateResults               // drilled into results for selected period
-	payrollStateResultDetail          // drilled into a single result's full breakdown
+	payrollStateList         payrollState = iota
+	payrollStateCreating                  // new period form overlay
+	payrollStateDeleting                  // delete confirm inline
+	payrollStateResults                   // drilled into results for selected period
+	payrollStateResultDetail              // drilled into a single result's full breakdown
 )
 
 // ---------------------------------------------------------------------------
@@ -163,21 +163,21 @@ func (f payrollForm) view() string {
 // ---------------------------------------------------------------------------
 
 type payrollSection struct {
-	payrollSvc      *application.PayrollService
-	empSvc          *application.EmployeeService
-	orgID           uuid.UUID
-	list            list.Model
-	resultList      list.Model
-	state           payrollState
-	form            payrollForm
+	payrollSvc         *application.PayrollService
+	empSvc             *application.EmployeeService
+	orgID              uuid.UUID
+	list               list.Model
+	resultList         list.Model
+	state              payrollState
+	form               payrollForm
 	selectedPeriod     *domain.PayrollPeriod
 	selectedResult     *domain.PayrollResult
 	selectedResultName string
 	pendingDeleteID    uuid.UUID
 	errMsg             string
-	statusMsg       string
-	width           int
-	height          int
+	statusMsg          string
+	width              int
+	height             int
 }
 
 func newPayrollSection(
@@ -266,7 +266,7 @@ func (s *payrollSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case periodsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load payroll data — try again"
 			return s, nil
 		}
 		items := make([]list.Item, len(msg.periods))
@@ -279,7 +279,7 @@ func (s *payrollSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case resultsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load payroll data — try again"
 			s.state = payrollStateList
 			return s, nil
 		}
@@ -311,7 +311,7 @@ func (s *payrollSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		}
 		if msg.count == 0 {
 			s.statusMsg = ""
-			s.errMsg = "No employees in this organization — nothing was generated."
+			s.errMsg = "No employees in this organization — nothing was generated"
 			return s, nil
 		}
 		s.errMsg = ""
@@ -578,7 +578,7 @@ func (s *payrollSection) renderFormOverlay(width, height int) string {
 	if s.errMsg != "" {
 		errorLine = "\n" + lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")).
-			Render("  " + s.errMsg)
+			Render("  "+s.errMsg)
 	}
 
 	inner := titleStyle.Render("New Payroll Period") + "\n" + s.form.view() + errorLine
@@ -629,12 +629,20 @@ func userFriendlyPayrollError(err error) string {
 	case errors.Is(err, application.ErrPayrollPeriodNotFinalized):
 		return "Period is not finalized"
 	case errors.Is(err, application.ErrPayrollPeriodEmpty):
-		return "Cannot finalize: no results generated yet"
+		return "Cannot finalize — no results generated yet"
 	case errors.Is(err, application.ErrPayrollPeriodNotFound):
 		return "Period not found"
 	case errors.Is(err, application.ErrPayrollCalculationFailed):
-		return "Payroll calculation failed: " + err.Error()
+		raw := err.Error()
+		switch {
+		case strings.Contains(raw, "SMIG") || strings.Contains(raw, "minimum wage"):
+			return "An employee's salary is below the legal minimum wage (SMIG)"
+		case strings.Contains(raw, "rate table") || strings.Contains(raw, "payroll year"):
+			return "No tax rates configured for this payroll year"
+		default:
+			return "Payroll calculation failed — check employee records"
+		}
 	default:
-		return err.Error()
+		return "Something went wrong — please try again"
 	}
 }

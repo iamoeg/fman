@@ -55,5 +55,8 @@
         but is never called from the TUI. Add a history tab/overlay showing payslips across months.
 25. [ ] (Medium) First-launch experience: when no config exists, guide the user through initial setup
         (e.g. display name, config path, default org). Avoids dropping a blank screen on first run.
-26. [ ] (Medium) Error message review: audit all user-facing errors for clarity and consistency.
-        Prefer Go-idiomatic lowercase, sentence-style messages. Avoid raw sentinel error strings leaking into the UI.
+26. [x] (Medium) Error message review: audited all user-facing errors for clarity and consistency.
+        Load errors, delete failures, and form validation no longer expose raw internal strings.
+        `userFriendly*` default cases return a generic message instead of `err.Error()`.
+        `ErrPayrollCalculationFailed` unwraps to actionable hints (SMIG / unsupported year / generic).
+        `"Invalid salary amount: %w"` replaced with a fixed user-facing string.

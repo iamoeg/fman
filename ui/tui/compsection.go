@@ -120,7 +120,7 @@ func (f compForm) toDomain(orgID uuid.UUID) (*domain.EmployeeCompensationPackage
 	}
 	salary, err := money.FromMAD(val)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid salary amount: %w", err)
+		return nil, errors.New("Base salary must be a positive value")
 	}
 	return &domain.EmployeeCompensationPackage{
 		OrgID:      orgID,
@@ -232,7 +232,7 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case compsLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "load error: " + msg.err.Error()
+			s.errMsg = "Could not load packages — try again"
 			return s, nil
 		}
 		items := make([]list.Item, len(msg.pkgs))
@@ -273,7 +273,7 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case compUsageLoadedMsg:
 		if msg.err != nil {
-			s.errMsg = "usage load error: " + msg.err.Error()
+			s.errMsg = "Could not load usage data — try again"
 		} else {
 			s.detailEmpCount = msg.empCount
 			s.detailPayrollCount = msg.resultCount
@@ -511,6 +511,6 @@ func userFriendlyCompError(err error) string {
 	case errors.Is(err, application.ErrCompensationPackageNotFound):
 		return "Package not found"
 	default:
-		return err.Error()
+		return "Something went wrong — please try again"
 	}
 }
