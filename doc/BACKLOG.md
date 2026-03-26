@@ -23,7 +23,11 @@
 9. [x] (Medium) Filter in payroll section: filter payroll periods by year or status (DRAFT/FINALIZED).
        Press `/` to activate. `FilterValue` includes year, month name, status, and YYYY-MM so any
        of "2025", "January", "DRAFT", "FINALIZED", or "2025-01" narrows the list.
-10. [ ] (Low) Restore soft-deleted items: UI to list and restore soft-deleted orgs/employees.
+10. [x] (Low) Restore soft-deleted items: press `D` in any section to toggle the deleted view
+        (title shows `[DELETED]`). Deleted items show their `deleted_at` date. `r` restores
+        immediately; `x` hard-deletes with a permanent-warning confirm prompt. Implemented for
+        orgs, employees, and compensation packages. Payroll periods/results deferred (complex
+        restore semantics).
 11. [ ] (High) Fix form vertical dimensions: forms overflow or misalign vertically in some terminal sizes.
 12. [ ] (Medium) Unified design system: audit and standardize colors, borders,
         spacing, and status row styles across all sections.
