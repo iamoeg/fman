@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/iamoeg/bootdev-capstone/internal/domain"
 )
@@ -15,7 +16,11 @@ func (i compItem) Title() string {
 }
 
 func (i compItem) Description() string {
-	return fmt.Sprintf("%.2f %s · Created %s", i.pkg.BaseSalary.ToMAD(), i.pkg.Currency, i.pkg.CreatedAt.Format("2006-01-02"))
+	desc := fmt.Sprintf("%.2f %s · Created %s", i.pkg.BaseSalary.ToMAD(), i.pkg.Currency, i.pkg.CreatedAt.Format("2006-01-02"))
+	if i.pkg.DeletedAt != nil {
+		desc += "  ·  deleted: " + i.pkg.DeletedAt.Format(time.DateOnly)
+	}
+	return desc
 }
 
 func (i compItem) FilterValue() string {

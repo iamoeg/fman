@@ -19,6 +19,14 @@ type saveCompDoneMsg struct{ err error }
 type deleteCompDoneMsg struct{ err error }
 type renameCompDoneMsg struct{ err error }
 
+type compsDeletedLoadedMsg struct {
+	pkgs []*domain.EmployeeCompensationPackage
+	err  error
+}
+
+type restoreCompDoneMsg struct{ err error }
+type hardDeleteCompDoneMsg struct{ err error }
+
 func loadCompsCmd(svc *application.CompensationPackageService, orgID uuid.UUID) tea.Cmd {
 	return func() tea.Msg {
 		if orgID == uuid.Nil {
@@ -40,6 +48,30 @@ func deleteCompCmd(svc *application.CompensationPackageService, id uuid.UUID) te
 	return func() tea.Msg {
 		err := svc.DeleteCompensationPackage(context.Background(), id)
 		return deleteCompDoneMsg{err: err}
+	}
+}
+
+func loadDeletedCompsCmd(svc *application.CompensationPackageService, orgID uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		if orgID == uuid.Nil {
+			return compsDeletedLoadedMsg{}
+		}
+		pkgs, err := svc.ListCompensationPackagesIncludingDeleted(context.Background(), orgID)
+		return compsDeletedLoadedMsg{pkgs: pkgs, err: err}
+	}
+}
+
+func restoreCompCmd(svc *application.CompensationPackageService, id uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		err := svc.RestoreCompensationPackage(context.Background(), id)
+		return restoreCompDoneMsg{err: err}
+	}
+}
+
+func hardDeleteCompCmd(svc *application.CompensationPackageService, id uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		err := svc.HardDeleteCompensationPackage(context.Background(), id)
+		return hardDeleteCompDoneMsg{err: err}
 	}
 }
 

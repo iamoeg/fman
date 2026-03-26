@@ -27,11 +27,13 @@ var compDetailKey = key.NewBinding(
 type compState int
 
 const (
-	compStateList     compState = iota
-	compStateCreating           // create form open
-	compStateEditing            // rename form open
-	compStateDeleting           // delete confirmation open
-	compStateDetail             // read-only detail overlay
+	compStateList         compState = iota
+	compStateCreating               // create form open
+	compStateEditing                // rename form open
+	compStateDeleting               // delete confirmation open
+	compStateDetail                 // read-only detail overlay
+	compStateDeleted                // browsing soft-deleted packages
+	compStateHardDeleting           // hard-delete confirmation overlay
 )
 
 // compForm holds the Name and BaseSalary inputs for the create overlay,
@@ -200,8 +202,10 @@ func (s *compSection) Init() tea.Cmd {
 }
 
 func (s *compSection) IsOverlay() bool {
-	return s.state == compStateCreating || s.state == compStateEditing || s.state == compStateDeleting ||
-		s.state == compStateDetail || s.list.FilterState() == list.Filtering
+	if s.state == compStateList || s.state == compStateDeleted {
+		return s.list.FilterState() == list.Filtering
+	}
+	return true
 }
 
 func (s *compSection) ShortHelp() []key.Binding {
@@ -212,8 +216,16 @@ func (s *compSection) ShortHelp() []key.Binding {
 		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	case compStateDetail:
 		return []key.Binding{sectionBackKey}
+	case compStateDeleted:
+		return []key.Binding{
+			mainKeys.ToggleDeleted,
+			mainKeys.Restore,
+			mainKeys.HardDelete,
+		}
+	case compStateHardDeleting:
+		return []key.Binding{confirmKeys.Yes, confirmKeys.No}
 	default:
-		return []key.Binding{compDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter}
+		return []key.Binding{compDetailKey, mainKeys.New, mainKeys.Edit, mainKeys.Delete, mainKeys.Filter, mainKeys.ToggleDeleted}
 	}
 }
 
@@ -228,6 +240,9 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 	case activeOrgLoadedMsg:
 		s.orgID = msg.orgID
+		if s.state == compStateDeleted {
+			return s, loadDeletedCompsCmd(s.svc, s.orgID)
+		}
 		return s, loadCompsCmd(s.svc, s.orgID)
 
 	case compsLoadedMsg:
@@ -281,11 +296,43 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 		}
 		return s, nil
 
+	case compsDeletedLoadedMsg:
+		if msg.err != nil {
+			s.errMsg = "Could not load deleted packages — try again"
+			return s, nil
+		}
+		var items []list.Item
+		for _, p := range msg.pkgs {
+			if p.DeletedAt != nil {
+				items = append(items, compItem{pkg: p})
+			}
+		}
+		cmd := s.list.SetItems(items)
+		s.errMsg = ""
+		return s, cmd
+
+	case restoreCompDoneMsg:
+		if msg.err != nil {
+			s.errMsg = "Restore failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedCompsCmd(s.svc, s.orgID)
+
+	case hardDeleteCompDoneMsg:
+		s.pendingDeleteID = uuid.Nil
+		if msg.err != nil {
+			s.errMsg = "Hard delete failed — try again"
+			return s, nil
+		}
+		s.errMsg = ""
+		return s, loadDeletedCompsCmd(s.svc, s.orgID)
+
 	case tea.KeyMsg:
 		return s.updateKey(msg)
 	}
 
-	if s.state == compStateList {
+	if s.state == compStateList || s.state == compStateDeleted {
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
 		return s, cmd
@@ -295,6 +342,53 @@ func (s *compSection) Update(msg tea.Msg) (sectionModel, tea.Cmd) {
 
 func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 	switch s.state {
+
+	case compStateDeleted:
+		if s.list.FilterState() == list.Filtering {
+			var cmd tea.Cmd
+			s.list, cmd = s.list.Update(msg)
+			return s, cmd
+		}
+		switch {
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Compensation Packages"
+			s.state = compStateList
+			s.errMsg = ""
+			return s, loadCompsCmd(s.svc, s.orgID)
+
+		case key.Matches(msg, mainKeys.Restore):
+			selected, ok := s.list.SelectedItem().(compItem)
+			if !ok {
+				return s, nil
+			}
+			return s, restoreCompCmd(s.svc, selected.pkg.ID)
+
+		case key.Matches(msg, mainKeys.HardDelete):
+			selected, ok := s.list.SelectedItem().(compItem)
+			if !ok {
+				return s, nil
+			}
+			s.pendingDeleteID = selected.pkg.ID
+			s.state = compStateHardDeleting
+			return s, nil
+		}
+		var cmd tea.Cmd
+		s.list, cmd = s.list.Update(msg)
+		return s, cmd
+
+	case compStateHardDeleting:
+		switch {
+		case key.Matches(msg, confirmKeys.Yes):
+			id := s.pendingDeleteID
+			s.pendingDeleteID = uuid.Nil
+			s.state = compStateDeleted
+			return s, hardDeleteCompCmd(s.svc, id)
+		case key.Matches(msg, confirmKeys.No):
+			s.pendingDeleteID = uuid.Nil
+			s.state = compStateDeleted
+			return s, nil
+		}
+		return s, nil
 
 	case compStateList:
 		if s.list.FilterState() == list.Filtering {
@@ -343,6 +437,12 @@ func (s *compSection) updateKey(msg tea.KeyMsg) (sectionModel, tea.Cmd) {
 			s.detailPayrollCount = 0
 			s.errMsg = ""
 			return s, loadCompUsageCmd(s.svc, selected.pkg.ID)
+
+		case key.Matches(msg, mainKeys.ToggleDeleted):
+			s.list.Title = "Compensation Packages [DELETED]"
+			s.state = compStateDeleted
+			s.errMsg = ""
+			return s, loadDeletedCompsCmd(s.svc, s.orgID)
 		}
 		var cmd tea.Cmd
 		s.list, cmd = s.list.Update(msg)
@@ -429,7 +529,10 @@ func (s *compSection) View(width, height int) string {
 	}
 	if statusRow == "" && len(s.list.Items()) == 0 {
 		hint := "Press n to create your first compensation package."
-		if s.orgID == uuid.Nil {
+		switch {
+		case s.state == compStateDeleted:
+			hint = "No deleted packages."
+		case s.orgID == uuid.Nil:
 			hint = "Select an active organization first."
 		}
 		statusRow = lipgloss.NewStyle().
@@ -444,6 +547,8 @@ func (s *compSection) View(width, height int) string {
 	switch s.state {
 	case compStateDeleting:
 		return s.renderDeleteConfirm(listView, width)
+	case compStateHardDeleting:
+		return s.renderHardDeleteConfirm(listView, width)
 	case compStateCreating:
 		return s.renderFormOverlay("New Compensation Package", width, height)
 	case compStateEditing:
@@ -482,6 +587,19 @@ func (s *compSection) renderFormOverlay(title string, width, height int) string 
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(lipgloss.Color("235")),
 	)
+}
+
+func (s *compSection) renderHardDeleteConfirm(listView string, width int) string {
+	name := ""
+	if selected, ok := s.list.SelectedItem().(compItem); ok {
+		name = selected.Title()
+	}
+	prompt := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("196")).
+		Bold(true).
+		Width(width).
+		Render(fmt.Sprintf("  Hard-delete package %q? This is permanent and cannot be undone. [y] yes  [n/bksp] cancel", name))
+	return lipgloss.JoinVertical(lipgloss.Left, listView, prompt)
 }
 
 func (s *compSection) renderDeleteConfirm(listView string, width int) string {
