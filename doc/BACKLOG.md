@@ -18,8 +18,10 @@
        `payroll_period_status`, `audit_action`). Each has a single `code TEXT PRIMARY KEY` and is
        seeded in the migration. Enum columns now carry bare FK references. Adding a new value = one
        INSERT migration, no schema edit.
-8. [ ] (Medium) Pay simulator for new hires: given a base salary and employee profile,
-       show estimated net pay, taxes, and contributions before creating the employee. Read-only, no DB writes.
+8. [x] (Medium) Pay simulator for new hires: dedicated "Simulator" sidebar section.
+       Form inputs: base salary, hire date, marital status (SINGLE/MARRIED/SEPARATED/DIVORCED/WIDOWED),
+       dependents, children. Defaults to current month/year. Result mirrors the payroll detail view layout.
+       No DB writes; calculator instantiated directly with no service dependency.
 9. [x] (Medium) Filter in payroll section: filter payroll periods by year or status (DRAFT/FINALIZED).
        Press `/` to activate. `FilterValue` includes year, month name, status, and YYYY-MM so any
        of "2025", "January", "DRAFT", "FINALIZED", or "2025-01" narrows the list.

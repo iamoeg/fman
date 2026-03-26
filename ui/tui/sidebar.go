@@ -13,6 +13,7 @@ const (
 	sectionEmployees
 	sectionCompensation
 	sectionPayroll
+	sectionSimulator
 	sectionAuditLog
 	sectionCount // must be last
 )
@@ -22,6 +23,7 @@ var sectionLabels = [sectionCount]string{
 	sectionEmployees:     "Employees",
 	sectionCompensation:  "Compensation",
 	sectionPayroll:       "Payroll",
+	sectionSimulator:     "Simulator",
 	sectionAuditLog:      "Audit Log",
 }
 

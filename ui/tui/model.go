@@ -93,6 +93,7 @@ func NewModel(app *App) Model {
 	m.sections[sectionCompensation] = newCompSection(app.CompensationService, initialOrgID)
 	m.sections[sectionEmployees] = newEmpSection(app.EmployeeService, app.CompensationService, app.PayrollService, initialOrgID)
 	m.sections[sectionPayroll] = newPayrollSection(app.PayrollService, app.EmployeeService, initialOrgID)
+	m.sections[sectionSimulator] = newSimSection()
 	m.sections[sectionAuditLog] = newAuditSection(app.AuditLogService)
 	return m
 }
