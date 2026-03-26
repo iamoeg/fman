@@ -191,7 +191,7 @@ func newPayrollSection(
 	l.Title = "Payroll Periods"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
+	l.SetFilteringEnabled(true)
 	l.Styles.NoItems = l.Styles.NoItems.PaddingLeft(2)
 
 	rl := list.New(nil, delegate, 0, 0)

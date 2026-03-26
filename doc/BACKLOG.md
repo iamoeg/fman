@@ -20,7 +20,9 @@
        INSERT migration, no schema edit.
 8. [ ] (Medium) Pay simulator for new hires: given a base salary and employee profile,
        show estimated net pay, taxes, and contributions before creating the employee. Read-only, no DB writes.
-9. [ ] (Medium) Filter in payroll section: filter payroll periods by year or status (DRAFT/FINALIZED).
+9. [x] (Medium) Filter in payroll section: filter payroll periods by year or status (DRAFT/FINALIZED).
+       Press `/` to activate. `FilterValue` includes year, month name, status, and YYYY-MM so any
+       of "2025", "January", "DRAFT", "FINALIZED", or "2025-01" narrows the list.
 10. [ ] (Low) Restore soft-deleted items: UI to list and restore soft-deleted orgs/employees.
 11. [ ] (High) Fix form vertical dimensions: forms overflow or misalign vertically in some terminal sizes.
 12. [ ] (Medium) Unified design system: audit and standardize colors, borders,

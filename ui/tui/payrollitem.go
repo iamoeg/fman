@@ -30,7 +30,9 @@ func (i periodItem) Description() string {
 }
 
 func (i periodItem) FilterValue() string {
-	return fmt.Sprintf("%d-%02d", i.period.Year, i.period.Month)
+	monthName := time.Month(i.period.Month).String()
+	status := string(i.period.Status)
+	return fmt.Sprintf("%d %s %s %d-%02d", i.period.Year, monthName, status, i.period.Year, i.period.Month)
 }
 
 // resultItem wraps a PayrollResult + employee name for display in the results list.
