@@ -1,0 +1,91 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: none
+  enable:
+    # --- Correctness ---
+    - govet # go vet: shadow, printf, composites, etc.
+    - errcheck # unchecked errors
+    - staticcheck # SA*, S1*, QF* — comprehensive static analysis
+    - ineffassign # assignments whose result is never used
+    - unused # unused exported and unexported identifiers
+    - nilerr # return nil with non-nil error (common mistake)
+    - copyloopvar # loop variable capture (pre-1.22 idiom guard)
+    - unconvert # unnecessary type conversions
+
+    # --- Error handling ---
+    - errorlint # enforce errors.Is/As/Unwrap instead of == comparisons
+
+    # --- Code quality ---
+    - gocritic # large opt-in suite (tags configured below)
+    - revive # configurable style/quality rules
+
+    # --- Formatting / style ---
+    - misspell # common English spelling mistakes in comments/strings
+
+    # --- Security ---
+    - gosec # OWASP-style security checks (subset, see exclusions below)
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # struct padding optimization — too noisy for a TUI project
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - commentedOutCode # section dividers are legitimately present
+      - hugeParam # not a concern at this scale
+      - rangeValCopy # copyloopvar already handles this
+
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - disableStutteringCheck # allow domain.DomainError naming style
+      - name: var-naming
+      - name: error-return
+      - name: error-strings
+      - name: increment-decrement
+      - name: unused-parameter
+
+  gosec:
+    excludes:
+      - G104 # unhandled errors — errcheck already covers this
+      - G304 # file path from variable — acceptable for CLI config loading
+      - G306 # weak file permissions — not relevant here
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+
+  staticcheck:
+    checks:
+      - "all"
+      - "-SA1019" # deprecated API usage — too noisy while deps catch up
+
+formatters:
+  enable:
+    - gofmt   # standard Go formatting
+    - gofumpt # stricter superset of gofmt
+
+issues:
+  exclude-dirs:
+    - internal/adapter/sqlite/sqldb # sqlc-generated; never edit by hand
+  exclude-rules:
+    - path: "_test\\.go$"
+      linters:
+        - errcheck # test helpers intentionally ignore errors
+        - gosec # test data doesn't need security hardening
+    - path: "db/migration/embed\\.go$"
+      linters:
+        - unused # exists solely for its side-effect import
+  max-issues-per-linter: 50
+  max-same-issues: 5
