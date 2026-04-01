@@ -147,8 +147,8 @@ func (pp *PayrollPeriod) ValidateStatus() error {
 //   - FinalizedAt <= now (if set)
 func (pp *PayrollPeriod) ValidateStateConsistency() error {
 	// Check Status/FinalizedAt consistency
-	if !((pp.Status == PayrollPeriodStatusDraft && pp.FinalizedAt == nil) ||
-		(pp.Status == PayrollPeriodStatusFinalized && pp.FinalizedAt != nil)) {
+	if (pp.Status != PayrollPeriodStatusDraft || pp.FinalizedAt != nil) &&
+		(pp.Status != PayrollPeriodStatusFinalized || pp.FinalizedAt == nil) {
 		return fmt.Errorf(
 			"%w: .Status and .FinalizedAt are inconsistent. .Status is %v but .FinalizedAt is %v",
 			ErrInvalidPayrollPeriodState,
@@ -229,6 +229,7 @@ const (
 // PayrollPeriod Errors
 // ============================================================================
 
+// PayrollPeriod validation errors.
 var (
 	ErrPayrollPeriodIDRequired    = errors.New("domain: payroll: payroll period id (uuid) is required")
 	ErrPayrollPeriodOrgIDRequired = errors.New("domain: payroll: payroll period org id (uuid) is required")
@@ -695,6 +696,7 @@ var (
 // PayrollResult Errors
 // ============================================================================
 
+// PayrollResult validation errors.
 var (
 	ErrPayrollResultIDRequired                    = errors.New("domain: payroll: payroll result id (uuid) is required")
 	ErrPayrollResultEmployeeIDRequired            = errors.New("domain: payroll: payroll result employee id (uuid) is required")

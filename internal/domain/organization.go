@@ -131,6 +131,7 @@ func (lf OrgLegalFormEnum) IsSupported() bool {
 // Organization Errors
 // ============================================================================
 
+// Organization validation errors.
 var (
 	ErrOrgIDRequired            = errors.New("domain: organization: id (uuid) is required")
 	ErrOrgNameRequired          = errors.New("domain: organization: name is required")

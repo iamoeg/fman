@@ -1,3 +1,5 @@
+// Package domain contains the core business entities, rules, and error types
+// for the application.
 package domain
 
 import (
@@ -301,6 +303,7 @@ func (e *Employee) ValidateCompensationPackageID() error {
 // in Moroccan official documentation.
 type GenderEnum string
 
+// Supported gender values for Moroccan official documentation.
 const (
 	GenderMale   GenderEnum = "MALE"
 	GenderFemale GenderEnum = "FEMALE"
@@ -328,6 +331,7 @@ func (g GenderEnum) IsSupported() bool {
 // Used for tax calculations in Moroccan payroll.
 type MaritalStatusEnum string
 
+// Supported marital status values used in Moroccan payroll tax calculations.
 const (
 	MaritalStatusSingle    MaritalStatusEnum = "SINGLE"
 	MaritalStatusMarried   MaritalStatusEnum = "MARRIED"
@@ -381,6 +385,7 @@ const (
 // Employee Errors
 // ============================================================================
 
+// Employee validation errors.
 var (
 	ErrEmployeeIDRequired                    = errors.New("domain: employee: id (uuid) is required")
 	ErrEmployeeOrgIDRequired                 = errors.New("domain: employee: org id (uuid) required")
@@ -518,6 +523,7 @@ var MinWageSMIG = money.FromCents(SMIG2026Cents)
 // Compensation Package Errors
 // ============================================================================
 
+// Compensation package validation errors.
 var (
 	ErrInvalidEmployeeCompensationPackageBaseSalary = errors.New("domain: employee: compensation package: invalid base salary")
 	ErrCompensationPackageOrgIDRequired             = errors.New("domain: employee: compensation package: org id is required")

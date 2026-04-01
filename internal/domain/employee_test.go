@@ -675,7 +675,8 @@ func TestEmployee_ValidateCINNum(t *testing.T) {
 			name:    "only tabs",
 			cinNum:  "\t\t",
 			wantErr: domain.ErrEmployeeCINNumRequired,
-		}, {
+		},
+		{
 			name:    "mixed whitespace",
 			cinNum:  "\t \n\t ",
 			wantErr: domain.ErrEmployeeCINNumRequired,
