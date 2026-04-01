@@ -46,7 +46,7 @@ import (
 // so any type with a String() method will use that representation.
 func EnumMapToString[T comparable](m map[T]struct{}) string {
 	values := make([]string, 0, len(m))
-	for k, _ := range m {
+	for k := range m {
 		values = append(values, fmt.Sprint(k))
 	}
 	sort.Strings(values)

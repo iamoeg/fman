@@ -1,3 +1,4 @@
+// Package migration embeds and runs SQL migrations using goose.
 package migration
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// FS holds the embedded SQL migration files.
+//
 //go:embed *.sql
 var FS embed.FS
 

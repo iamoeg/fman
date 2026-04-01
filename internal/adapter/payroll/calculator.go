@@ -1,3 +1,4 @@
+// Package calculator implements the Moroccan payroll calculation engine.
 package calculator
 
 import (
