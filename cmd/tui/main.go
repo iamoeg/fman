@@ -18,12 +18,15 @@ import (
 	"github.com/iamoeg/fman/ui/tui"
 )
 
+var version = "dev"
+
 var cfgPath string
 
 var rootCmd = &cobra.Command{
-	Use:   "fman",
-	Short: "Moroccan payroll manager",
-	RunE:  runTUI,
+	Use:     "fman",
+	Short:   "Moroccan payroll manager",
+	Version: version,
+	RunE:    runTUI,
 }
 
 func init() {
