@@ -577,8 +577,8 @@ func (r *PayrollPeriodRepository) HardDelete(ctx context.Context, id uuid.UUID) 
 		return fmt.Errorf(FmtRowParsingErr, "payroll period", err)
 	}
 
-	if err := qtx.HardDeletePayrollPeriod(ctx, period.ID.String()); err != nil {
-		return fmt.Errorf(FmtDBQueryErr, "delete payroll period", err)
+	if delErr := qtx.HardDeletePayrollPeriod(ctx, period.ID.String()); delErr != nil {
+		return fmt.Errorf(FmtDBQueryErr, "delete payroll period", delErr)
 	}
 
 	if err = createAuditLog(
@@ -632,9 +632,9 @@ func rowToPayrollPeriod(row sqldb.PayrollPeriod) (*domain.PayrollPeriod, error) 
 
 	var finalizedAt *time.Time
 	if row.FinalizedAt.Valid {
-		t, err := time.Parse(DBTimeFormat, row.FinalizedAt.String)
-		if err != nil {
-			return nil, fmt.Errorf(FmtColumnParsingErr, "finalized_at as time", err)
+		t, parseErr := time.Parse(DBTimeFormat, row.FinalizedAt.String)
+		if parseErr != nil {
+			return nil, fmt.Errorf(FmtColumnParsingErr, "finalized_at as time", parseErr)
 		}
 		finalizedAt = &t
 	}
@@ -735,6 +735,6 @@ func payrollPeriodToUnfinalizeParams(period *domain.PayrollPeriod) sqldb.Unfinal
 // ============================================================================
 
 const (
-	// Table name constant for audit logging.
+	// PayrollPeriodTableName is the payroll period table name used for audit logging.
 	PayrollPeriodTableName = "payroll_period"
 )

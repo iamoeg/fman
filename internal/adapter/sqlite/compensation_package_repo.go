@@ -223,8 +223,8 @@ func (r *EmployeeCompensationPackageRepository) Update(ctx context.Context, pkg 
 	}
 
 	// Guard: Prevent modification of packages in use
-	if err := r.checkNotInUse(ctx, qtx, pkgOld.ID); err != nil {
-		return err
+	if checkErr := r.checkNotInUse(ctx, qtx, pkgOld.ID); checkErr != nil {
+		return checkErr
 	}
 
 	params := compensationPackageToUpdateParams(pkg)
@@ -356,8 +356,8 @@ func (r *EmployeeCompensationPackageRepository) Delete(ctx context.Context, id u
 	}
 
 	// Guard: Prevent deletion of packages in use
-	if err := r.checkNotInUse(ctx, qtx, pkg.ID); err != nil {
-		return err
+	if checkErr := r.checkNotInUse(ctx, qtx, pkg.ID); checkErr != nil {
+		return checkErr
 	}
 
 	params := compensationPackageToDeleteParams(pkg)
@@ -655,7 +655,7 @@ func compensationPackageToRestoreParams(pkg *domain.EmployeeCompensationPackage)
 // ============================================================================
 
 const (
-	// Table name constant for audit logging.
+	// CompensationPackageTableName is the compensation package table name used for audit logging.
 	CompensationPackageTableName = "employee_compensation_package"
 )
 

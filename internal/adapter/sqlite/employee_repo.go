@@ -552,7 +552,6 @@ func rowToEmployee(row sqldb.Employee) (*domain.Employee, error) {
 		UpdatedAt:             updatedAt,
 		DeletedAt:             deletedAt,
 	}, nil
-
 }
 
 // employeeToCreateParams converts a domain.Employee to sqlc CreateEmployeeParams.

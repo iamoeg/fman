@@ -636,6 +636,6 @@ func payrollResultToRestoreParams(res *domain.PayrollResult) sqldb.RestorePayrol
 // ============================================================================
 
 const (
-	// Table name constant for audit logging.
+	// PayrollResultTableName is the payroll result table name used for audit logging.
 	PayrollResultTableName = "payroll_result"
 )

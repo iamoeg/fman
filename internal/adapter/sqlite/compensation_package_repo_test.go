@@ -28,7 +28,7 @@ func createTestCompensationPackage(orgID uuid.UUID) *domain.EmployeeCompensation
 	counter := atomic.AddInt64(&pkgCounter, 1)
 
 	// Base salary between SMIG (3000 MAD) and reasonable max (50000 MAD)
-	baseSalaryCents := int64(3000+counter) * 100
+	baseSalaryCents := (3000 + counter) * 100
 
 	return &domain.EmployeeCompensationPackage{
 		ID:         uuid.New(),

@@ -53,7 +53,7 @@ func TestPayrollResultRepository_Concurrency(t *testing.T) {
 		employeeIDs := make([]string, numGoroutines)
 		for i := range numGoroutines {
 			emp := createTestEmployee(orgID, compID, i+10) // Start from 10 to avoid conflicts
-			err := empRepo.Create(ctx, emp)
+			err = empRepo.Create(ctx, emp)
 			require.NoError(t, err)
 			employeeIDs[i] = emp.ID.String()
 		}

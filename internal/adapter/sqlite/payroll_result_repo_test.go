@@ -98,7 +98,7 @@ func createTestPayrollResult(periodID, employeeID, compensationPkgID uuid.UUID) 
 
 // setupPayrollTestData creates a complete test environment with org, employee, period, etc.
 // Returns: orgID, employeeID, compensationPkgID, periodID
-func setupPayrollTestData(t *testing.T, db *sql.DB) (orgID uuid.UUID, empID uuid.UUID, compPkgID uuid.UUID, periodID uuid.UUID) {
+func setupPayrollTestData(t *testing.T, db *sql.DB) (orgID, empID, compPkgID, periodID uuid.UUID) {
 	t.Helper()
 
 	ctx := context.Background()

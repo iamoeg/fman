@@ -1,3 +1,4 @@
+// Package sqlite_adapter implements the repository interfaces using SQLite as the backing store.
 package sqlite_adapter
 
 import (
@@ -67,7 +68,7 @@ func NewAuditLogRepository(db *sql.DB) *AuditLogRepository {
 //
 //	logs, err := repo.FindForRecord(ctx, "employee", employeeID)
 //	// logs contains complete history of changes to this employee
-func (r *AuditLogRepository) FindForRecord(ctx context.Context, tableName string, recordID string) ([]*AuditLog, error) {
+func (r *AuditLogRepository) FindForRecord(ctx context.Context, tableName, recordID string) ([]*AuditLog, error) {
 	params := sqldb.ListAuditLogsForRecordParams{
 		TableName: tableName,
 		RecordID:  recordID,
@@ -237,8 +238,7 @@ func rowToAuditLog(row sqldb.AuditLog) (*AuditLog, error) {
 // ============================================================================
 
 const (
-	// Table name constant for consistency with other repositories.
-	// Note: This is primarily for documentation - audit logs are created via
-	// the createAuditLog helper, not through this repository.
+	// AuditLogTableName is the audit log table name.
+	// Note: audit logs are created via the createAuditLog helper, not through this repository.
 	AuditLogTableName = "audit_log"
 )

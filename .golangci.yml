@@ -86,6 +86,13 @@ linters:
         linters:
           - staticcheck
         text: "ST1005:"
+      - text: "Error return value of `tx.Rollback` is not checked"
+        linters:
+          - errcheck # deferred rollback is intentional: no-op if tx was committed
+      - path: "internal/adapter/sqlite"
+        linters:
+          - staticcheck
+        text: "ST1003:" # sqlite_adapter package name is intentional
 
 formatters:
   enable:

@@ -522,7 +522,7 @@ func TestEmployeeRepository_DataIntegrity(t *testing.T) {
 		orgID, compPackID := setupEmployeeTestDeps(t, ctx, db)
 
 		emp := createTestEmployee(orgID, compPackID, 1)
-		emp.FullName = "Ù…Ø­Ù…Ø¯ Ø¨Ù† Ø£Ø­Ù…Ø¯" // Arabic name
+		emp.FullName = "محمد علي" //nolint:staticcheck // Arabic text is more readable as literals than escape sequences
 
 		err := repo.Create(ctx, emp)
 		require.NoError(t, err)

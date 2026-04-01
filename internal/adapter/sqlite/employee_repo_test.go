@@ -58,7 +58,7 @@ func createTestEmployee(orgID, compPackID uuid.UUID, serialNum int) *domain.Empl
 }
 
 // setupEmployeeTestDeps creates organization and compensation package dependencies.
-func setupEmployeeTestDeps(t *testing.T, ctx context.Context, db *sql.DB) (uuid.UUID, uuid.UUID) {
+func setupEmployeeTestDeps(t *testing.T, ctx context.Context, db *sql.DB) (orgID, compPkgID uuid.UUID) {
 	t.Helper()
 
 	// Create organization
