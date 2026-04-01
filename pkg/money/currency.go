@@ -23,10 +23,8 @@ var supportedCurrencies = map[Currency]struct{}{
 // SupportedCurrenciesStr is a comma-separated list of supported currency values.
 var SupportedCurrenciesStr = util.EnumMapToString(supportedCurrencies)
 
-var (
-	// ErrCurrencyNotSupported is returned when an unsupported currency is used.
-	ErrCurrencyNotSupported = errors.New("money: currency not supported")
-)
+// ErrCurrencyNotSupported is returned when an unsupported currency is used.
+var ErrCurrencyNotSupported = errors.New("money: currency not supported")
 
 // IsSupported returns true if the currency is supported.
 func (c Currency) IsSupported() bool {

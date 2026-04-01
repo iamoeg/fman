@@ -105,7 +105,7 @@ func TestFromMAD(t *testing.T) {
 		},
 		{
 			name: "negative zero",
-			mad:  -0.0,
+			mad:  -0.0, //nolint:staticcheck // -0.0 is an intentional test value
 			want: Money{cents: 0},
 		},
 		{
@@ -390,9 +390,9 @@ func TestMoney_JSONRoundTrip(t *testing.T) {
 	// Verify that a struct containing Money fields serializes and deserializes correctly.
 	// This is the audit log use case.
 	type record struct {
-		Salary  Money `json:"salary"`
-		Bonus   Money `json:"bonus"`
-		NetPay  Money `json:"net_pay"`
+		Salary Money `json:"salary"`
+		Bonus  Money `json:"bonus"`
+		NetPay Money `json:"net_pay"`
 	}
 
 	original := record{
