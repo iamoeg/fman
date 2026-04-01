@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/domain"
 
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
 )
 
 // ===============================================================================

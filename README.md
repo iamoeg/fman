@@ -1,4 +1,4 @@
-# `finmgmt`
+# `fman`
 
 Internal financial management system for Moroccan companies,
 focusing on payroll compliance and business operations.
@@ -90,7 +90,7 @@ complying with Moroccan tax law (CNSS, AMO, IR).
 ## Project Structure
 
 ```text
-finmgmt/
+fman/
 ├── cmd/
 │   └── tui/              # TUI application entry point
 ├── db/
@@ -125,11 +125,11 @@ go install github.com/pressly/goose/v3/cmd/goose@latest
 ```bash
 # Clone and setup
 git clone <repo>
-cd finmgmt
+cd fman
 go mod download
 
 # Run migrations
-goose -dir db/migration sqlite3 ~/.local/share/finmgmt/data.db up
+goose -dir db/migration sqlite3 ~/.local/share/fman/data.db up
 
 # Generate sqlc code
 sqlc generate
@@ -142,8 +142,8 @@ go run ./cmd/tui/
 
 Configuration follows XDG Base Directory specification:
 
-- **Config:** `~/.config/finmgmt/config.yaml`
-- **Data:** `~/.local/share/finmgmt/data.db`
+- **Config:** `~/.config/fman/config.yaml`
+- **Data:** `~/.local/share/fman/data.db`
 
 A custom config path can be passed at startup:
 

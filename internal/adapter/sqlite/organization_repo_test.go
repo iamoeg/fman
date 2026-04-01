@@ -12,9 +12,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iamoeg/bootdev-capstone/db/migration"
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/db/migration"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // ============================================================================

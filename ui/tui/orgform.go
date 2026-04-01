@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // formResult signals what happened after processing a key in the form.

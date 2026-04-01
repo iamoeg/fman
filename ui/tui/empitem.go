@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 type empItem struct {

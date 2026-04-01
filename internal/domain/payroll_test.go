@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
-	"github.com/iamoeg/bootdev-capstone/pkg/money"
+	"github.com/iamoeg/fman/internal/domain"
+	"github.com/iamoeg/fman/pkg/money"
 )
 
 // ============================================================================

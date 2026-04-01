@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
-	"github.com/iamoeg/bootdev-capstone/pkg/config"
+	"github.com/iamoeg/fman/internal/domain"
+	"github.com/iamoeg/fman/pkg/config"
 )
 
 // orgsForSwitcherLoadedMsg carries the org list for the switch-org overlay.

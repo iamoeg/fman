@@ -1,6 +1,6 @@
 # Implementation Guide
 
-Phase-by-phase implementation plan for `finmgmt`.
+Phase-by-phase implementation plan for `fman`.
 
 ---
 
@@ -74,7 +74,7 @@ Business logic orchestration layer and configuration system.
 
 **Key components:**
 
-- `pkg/config/` — XDG-compliant config loading/saving with YAML; default paths `~/.config/finmgmt/config.yaml` and `~/.local/share/finmgmt/data.db`
+- `pkg/config/` — XDG-compliant config loading/saving with YAML; default paths `~/.config/fman/config.yaml` and `~/.local/share/fman/data.db`
 - `internal/application/organization_service.go`
 - `internal/application/employee_service.go` — per-organization serial number generation
 - `internal/application/compensation_package_service.go` — usage guards (cannot modify if referenced by employees or payroll results)

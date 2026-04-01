@@ -42,7 +42,8 @@
         `--config` flag wired to `config.LoadOrCreate`. Startup logic moved to `runTUI()`.
 15. [x] (Medium) Configure `golangci-lint`: add `.golangci.yml` and lint the codebase.
 16. [ ] (Medium) Set up CI/CD pipeline: build, test, and lint on push.
-17. [ ] (Low) Rename the project: decide on final name before publishing.
+17. [x] (Low) Rename the project: renamed to `fman` (finance manager). Module path updated to
+        `github.com/iamoeg/fman`; all import paths, XDG config/data paths, TUI title, and docs updated.
 18. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
         into a `yearRates` struct and a `ratesByYear` registry. `Calculate()` returns `ErrUnsupportedPayrollYear`
         when no entry exists for `period.Year`. Adding a new year = adding one map entry to the registry.

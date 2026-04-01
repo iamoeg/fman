@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
-	"github.com/iamoeg/bootdev-capstone/pkg/money"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
+	"github.com/iamoeg/fman/internal/domain"
+	"github.com/iamoeg/fman/pkg/money"
 )
 
 // ============================================================================

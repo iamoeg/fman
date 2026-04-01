@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/application"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/application"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // periodsLoadedMsg is sent when payroll periods for an org are loaded.

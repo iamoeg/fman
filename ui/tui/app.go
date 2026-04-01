@@ -2,8 +2,8 @@
 package tui
 
 import (
-	"github.com/iamoeg/bootdev-capstone/internal/application"
-	"github.com/iamoeg/bootdev-capstone/pkg/config"
+	"github.com/iamoeg/fman/internal/application"
+	"github.com/iamoeg/fman/pkg/config"
 )
 
 // App is the composition root for the TUI.

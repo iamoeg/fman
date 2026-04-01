@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // ============================================================================

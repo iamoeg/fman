@@ -3,7 +3,7 @@ package tui
 import (
 	"time"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // orgItem wraps a domain.Organization to satisfy list.DefaultItem.

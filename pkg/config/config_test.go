@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/iamoeg/bootdev-capstone/pkg/config"
+	"github.com/iamoeg/fman/pkg/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,7 +123,7 @@ func TestConfig_ResolveDatabasePath(t *testing.T) {
 			name:   "empty path uses default",
 			dbPath: "",
 			checkResult: func(t *testing.T, result string) {
-				require.Contains(t, result, "finmgmt")
+				require.Contains(t, result, "fman")
 				require.Contains(t, result, "data.db")
 			},
 		},
@@ -139,7 +139,7 @@ func TestConfig_ResolveDatabasePath(t *testing.T) {
 			dbPath: "custom.db",
 			checkResult: func(t *testing.T, result string) {
 				require.True(t, filepath.IsAbs(result))
-				require.Contains(t, result, "finmgmt")
+				require.Contains(t, result, "fman")
 				require.Contains(t, result, "custom.db")
 			},
 		},
@@ -148,7 +148,7 @@ func TestConfig_ResolveDatabasePath(t *testing.T) {
 			dbPath: "backups/archive.db",
 			checkResult: func(t *testing.T, result string) {
 				require.True(t, filepath.IsAbs(result))
-				require.Contains(t, result, "finmgmt")
+				require.Contains(t, result, "fman")
 				require.Contains(t, result, "backups")
 				require.Contains(t, result, "archive.db")
 			},
@@ -363,8 +363,8 @@ func TestConfigDir(t *testing.T) {
 
 	dir := config.ConfigDir()
 
-	// Should end with "finmgmt"
-	require.Contains(t, dir, "finmgmt")
+	// Should end with "fman"
+	require.Contains(t, dir, "fman")
 
 	// Should be an absolute path
 	require.True(t, filepath.IsAbs(dir))
@@ -375,8 +375,8 @@ func TestDataDir(t *testing.T) {
 
 	dir := config.DataDir()
 
-	// Should end with "finmgmt"
-	require.Contains(t, dir, "finmgmt")
+	// Should end with "fman"
+	require.Contains(t, dir, "fman")
 
 	// Should be an absolute path
 	require.True(t, filepath.IsAbs(dir))

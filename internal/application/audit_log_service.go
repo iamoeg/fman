@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
 )
 
 // AuditLog is the application-layer representation of an audit log entry.

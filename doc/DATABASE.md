@@ -1,6 +1,6 @@
 # Database Schema
 
-Complete documentation of the database schema for `finmgmt`.
+Complete documentation of the database schema for `fman`.
 The canonical schema definition is in `db/migration/00001_initial_schema.sql`.
 The canonical DBML diagram is in `doc/db-schema.dbml`.
 

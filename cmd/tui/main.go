@@ -10,18 +10,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
 
-	"github.com/iamoeg/bootdev-capstone/db/migration"
-	calculator "github.com/iamoeg/bootdev-capstone/internal/adapter/payroll"
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
-	"github.com/iamoeg/bootdev-capstone/internal/application"
-	"github.com/iamoeg/bootdev-capstone/pkg/config"
-	"github.com/iamoeg/bootdev-capstone/ui/tui"
+	"github.com/iamoeg/fman/db/migration"
+	calculator "github.com/iamoeg/fman/internal/adapter/payroll"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
+	"github.com/iamoeg/fman/internal/application"
+	"github.com/iamoeg/fman/pkg/config"
+	"github.com/iamoeg/fman/ui/tui"
 )
 
 var cfgPath string
 
 var rootCmd = &cobra.Command{
-	Use:   "finmgmt",
+	Use:   "fman",
 	Short: "Moroccan payroll manager",
 	RunE:  runTUI,
 }
@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVar(
 		&cfgPath, "config", "",
-		"path to config file (default: ~/.config/finmgmt/config.yaml)",
+		"path to config file (default: ~/.config/fman/config.yaml)",
 	)
 }
 

@@ -1,4 +1,4 @@
-// Package config provides configuration management for the finmgmt application.
+// Package config provides configuration management for the fman application.
 //
 // It handles loading, saving, and validating application configuration using
 // the XDG Base Directory specification and supports environment variable overrides.
@@ -99,7 +99,7 @@ func Load(configPath string) (*Config, error) {
 
 		// Search for config file in XDG paths
 		// (searches XDG_CONFIG_HOME and XDG_CONFIG_DIRS)
-		foundPath, err := xdg.SearchConfigFile("finmgmt/config.yaml")
+		foundPath, err := xdg.SearchConfigFile("fman/config.yaml")
 		if err != nil {
 			// Not found - return our custom error
 			return nil, fmt.Errorf("%w: searched XDG config directories", ErrConfigNotFound)
@@ -168,7 +168,7 @@ func LoadOrCreate(configPath string) (*Config, error) {
 		savePath := configPath
 		if savePath == "" {
 			// Use xdg.ConfigFile to get proper path (creates dirs automatically)
-			savePath, err = xdg.ConfigFile("finmgmt/config.yaml")
+			savePath, err = xdg.ConfigFile("fman/config.yaml")
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine config file path: %w", err)
 			}
@@ -192,7 +192,7 @@ func LoadOrCreate(configPath string) (*Config, error) {
 
 // Save writes the config to a file in YAML format.
 //
-// If configPath is empty, uses XDG config directory (~/.config/finmgmt/).
+// If configPath is empty, uses XDG config directory (~/.config/fman/).
 // Creates parent directories automatically if they don't exist.
 //
 // The config is validated before saving. Returns an error if validation fails.
@@ -205,7 +205,7 @@ func (c *Config) Save(configPath string) error {
 	// If no path specified, use XDG location (creates dirs automatically)
 	if configPath == "" {
 		var err error
-		configPath, err = xdg.ConfigFile("finmgmt/config.yaml")
+		configPath, err = xdg.ConfigFile("fman/config.yaml")
 		if err != nil {
 			return fmt.Errorf("failed to determine config file path: %w", err)
 		}
@@ -280,7 +280,7 @@ func (c *Config) ResolveDatabasePath() (string, error) {
 
 	// If empty, use default
 	if dbPath == "" {
-		return xdg.DataFile("finmgmt/data.db")
+		return xdg.DataFile("fman/data.db")
 	}
 
 	// If absolute, use as-is
@@ -290,7 +290,7 @@ func (c *Config) ResolveDatabasePath() (string, error) {
 
 	// Relative path - resolve against XDG data directory
 	// (xdg.DataFile creates parent directories automatically)
-	return xdg.DataFile(filepath.Join("finmgmt", dbPath))
+	return xdg.DataFile(filepath.Join("fman", dbPath))
 }
 
 // ============================================================================
@@ -314,7 +314,7 @@ func ensureDir(dirPath string) error {
 func ensureDataDir() error {
 	// Use xdg.DataFile to ensure the directory exists
 	// We create a dummy path just to trigger directory creation
-	_, err := xdg.DataFile("finmgmt/.keep")
+	_, err := xdg.DataFile("fman/.keep")
 	if err != nil {
 		return fmt.Errorf("failed to ensure data directory: %w", err)
 	}
@@ -328,13 +328,13 @@ func ensureDataDir() error {
 // The actual config loading uses xdg.SearchConfigFile() and xdg.ConfigFile().
 
 // ConfigDir returns the XDG config directory for the application.
-// Typically: ~/.config/finmgmt
+// Typically: ~/.config/fman
 func ConfigDir() string {
-	return filepath.Join(xdg.ConfigHome, "finmgmt")
+	return filepath.Join(xdg.ConfigHome, "fman")
 }
 
 // DataDir returns the XDG data directory for the application.
-// Typically: ~/.local/share/finmgmt
+// Typically: ~/.local/share/fman
 func DataDir() string {
-	return filepath.Join(xdg.DataHome, "finmgmt")
+	return filepath.Join(xdg.DataHome, "fman")
 }

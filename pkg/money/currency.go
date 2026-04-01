@@ -3,7 +3,7 @@ package money
 import (
 	"errors"
 
-	"github.com/iamoeg/bootdev-capstone/pkg/util"
+	"github.com/iamoeg/fman/pkg/util"
 )
 
 // Currency represents a supported currency code.

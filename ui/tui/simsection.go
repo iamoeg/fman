@@ -11,8 +11,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	calculator "github.com/iamoeg/bootdev-capstone/internal/adapter/payroll"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	calculator "github.com/iamoeg/fman/internal/adapter/payroll"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // simFormPanelWidth is the fixed width of the left (form) panel.

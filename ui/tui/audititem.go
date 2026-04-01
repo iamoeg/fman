@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 
-	"github.com/iamoeg/bootdev-capstone/internal/application"
+	"github.com/iamoeg/fman/internal/application"
 )
 
 type auditItem struct {

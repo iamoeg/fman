@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/iamoeg/bootdev-capstone/pkg/util"
+	"github.com/iamoeg/fman/pkg/util"
 )
 
 // ============================================================================

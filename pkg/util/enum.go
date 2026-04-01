@@ -1,5 +1,5 @@
 // Package util provides utility functions for common operations
-// across the finmgmt application.
+// across the fman application.
 package util
 
 import (

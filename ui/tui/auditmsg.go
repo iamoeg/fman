@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/iamoeg/bootdev-capstone/internal/application"
+	"github.com/iamoeg/fman/internal/application"
 )
 
 type auditLogsLoadedMsg struct {

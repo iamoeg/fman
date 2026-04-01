@@ -13,9 +13,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/internal/application"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
-	"github.com/iamoeg/bootdev-capstone/pkg/money"
+	"github.com/iamoeg/fman/internal/application"
+	"github.com/iamoeg/fman/internal/domain"
+	"github.com/iamoeg/fman/pkg/money"
 )
 
 var compDetailKey = key.NewBinding(

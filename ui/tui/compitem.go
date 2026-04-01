@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 type compItem struct {

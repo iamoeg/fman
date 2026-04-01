@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	sqlite "github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite"
-	"github.com/iamoeg/bootdev-capstone/internal/application"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	sqlite "github.com/iamoeg/fman/internal/adapter/sqlite"
+	"github.com/iamoeg/fman/internal/application"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // ===============================================================================

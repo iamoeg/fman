@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/iamoeg/bootdev-capstone/pkg/money"
-	"github.com/iamoeg/bootdev-capstone/pkg/util"
+	"github.com/iamoeg/fman/pkg/money"
+	"github.com/iamoeg/fman/pkg/util"
 )
 
 // ============================================================================

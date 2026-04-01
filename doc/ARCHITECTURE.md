@@ -1,6 +1,6 @@
 # System Architecture
 
-This document describes the architecture of `finmgmt`:
+This document describes the architecture of `fman`:
 structural patterns, layer responsibilities, and the rationale behind key decisions.
 
 ---

@@ -75,7 +75,7 @@ func (s sidebar) view(height int, focused bool, activeOrg string) string {
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240"))
 
-	title := titleStyle.Render("finmgmt")
+	title := titleStyle.Render("fman")
 
 	nav := title + "\n"
 	for i := sectionIndex(0); i < sectionCount; i++ {

@@ -1,4 +1,4 @@
-module github.com/iamoeg/bootdev-capstone
+module github.com/iamoeg/fman
 
 go 1.25.5
 

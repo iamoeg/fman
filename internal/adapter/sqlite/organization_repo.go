@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/iamoeg/bootdev-capstone/internal/adapter/sqlite/sqldb"
-	"github.com/iamoeg/bootdev-capstone/internal/domain"
+	"github.com/iamoeg/fman/internal/adapter/sqlite/sqldb"
+	"github.com/iamoeg/fman/internal/domain"
 )
 
 // ============================================================================
