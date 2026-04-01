@@ -39,14 +39,14 @@ func main() {
 	}
 }
 
-func runTUI(cmd *cobra.Command, args []string) error {
+func runTUI(_ *cobra.Command, _ []string) error {
 	// Debug logging — set DEBUG=1 to enable.
-	if len(os.Getenv("DEBUG")) > 0 {
+	if os.Getenv("DEBUG") != "" {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
 			return fmt.Errorf("could not open debug log: %w", err)
 		}
-		defer f.Close()
+		defer f.Close() //nolint:errcheck // deferred log file close; error not actionable here
 	}
 
 	// 1. Load (or create) config.
@@ -65,7 +65,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("could not open database: %w", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck // deferred DB close at program exit; error not actionable here
 
 	// CRITICAL: enable foreign key enforcement on every connection.
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
