@@ -170,7 +170,7 @@ func newEmpForm(pkgs []*domain.EmployeeCompensationPackage) empForm {
 		}
 		inputs[i] = t
 	}
-	inputs[empFieldFullName].Focus() //nolint:errcheck
+	inputs[empFieldFullName].Focus()
 
 	return empForm{
 		inputs: inputs,
@@ -235,7 +235,7 @@ func (f empForm) advanceFocus(delta int) empForm {
 	}
 	f.focused = (f.focused + delta + empFieldCount) % empFieldCount
 	if !isCycleOrPickerField(f.focused) {
-		f.inputs[f.focused].Focus() //nolint:errcheck
+		f.inputs[f.focused].Focus()
 	}
 	// Keep focused field within the visible window.
 	if f.focused < f.viewOffset {

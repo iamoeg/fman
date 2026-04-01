@@ -99,7 +99,7 @@ func hardDeleteOrgCmd(svc *application.OrganizationService, id uuid.UUID) tea.Cm
 func clearActiveOrgCmd(cfg *config.Config) tea.Cmd {
 	return func() tea.Msg {
 		cfg.DefaultOrgID = ""
-		cfg.Save("") // best effort; sidebar clears regardless
+		cfg.Save("") //nolint:errcheck // best-effort save; sidebar clears regardless
 		return activeOrgLoadedMsg{}
 	}
 }

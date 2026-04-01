@@ -65,7 +65,7 @@ func newSimForm() simForm {
 	salary.Placeholder = "e.g. 5000.00"
 	salary.Width = 20
 	salary.CharLimit = 12
-	salary.Focus() //nolint:errcheck
+	salary.Focus()
 
 	hireDate := textinput.New()
 	hireDate.Placeholder = "YYYY-MM-DD"
@@ -105,13 +105,13 @@ func (f simForm) advanceFocus(delta int) simForm {
 	f.focusIdx = (f.focusIdx + delta + simFieldCount) % simFieldCount
 	switch f.focusIdx {
 	case simFieldSalary:
-		f.salaryInput.Focus() //nolint:errcheck
+		f.salaryInput.Focus()
 	case simFieldHireDate:
-		f.hireDateInput.Focus() //nolint:errcheck
+		f.hireDateInput.Focus()
 	case simFieldDependents:
-		f.dependentsInput.Focus() //nolint:errcheck
+		f.dependentsInput.Focus()
 	case simFieldChildren:
-		f.childrenInput.Focus() //nolint:errcheck
+		f.childrenInput.Focus()
 	}
 	return f
 }

@@ -98,6 +98,7 @@ func NewModel(app *App) Model {
 	return m
 }
 
+// Init implements tea.Model. It initializes all sections.
 func (m Model) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0, sectionCount+1)
 	for i := range m.sections {
@@ -111,6 +112,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// Update implements tea.Model. It routes messages to the active section or handles global keys.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -263,6 +265,7 @@ func (m Model) updateMain(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View implements tea.Model. It renders the full TUI layout.
 func (m Model) View() string {
 	if m.width == 0 {
 		return "Loading…"

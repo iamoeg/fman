@@ -44,16 +44,20 @@ type empsLoadedMsg struct {
 	err  error
 }
 
-type saveEmpDoneMsg struct{ err error }
-type deleteEmpDoneMsg struct{ err error }
+type (
+	saveEmpDoneMsg   struct{ err error }
+	deleteEmpDoneMsg struct{ err error }
+)
 
 type empsDeletedLoadedMsg struct {
 	emps []*domain.Employee
 	err  error
 }
 
-type restoreEmpDoneMsg struct{ err error }
-type hardDeleteEmpDoneMsg struct{ err error }
+type (
+	restoreEmpDoneMsg    struct{ err error }
+	hardDeleteEmpDoneMsg struct{ err error }
+)
 
 func loadEmpsCmd(
 	empSvc *application.EmployeeService,

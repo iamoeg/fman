@@ -15,17 +15,21 @@ type compsLoadedMsg struct {
 	err  error
 }
 
-type saveCompDoneMsg struct{ err error }
-type deleteCompDoneMsg struct{ err error }
-type renameCompDoneMsg struct{ err error }
+type (
+	saveCompDoneMsg   struct{ err error }
+	deleteCompDoneMsg struct{ err error }
+	renameCompDoneMsg struct{ err error }
+)
 
 type compsDeletedLoadedMsg struct {
 	pkgs []*domain.EmployeeCompensationPackage
 	err  error
 }
 
-type restoreCompDoneMsg struct{ err error }
-type hardDeleteCompDoneMsg struct{ err error }
+type (
+	restoreCompDoneMsg    struct{ err error }
+	hardDeleteCompDoneMsg struct{ err error }
+)
 
 func loadCompsCmd(svc *application.CompensationPackageService, orgID uuid.UUID) tea.Cmd {
 	return func() tea.Msg {

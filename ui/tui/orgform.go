@@ -67,7 +67,7 @@ func newOrgForm() orgForm {
 		f.inputs[i] = t
 	}
 	f.inputs[fieldName].CharLimit = 120
-	f.inputs[fieldName].Focus() //nolint:errcheck
+	f.inputs[fieldName].Focus()
 	return f
 }
 
@@ -152,7 +152,7 @@ func (f orgForm) view() string {
 		Foreground(lipgloss.Color("240"))
 
 	var rows []string
-	for i, inp := range f.inputs {
+	for i, inp := range &f.inputs {
 		lbl := labelStyle.Render(fieldLabels[i])
 		if i == f.focusIndex {
 			lbl = activeLabelStyle.Render(fieldLabels[i])

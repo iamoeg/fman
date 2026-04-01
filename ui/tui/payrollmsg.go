@@ -24,14 +24,19 @@ type resultsLoadedMsg struct {
 	err       error
 }
 
-type createPeriodDoneMsg struct{ err error }
-type generateResultsDoneMsg struct {
-	count int
-	err   error
-}
-type finalizePeriodDoneMsg struct{ err error }
-type unfinalizePeriodDoneMsg struct{ err error }
-type deletePeriodDoneMsg struct{ err error }
+type (
+	createPeriodDoneMsg    struct{ err error }
+	generateResultsDoneMsg struct {
+		count int
+		err   error
+	}
+)
+
+type (
+	finalizePeriodDoneMsg   struct{ err error }
+	unfinalizePeriodDoneMsg struct{ err error }
+	deletePeriodDoneMsg     struct{ err error }
+)
 
 func loadPeriodsCmd(svc *application.PayrollService, orgID uuid.UUID) tea.Cmd {
 	return func() tea.Msg {

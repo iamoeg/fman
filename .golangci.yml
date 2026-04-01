@@ -65,6 +65,8 @@ linters:
     errcheck:
       check-type-assertions: true
       check-blank: false
+      exclude-functions:
+        - (*textinput.Model).Focus # Focus() error is not meaningful in bubbletea text inputs
 
     staticcheck:
       checks:

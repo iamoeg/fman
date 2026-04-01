@@ -52,7 +52,7 @@ func newCompForm() compForm {
 	name.Placeholder = "e.g. Standard Developer"
 	name.Width = 24
 	name.CharLimit = 64
-	name.Focus() //nolint:errcheck
+	name.Focus()
 
 	salary := textinput.New()
 	salary.Placeholder = "e.g. 3422.00"
@@ -86,11 +86,11 @@ func (f compForm) update(msg tea.KeyMsg) (compForm, formResult, tea.Cmd) {
 		if f.focused == 0 {
 			f.focused = 1
 			f.nameInput.Blur()
-			f.salaryInput.Focus() //nolint:errcheck
+			f.salaryInput.Focus()
 		} else {
 			f.focused = 0
 			f.salaryInput.Blur()
-			f.nameInput.Focus() //nolint:errcheck
+			f.nameInput.Focus()
 		}
 		return f, formContinue, nil
 	default:

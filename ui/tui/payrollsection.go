@@ -82,7 +82,7 @@ func newPayrollForm() payrollForm {
 	year.Placeholder = fmt.Sprintf("%d", time.Now().Year())
 	year.CharLimit = 4
 	year.Width = 10
-	year.Focus() //nolint:errcheck
+	year.Focus()
 
 	month := textinput.New()
 	month.Placeholder = fmt.Sprintf("%d", int(time.Now().Month()))
@@ -97,7 +97,7 @@ func newPayrollForm() payrollForm {
 func (f payrollForm) advanceFocus(delta int) payrollForm {
 	f.inputs[f.focusIdx].Blur()
 	f.focusIdx = (f.focusIdx + delta + payrollFormCount) % payrollFormCount
-	f.inputs[f.focusIdx].Focus() //nolint:errcheck
+	f.inputs[f.focusIdx].Focus()
 	return f
 }
 
