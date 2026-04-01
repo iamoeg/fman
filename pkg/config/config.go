@@ -112,15 +112,22 @@ func Load(configPath string) (*Config, error) {
 	// Environment variable overrides
 	v.SetEnvPrefix("FINMGMT")
 	v.AutomaticEnv()
-	v.BindEnv("database_path", "FINMGMT_DATABASE_PATH")
-	v.BindEnv("display_name", "FINMGMT_DISPLAY_NAME")
-	v.BindEnv("default_org_id", "FINMGMT_DEFAULT_ORG_ID")
+	if err := v.BindEnv("database_path", "FINMGMT_DATABASE_PATH"); err != nil {
+		return nil, fmt.Errorf("failed to bind env var: %w", err)
+	}
+	if err := v.BindEnv("display_name", "FINMGMT_DISPLAY_NAME"); err != nil {
+		return nil, fmt.Errorf("failed to bind env var: %w", err)
+	}
+	if err := v.BindEnv("default_org_id", "FINMGMT_DEFAULT_ORG_ID"); err != nil {
+		return nil, fmt.Errorf("failed to bind env var: %w", err)
+	}
 
 	// Read the config file
 	if err := v.ReadInConfig(); err != nil {
 		// return nil, fmt.Errorf("failed to read config from %s: %w", configFileToUse, err)
 		// Check for Viper's "not found" error (when searching paths)
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var viperNotFound viper.ConfigFileNotFoundError
+		if errors.As(err, &viperNotFound) {
 			return nil, fmt.Errorf("%w: %s", ErrConfigNotFound, configFileToUse)
 		}
 		// Check for OS-level "not found" error (when using explicit path)
@@ -168,8 +175,8 @@ func LoadOrCreate(configPath string) (*Config, error) {
 		}
 
 		// Save the default config
-		if err := cfg.Save(savePath); err != nil {
-			return nil, fmt.Errorf("failed to save default config: %w", err)
+		if saveErr := cfg.Save(savePath); saveErr != nil {
+			return nil, fmt.Errorf("failed to save default config: %w", saveErr)
 		}
 
 		return cfg, nil
@@ -222,7 +229,7 @@ func (c *Config) Save(configPath string) error {
 	}
 
 	// Write to file
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -296,7 +303,7 @@ func ensureDir(dirPath string) error {
 		return nil // Already exists
 	}
 
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0o750); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
 	}
 

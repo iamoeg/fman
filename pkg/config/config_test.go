@@ -272,7 +272,7 @@ func TestLoad_InvalidYAML(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	// Write invalid YAML
-	err := os.WriteFile(configPath, []byte("invalid: yaml: content:"), 0644)
+	err := os.WriteFile(configPath, []byte("invalid: yaml: content:"), 0o644)
 	require.NoError(t, err)
 
 	_, err = config.Load(configPath)
