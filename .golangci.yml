@@ -79,6 +79,10 @@ linters:
         linters:
           - errcheck # test helpers intentionally ignore errors
           - gosec # test data doesn't need security hardening
+      - path: "_test\\.go$"
+        linters:
+          - revive
+        text: "unused-parameter:" # mock implementations must match interface signatures
       - path: "db/migration/embed\\.go$"
         linters:
           - unused # exists solely for its side-effect import

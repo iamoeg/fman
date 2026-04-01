@@ -1,3 +1,4 @@
+// Package application implements the business logic services for the application.
 package application
 
 import (
@@ -783,7 +784,7 @@ func (s *PayrollService) GeneratePayrollResults(
 
 		result, err := s.calculator.Calculate(ctx, period, emp, pkg)
 		if err != nil {
-			return fmt.Errorf("%w for employee %s: %v", ErrPayrollCalculationFailed, emp.ID, err)
+			return fmt.Errorf("%w for employee %s: %w", ErrPayrollCalculationFailed, emp.ID, err)
 		}
 
 		results = append(results, result)

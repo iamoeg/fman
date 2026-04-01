@@ -643,7 +643,7 @@ func (s *CompensationPackageService) IsCompensationPackageInUse(
 func (s *CompensationPackageService) GetCompensationPackageUsageCount(
 	ctx context.Context,
 	pkgID uuid.UUID,
-) (employeeCount int64, payrollResultCount int64, err error) {
+) (employeeCount, payrollResultCount int64, err error) {
 	employeeCount, err = s.repo.CountEmployeesUsing(ctx, pkgID)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to count employees using package: %w", err)
