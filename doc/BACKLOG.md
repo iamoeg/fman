@@ -41,7 +41,10 @@
 14. [x] (High) Fix config file path via CLI argument: introduced Cobra as the CLI framework;
         `--config` flag wired to `config.LoadOrCreate`. Startup logic moved to `runTUI()`.
 15. [x] (Medium) Configure `golangci-lint`: add `.golangci.yml` and lint the codebase.
-16. [ ] (Medium) Set up CI/CD pipeline: build, test, and lint on push.
+16. [x] (Medium) Set up CI/CD pipeline: build, test, and lint on push.
+        Mise tasks for build/test/lint/fmt/ci/release/tag. GitHub Actions workflows call
+        `mise run ci` (push/PR) and `mise run release` (v* tags). Goreleaser builds
+        linux/amd64+arm64 with CGO. Version injected via ldflags; `fman --version` works.
 17. [x] (Low) Rename the project: renamed to `fman` (finance manager). Module path updated to
         `github.com/iamoeg/fman`; all import paths, XDG config/data paths, TUI title, and docs updated.
 18. [x] (High) Constrain payroll calculations to supported years: moved all year-specific rates/brackets
