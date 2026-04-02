@@ -34,6 +34,10 @@ go.work.sum
 # Debug files
 debug.log
 
+# Build output
+bin/
+dist/
+
 # Dev database, config
 data.db
 test_config.yaml
